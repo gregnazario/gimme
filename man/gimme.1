@@ -1,0 +1,244 @@
+.TH GIMME 1 "2026-08-04" "gimme 0.1.0" "gimme Manual"
+.SH NAME
+gimme \- a Swift\-based package manager for macOS
+.SH SYNOPSIS
+.B gimme
+[\fIGLOBAL OPTIONS\fR]
+\fICOMMAND\fR [\fIARGS\fR] [\fICOMMAND OPTIONS\fR]
+.sp
+.B gimme
+\fITOOL\fR[@\fIVERSION\fR]
+\(ba the install/update shortcut (signature UX)
+
+.SH DESCRIPTION
+gimme installs command\-line tools via formulae (typed TOML manifests plus
+optionally a sandboxed Lua install script). It uses a versioned cellar with
+PATH shims, supports source\-based and download\-based installs, reads
+.IR .tool-versions / mise.toml ,
+and coexists with mise/asdf by deferring to tools they already manage.
+
+.SH GLOBAL OPTIONS
+.TP
+.BR "--json" " (bool)"
+Emit structured JSON output (default: \fIfalse\fR)
+.TP
+.BR "--dry-run" " (bool)"
+Plan mutations without executing (default: \fIfalse\fR)
+.TP
+.BR "--yes" " (bool)"
+Non-interactive confirm (default: \fIfalse\fR)
+.TP
+.BR "--prefix" " (string)"
+Override ~/.gimme location (default: \fI~/.gimme\fR)
+.TP
+.BR "--tap" " (string)"
+Restrict to one tap
+.TP
+.BR "--verbose" " (bool)"
+Debug logging (default: \fIfalse\fR)
+.TP
+.BR "--no-color" " (bool)"
+Disable color output (default: \fIfalse\fR)
+
+.SH COMMANDS
+.SS \fBinstall\fR
+.RS
+Install a tool (auto-detects .tool-versions/mise.toml with no args).
+.sp
+Usage: \fBgimme install <tool>[@version]\fR
+.sp
+Arguments: tool?
+.sp
+Options:
+.RS
+\fB--dry-run\fR (bool) \(em Plan without executing (default: \fIfalse\fR)
+.RE
+.RS
+\fB--insecure\fR (bool) \(em Skip checksum verification (default: \fIfalse\fR)
+.RE
+.RS
+\fB--from-mise\fR (bool) \(em Read mise/asdf config and install batch (default: \fIfalse\fR)
+.RE
+.RS
+\fB--no-mise\fR (bool) \(em Disable auto-detection of mise config (default: \fIfalse\fR)
+.RE
+.RE
+.SS \fBuninstall\fR
+.RS
+Remove a tool.
+.sp
+Usage: \fBgimme uninstall <tool>[@version]\fR
+.sp
+Arguments: tool
+.sp
+Options:
+.RS
+\fB--force\fR (bool) \(em Remove even if depended on (default: \fIfalse\fR)
+.RE
+.RE
+.SS \fBupdate\fR
+.RS
+Update one or all tools.
+.sp
+Usage: \fBgimme update [<tool>]|--all\fR
+.sp
+Arguments: tool?
+.sp
+Options:
+.RS
+\fB--all\fR (bool) \(em Update every non-pinned tool (default: \fIfalse\fR)
+.RE
+.RS
+\fB--check\fR (bool) \(em Report outdated, do not update (default: \fIfalse\fR)
+.RE
+.RE
+.SS \fBuse\fR
+.RS
+Switch active version (no download).
+.sp
+Usage: \fBgimme use <tool> <version>\fR
+.sp
+Arguments: tool, version
+.RE
+.SS \fBpin\fR
+.RS
+Pin a tool to a version.
+.sp
+Usage: \fBgimme pin <tool>[@version]\fR
+.sp
+Arguments: tool
+.RE
+.SS \fBunpin\fR
+.RS
+Remove a pin.
+.sp
+Usage: \fBgimme unpin <tool>\fR
+.sp
+Arguments: tool
+.RE
+.SS \fBlist\fR
+.RS
+List installed tools.
+.sp
+Usage: \fBgimme list [--all]\fR
+.sp
+Options:
+.RS
+\fB--all\fR (bool) \(em Include not-installed formulae (default: \fIfalse\fR)
+.RE
+.RS
+\fB--limit\fR (int) \(em Cap number of results
+.RE
+.RS
+\fB--fields\fR (string) \(em Project specific fields
+.RE
+.RS
+\fB--query\fR (string) \(em Filter expression
+.RE
+.RE
+.SS \fBsearch\fR
+.RS
+Search formulae.
+.sp
+Usage: \fBgimme search <term>\fR
+.sp
+Arguments: term
+.RE
+.SS \fBinfo\fR
+.RS
+Show formula details.
+.sp
+Usage: \fBgimme info <tool>\fR
+.sp
+Arguments: tool
+.RE
+.SS \fBoutdated\fR
+.RS
+Show tools with updates available.
+.sp
+Usage: \fBgimme outdated\fR
+.RE
+.SS \fBtap\fR
+.RS
+Manage formula sources.
+.sp
+Usage: \fBgimme tap <add|remove|list> [url]\fR
+.sp
+Arguments: action, url?
+.RE
+.SS \fBdoctor\fR
+.RS
+Health check.
+.sp
+Usage: \fBgimme doctor\fR
+.RE
+.SS \fBconfig\fR
+.RS
+Read/write config.
+.sp
+Usage: \fBgimme config <get|set> [key] [value]\fR
+.sp
+Arguments: action, key?, value?
+.RE
+.SS \fBintrospect\fR
+.RS
+Emit machine-readable CLI spec.
+.sp
+Usage: \fBgimme introspect [--command <name>]\fR
+.sp
+Options:
+.RS
+\fB--command\fR (string) \(em Scope to one command
+.RE
+.RE
+.SS \fBman\fR
+.RS
+Emit groff man-page source to stdout.
+.sp
+Usage: \fBgimme man\fR
+.RE
+
+.SH EXIT STATUS
+.TP
+.B 0
+\fISUCCESS\fR
+.TP
+.B 1
+\fIUSAGE\fR
+.TP
+.B 1
+\fINOT_FOUND\fR
+.TP
+.B 2
+\fIINSTALL\fR
+.TP
+.B 2
+\fICHECKSUM\fR
+.TP
+.B 2
+\fIPERMISSION\fR
+.TP
+.B 2
+\fINETWORK\fR
+.TP
+.B 3
+\fICONFLICT\fR
+.TP
+.B 4
+\fILOCK\fR
+.TP
+.B 70
+\fIUNKNOWN\fR
+
+.SH FILES
+.TP
+.B ~/.gimme/
+Default install prefix: bin/ (shims), cellar/<tool>/<ver>/, cache/, taps/, state/.
+.TP
+.B ~/.gimme/config.toml
+User configuration (behavior, cache, taps).
+
+.SH SEE ALSO
+Full documentation: \fBhttps://greg.github.io/gimme/\fR (or your deployed site).
+Design spec and decision log: the \fIDECISIONS.md\fR and
+\fIdocs/superpowers/specs/\fR files in the source tree.

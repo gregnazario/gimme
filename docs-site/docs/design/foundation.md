@@ -1,0 +1,1 @@
+../../../docs/superpowers/specs/2026-08-03-gimme-foundation-design.md

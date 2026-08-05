@@ -1,0 +1,40 @@
+[package]
+name = "hello"
+desc = "Test tool"
+homepage = "https://example.com"
+license = "MIT"
+
+[[version]]
+ver = "1.0.0"
+released = "2026-01-01"
+
+[[version.asset]]
+os = "macos"
+arch = "arm64"
+url = "file://FIXTURE_TARBALL_PLACEHOLDER"
+sha256 = "FIXTURE_SHA_PLACEHOLDER"
+
+[[version]]
+ver = "1.1.0"
+released = "2026-06-01"
+
+[[version.asset]]
+os = "macos"
+arch = "arm64"
+url = "file://FIXTURE_TARBALL_PLACEHOLDER_V11"
+sha256 = "FIXTURE_SHA_PLACEHOLDER_V11"
+
+[install]
+strategy = "steps"
+
+[[install.step]]
+extract = "${asset}"
+
+[[install.step]]
+copy = { from = "hello-1.0.0", to = "${prefix}" }
+
+[[provides]]
+bin = ["hello"]
+
+[livecheck]
+strategy = "none"

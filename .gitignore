@@ -1,0 +1,7 @@
+.build/
+.swiftpm/
+*.xcodeproj
+DerivedData/
+.netrc
+site/
+docs-site/.venv/

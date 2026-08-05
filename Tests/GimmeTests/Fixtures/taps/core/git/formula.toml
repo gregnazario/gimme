@@ -1,0 +1,30 @@
+[package]
+name = "git"
+desc = "Distributed version control system"
+homepage = "https://git-scm.com"
+license = "GPL-2.0-only"
+
+[[version]]
+ver = "2.40.0"
+
+[[version.asset]]
+os = "macos"
+arch = "arm64"
+url = "https://example.com/git-2.40.0-arm64.tar.gz"
+sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+[[dep]]
+name = "gettext"
+ver = ">=0.21"
+
+[install]
+strategy = "lua"
+script = "install.lua"
+
+[[provides]]
+bin = ["git", "git-receive-pack"]
+
+[livecheck]
+strategy = "github-release"
+repo = "git/git"
+regex = 'git-(\d+\.\d+\.\d+)'

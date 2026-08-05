@@ -1,0 +1,93 @@
+site_name: gimme
+site_description: A Swift-based package manager for macOS — source or download installs, formulae, mise interop.
+site_url: https://gregnazario.github.io/gimme/
+repo_url: https://github.com/gregnazario/gimme
+repo_name: gregnazario/gimme
+edit_uri: edit/main/docs-site/docs/
+
+docs_dir: docs
+site_dir: ../site
+
+theme:
+  name: material
+  font:
+    text: Inter
+    code: JetBrains Mono
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+  logo: assets/logo.svg
+  favicon: assets/favicon.svg
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.snippets
+  - toc:
+      permalink: true
+  - attr_list
+  - def_list
+  - md_in_html
+
+nav:
+  - Home: index.md
+  - Install: install.md
+  - Quick start: quickstart.md
+  - Guides:
+      - guides/index.md
+      - Formula format: guides/formulae.md
+      - Mise/asdf interop: guides/mise.md
+      - AI agents: guides/agents.md
+  - Reference:
+      - reference/index.md
+      - CLI commands: reference/cli.md
+      - Exit codes: reference/exit-codes.md
+      - Decision log: reference/decisions.md
+  - Design:
+      - Foundation spec: design/foundation.md
+      - Mise interop spec: design/mise.md
+      - Foundation plan: design/foundation-plan.md
+      - Mise plan: design/mise-plan.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/gregnazario/gimme
+  version:
+    provider: mike
+
+plugins:
+  - search
+  - tags

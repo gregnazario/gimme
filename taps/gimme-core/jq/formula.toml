@@ -1,0 +1,26 @@
+[package]
+name = "jq"
+desc = "Command-line JSON processor"
+homepage = "https://github.com/jqlang/jq"
+license = "MIT"
+
+[[version]]
+ver = "1.8.2"
+
+[[version.asset]]
+os = "macos"
+arch = "arm64"
+url = "https://github.com/jqlang/jq/releases/download/jq-1.8.2/jq-macos-arm64"
+sha256 = "2d75340ba57a4b4b4c8708a21c2dc8e958a48aaa8bba13b27f77f6e4c0eca07e"
+
+[install]
+strategy = "lua"
+script = "install.lua"
+
+[[provides]]
+bin = ["jq"]
+
+[livecheck]
+strategy = "github-release"
+repo = "jqlang/jq"
+regex = 'jq-(\d+\.\d+\.\d+)'
