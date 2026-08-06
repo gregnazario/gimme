@@ -43,26 +43,75 @@ public struct TapStore: FormulaProvider {
     // MARK: FormulaProvider
 
     /// Find a formula by name across all enabled taps (first match wins).
+    /// Supports both gimme-format taps (formula.toml dirs) and Homebrew-format
+    /// taps (.rb files) — the latter are translated on-the-fly via HomebrewLoader.
     public func find(_ name: String) throws -> Formula {
         for dir in enabledTapDirs() {
+            // 1. Try gimme format: <tap>/<name>/formula.toml or <tap>/Formula/<name>/formula.toml
             let formulaDir = formulaDir(in: dir, for: name)
             if FileManager.default.isDirectory(formulaDir) {
                 let formula = try ManifestLoader.load(directory: formulaDir)
                 try ManifestLoader.validate(formula)
                 return formula
             }
+            // 2. Try Homebrew format: <tap>/Formula/<name>.rb or <tap>/<name>.rb
+            if let f = findHomebrewFormula(in: dir, name: name) {
+                return f
+            }
         }
         throw GimmeError.notFound("no formula named '\(name)' in any tap")
     }
 
-    /// All formulae across all taps. Used by `list --all` / `search`.
+    /// All formulae across all taps (gimme + Homebrew format).
     public func allFormulae() -> [Formula] {
         var out: [Formula] = []
         for dir in enabledTapDirs() {
+            // gimme format
             for f in formulaDirs(in: dir) {
                 if let fml = try? ManifestLoader.load(directory: f) {
                     out.append(fml)
                 }
+            }
+            // Homebrew format
+            out.append(contentsOf: loadHomebrewFormulae(in: dir))
+        }
+        return out
+    }
+
+    // MARK: Homebrew-format support
+
+    /// Look for a Homebrew `.rb` formula file matching `name` in the tap dir.
+    /// Checks both `<tap>/Formula/<name>.rb` and `<tap>/<name>.rb`.
+    private func findHomebrewFormula(in tapDir: URL, name: String) -> Formula? {
+        let candidates = [
+            tapDir.appendingPathComponent("Formula").appendingPathComponent("\(name).rb"),
+            tapDir.appendingPathComponent("\(name).rb"),
+        ]
+        for path in candidates {
+            guard FileManager.default.fileExists(atPath: path.path),
+                  let source = try? String(contentsOf: path, encoding: .utf8),
+                  let formula = HomebrewLoader.parse(source) else { continue }
+            return formula
+        }
+        return nil
+    }
+
+    /// Load ALL Homebrew `.rb` formulae from a tap directory. Checks `Formula/`
+    /// subdir (standard homebrew-core layout) and the tap root.
+    private func loadHomebrewFormulae(in tapDir: URL) -> [Formula] {
+        var out: [Formula] = []
+        let dirs = [
+            tapDir.appendingPathComponent("Formula"),  // homebrew-core standard
+            tapDir,                                      // flat layout
+        ]
+        for dir in dirs {
+            guard FileManager.default.isDirectory(dir) else { continue }
+            guard let entries = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { continue }
+            for entry in entries where entry.hasSuffix(".rb") {
+                let path = dir.appendingPathComponent(entry)
+                guard let source = try? String(contentsOf: path, encoding: .utf8),
+                      let formula = HomebrewLoader.parse(source) else { continue }
+                out.append(formula)
             }
         }
         return out

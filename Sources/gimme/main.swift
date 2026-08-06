@@ -164,6 +164,7 @@ enum GimmeCLI {
           gimme config <get|set>            read/write config
           gimme introspect                  machine-readable CLI spec (for agents)
           gimme man                         emit groff man-page source (pipe to `man`)
+          gimme brew-import                 clone Homebrew/homebrew-core and load all formulae
 
         Global flags: --json --dry-run --yes --prefix <path> --tap <name> --verbose --no-color
         """
@@ -195,7 +196,7 @@ enum GimmeCLI {
             "install": .install, "uninstall": .uninstall, "update": .update,
             "use": .use, "pin": .pin, "unpin": .unpin,
             "list": .list, "search": .search, "info": .info, "outdated": .outdated,
-            "tap": .tap, "doctor": .doctor, "config": .config, "introspect": .introspect, "man": .man,
+            "tap": .tap, "doctor": .doctor, "config": .config, "introspect": .introspect, "man": .man, "brew-import": .brewImport,
         ]
         var i = 0
         var sawSubcommand = false

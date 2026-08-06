@@ -48,6 +48,7 @@ public final class Gimme {
         case install, uninstall, update, use, pin, unpin
         case list, search, info, outdated
         case tap, doctor, config, introspect, man
+        case brewImport = "brew-import"
         case shortcut   // `gimme <tool>`
     }
 
@@ -113,6 +114,7 @@ public final class Gimme {
         case .config:     return try (runConfig(options), 0)
         case .introspect: return try (runIntrospect(options), 0)
         case .man:        return try (runMan(options), 0)
+        case .brewImport: return try runBrewImport(options)
         case .shortcut:   return try (runShortcut(options), 0)
         }
     }
@@ -378,9 +380,41 @@ public final class Gimme {
     }
 
     private func runMan(_ o: Options) throws -> [String: Any] {
-        // `gimme man` emits groff man-page source to stdout. The CLI wrapper
-        // prints it verbatim (not as JSON) so it can be piped to man/installed.
         return ["__raw__": Introspect.manpage()]
+    }
+
+    // MARK: brew-import
+
+    private func runBrewImport(_ o: Options) throws -> ([String: Any], Int32) {
+        // `gimme brew-import` clones Homebrew/homebrew-core (shallow) and adds
+        // it as a tap named "homebrew". All .rb formulae are translated
+        // on-the-fly via HomebrewLoader when searched/installed.
+        let tapName = o.positional.first ?? "homebrew"
+        let repoURL = "https://github.com/Homebrew/homebrew-core.git"
+        let dest = world.paths.taps.appendingPathComponent(tapName)
+
+        if FileManager.default.fileExists(atPath: dest.path) {
+            return ([
+                "cmd": "brew-import", "ok": true, "schema_version": Schema.version,
+                "message": "tap '\(tapName)' already exists — use `gimme tap update \(tapName)` to refresh"
+            ], 0)
+        }
+
+        // Clone (shallow, depth 1 — homebrew-core is huge).
+        do {
+            try world.tapStore.add(name: tapName, url: repoURL)
+        } catch let e as GimmeError {
+            return (e.toJSON(), e.category.exitCode)
+        }
+
+        // Count how many formulae were parseable.
+        let formulae = world.tapStore.allFormulae()
+        return ([
+            "cmd": "brew-import", "ok": true, "schema_version": Schema.version,
+            "tap": tapName,
+            "formulae_found": formulae.count,
+            "message": "Imported \(formulae.count) formulae from Homebrew. Use `gimme search <term>` to browse."
+        ], 0)
     }
 
     // MARK: shortcut (`gimme <tool>`)
