@@ -96,7 +96,19 @@ install:
     # incremental builds, truncating a symlinked binary to 0 bytes.
     cp .build/release/gimme ~/.local/bin/gimme
     chmod 755 ~/.local/bin/gimme
-    echo "installed: $(gimme --version)"
+    echo "CLI installed: $(gimme --version)"
+
+    # Build + install Gimme.app (native macOS UI).
+    echo "Building Gimme.app..."
+    swift build -c release --product GimmeUI
+    [ -s .build/release/GimmeUI ] || { echo "GimmeUI build failed" >&2; exit 1; }
+    sh app/build-app.sh
+    if [ -w /Applications ]; then
+        cp -R app/Gimme.app /Applications/
+        echo "Gimme.app installed to /Applications"
+    else
+        echo "Gimme.app built at app/Gimme.app (copy to /Applications manually if needed)"
+    fi
 
 # Verify the POSIX installer script (syntax + local-mode dry run to a temp dir).
 verify-install-script:
