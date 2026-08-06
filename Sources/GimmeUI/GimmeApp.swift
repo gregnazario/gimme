@@ -28,6 +28,14 @@ final class GimmeStore: ObservableObject {
     @Published var lastError: String?
     @Published var operationLog: [LogEntry] = []
 
+    // Lazy loading for the browse view — don't load 8500 formulae eagerly.
+    @Published var browseResults: [AvailableToolInfo] = []
+    @Published var browseTotalCount: Int = 0
+    @Published var browseHasSearched: Bool = false
+    private let browsePageSize = 100
+    private var browseOffset: Int = 0
+    private var allFormulaeCache: [AvailableToolInfo] = []
+
     private(set) var _world: World?
 
     struct InstalledToolInfo: Identifiable, Hashable {
@@ -63,14 +71,15 @@ final class GimmeStore: ObservableObject {
         }
     }
 
-    /// Refresh installed + available tool lists from the engine.
+    /// Refresh installed tool lists + build the formula cache for lazy browsing.
     func refresh() {
         guard let world = _world else { initialize(); return }
         isLoading = true
         defer { isLoading = false }
 
-        // Installed tools.
+        // Installed tools (usually a small list — safe to load eagerly).
         let entries = world.state.loadInstalled()
+        let installed = Set(entries.keys)
         installedTools = entries.map { (name, entry) in
             InstalledToolInfo(
                 name: name,
@@ -78,15 +87,63 @@ final class GimmeStore: ObservableObject {
                 allVersions: entry.installed)
         }.sorted { $0.name < $1.name }
 
-        // Available tools (from all taps).
-        let installed = Set(entries.keys)
-        availableTools = world.tapStore.allFormulae().map { formula in
+        // Build the formula cache lazily — don't hold the main thread for 8500
+        // formulae. We store the lightweight AvailableToolInfo so the browse
+        // view can filter + paginate from memory without re-parsing.
+        let formulae = world.tapStore.allFormulae()
+        allFormulaeCache = formulae.map { formula in
             AvailableToolInfo(
                 name: formula.name,
                 desc: formula.package.desc ?? "",
                 versions: formula.versions.map(\.ver),
                 installed: installed.contains(formula.name))
         }.sorted { $0.name < $1.name }
+        browseTotalCount = allFormulaeCache.count
+        availableTools = Array(allFormulaeCache.prefix(browsePageSize))
+        browseResults = availableTools
+        browseOffset = browsePageSize
+        browseHasSearched = false
+    }
+
+    /// Search/filter the formula cache. Resets pagination to show the first page.
+    func searchFormulae(_ query: String) {
+        browseHasSearched = true
+        if query.isEmpty {
+            browseTotalCount = allFormulaeCache.count
+            browseResults = Array(allFormulaeCache.prefix(browsePageSize))
+        } else {
+            let q = query.lowercased()
+            let filtered = allFormulaeCache.filter {
+                $0.name.lowercased().contains(q) ||
+                $0.desc.lowercased().contains(q)
+            }
+            browseTotalCount = filtered.count
+            browseResults = Array(filtered.prefix(browsePageSize))
+        }
+        browseOffset = browsePageSize
+    }
+
+    /// Load the next page of results (infinite scroll).
+    func loadMoreIfNeeded(currentItem: AvailableToolInfo) {
+        // Trigger when the last visible item is shown.
+        guard let lastShown = browseResults.last,
+              lastShown.id == currentItem.id else { return }
+        guard browseOffset < browseTotalCount else { return }
+
+        let source: [AvailableToolInfo]
+        if browseHasSearched && !searchText.isEmpty {
+            let q = searchText.lowercased()
+            source = allFormulaeCache.filter {
+                $0.name.lowercased().contains(q) ||
+                $0.desc.lowercased().contains(q)
+            }
+        } else {
+            source = allFormulaeCache
+        }
+
+        let nextBatch = Array(source[browseOffset..<min(browseOffset + browsePageSize, source.count)])
+        browseResults.append(contentsOf: nextBatch)
+        browseOffset += browsePageSize
     }
 
     /// Install a tool by name.

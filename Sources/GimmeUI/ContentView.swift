@@ -128,40 +128,62 @@ struct InstalledToolRow: View {
     }
 }
 
-/// Browse all available formulae from taps, with install buttons.
+/// Browse available formulae — paginated with infinite scroll (max 100 per page).
+/// Never tries to render 8500 formulae at once.
 struct BrowseToolsView: View {
     @EnvironmentObject var store: GimmeStore
 
-    var filteredTools: [GimmeStore.AvailableToolInfo] {
-        if store.searchText.isEmpty {
-            return store.availableTools
-        }
-        return store.availableTools.filter {
-            $0.name.localizedCaseInsensitiveContains(store.searchText) ||
-            $0.desc.localizedCaseInsensitiveContains(store.searchText)
-        }
-    }
-
     var body: some View {
-        Group {
-            if store.availableTools.isEmpty {
+        VStack(spacing: 0) {
+            if store.browseTotalCount == 0 && !store.isLoading {
                 VStack(spacing: 12) {
                     Image(systemName: "shippingbox")
                         .font(.system(size: 48))
                         .foregroundStyle(.secondary)
                     Text("No formulae available").font(.title2)
-                    Text("Add a tap to browse installable tools.\nTry: gimme tap add core <git-url>")
+                    Text("Import a tap from the Import tab to browse tools.")
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if store.browseResults.isEmpty && !store.searchText.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.secondary)
+                    Text("No results for \"\(store.searchText)\"").font(.title3)
+                    Text("Try a different search term.")
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(filteredTools) { tool in
-                    AvailableToolRow(tool: tool)
+                // Count bar.
+                HStack {
+                    Text("\(store.browseResults.count) of \(store.browseTotalCount) shown")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if store.isLoading {
+                        ProgressView().controlSize(.small)
+                    }
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+
+                // Paginated list with infinite scroll.
+                List(store.browseResults) { tool in
+                    AvailableToolRow(tool: tool)
+                        .onAppear {
+                            store.loadMoreIfNeeded(currentItem: tool)
+                        }
+                }
+                .listStyle(.inset)
             }
         }
         .navigationTitle("Browse")
-        .searchable(text: $store.searchText, prompt: "Search tools")
+        .searchable(text: $store.searchText, prompt: "Search \(store.browseTotalCount) tools")
+        .onChange(of: store.searchText) { newValue in
+            store.searchFormulae(newValue)
+        }
     }
 }
 
