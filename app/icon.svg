@@ -1,40 +1,71 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <!-- Background gradient: deep purple to indigo -->
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#673ab7"/>
       <stop offset="100%" stop-color="#3f51b5"/>
     </linearGradient>
-    <!-- Inner glow -->
-    <radialGradient id="glow" cx="50%" cy="35%" r="55%">
-      <stop offset="0%" stop-color="#9575cd" stop-opacity="0.4"/>
+    <radialGradient id="glow" cx="50%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#b39ddb" stop-opacity="0.35"/>
       <stop offset="100%" stop-color="#3f51b5" stop-opacity="0"/>
     </radialGradient>
   </defs>
 
-  <!-- Squircle background (rounded rect approximating macOS icon shape) -->
+  <!-- Squircle -->
   <rect width="1024" height="1024" rx="224" ry="224" fill="url(#bg)"/>
   <rect width="1024" height="1024" rx="224" ry="224" fill="url(#glow)"/>
 
-  <!-- The package/install concept: a downward arrow entering an open box -->
-  <g transform="translate(512, 512)">
-    <!-- Open box (trapezoid) -->
-    <path d="M -180 60 L 0 160 L 180 60 L 180 -60 L 0 -160 L -180 -60 Z"
-          fill="none" stroke="white" stroke-width="48" stroke-linejoin="round"
-          opacity="0.85"/>
-    <!-- Box front face -->
-    <path d="M -180 60 L 0 160 L 180 60 L 0 -30 Z"
-          fill="white" opacity="0.12"/>
-    <!-- Arrow pointing down into the box -->
-    <path d="M 0 -280 L 0 -20 M -110 -130 L 0 -20 L 110 -130"
-          fill="none" stroke="white" stroke-width="48"
-          stroke-linecap="round" stroke-linejoin="round"/>
-    <!-- Small accent dot on the arrow -->
-    <circle cx="0" cy="-300" r="18" fill="white" opacity="0.6"/>
-  </g>
+  <!--
+    Bird in a hand:
+    A stylized bird (simple, rounded, origami-like) descending into an open
+    cupped hand below it. White on the gradient. Clean enough to read at 16px.
+  -->
+  <g transform="translate(512, 512)" fill="none" stroke="white"
+     stroke-linecap="round" stroke-linejoin="round">
 
-  <!-- Subtle "g" letterform in bottom right (brand mark) -->
-  <text x="820" y="880" font-family="SF Pro Display, Helvetica Neue, Arial, sans-serif"
-        font-size="180" font-weight="700" fill="white" opacity="0.12"
-        text-anchor="middle">g</text>
+    <!-- ===== HAND (open, palm-up, cupped) ===== -->
+    <!-- Palm curve (concave, receiving) -->
+    <path d="M -230 170 Q -100 90 0 120 Q 100 90 230 170"
+          stroke-width="44" opacity="0.9"/>
+
+    <!-- Left fingers/thumb sweeping up -->
+    <path d="M -230 170 Q -280 100 -250 20"
+          stroke-width="40" opacity="0.85"/>
+
+    <!-- Right fingers sweeping up -->
+    <path d="M 230 170 Q 280 100 250 20"
+          stroke-width="40" opacity="0.85"/>
+
+    <!-- Wrist/life line of the hand -->
+    <path d="M -150 210 Q 0 250 150 210"
+          stroke-width="36" opacity="0.5"/>
+
+    <!-- ===== BIRD (stylized, descending, wings folded) ===== -->
+    <g transform="translate(-10, -180)">
+      <!-- Body: a rounded teardrop pointing down (diving) -->
+      <path d="M 0 0 C -45 -25 -60 -80 -35 -120 C -20 -145 20 -145 35 -120 C 60 -80 45 -25 0 0 Z"
+            fill="white" fill-opacity="0.95" stroke="none"/>
+
+      <!-- Head -->
+      <circle cx="0" cy="-135" r="32" fill="white" fill-opacity="0.95" stroke="none"/>
+
+      <!-- Beak (small, pointing down — diving toward the hand) -->
+      <path d="M -6 -108 L 0 -90 L 6 -108 Z"
+            fill="#ffc107" stroke="none"/>
+
+      <!-- Eye -->
+      <circle cx="10" cy="-140" r="5" fill="#3f51b5" stroke="none"/>
+
+      <!-- Wing (folded, swept back) -->
+      <path d="M -15 -100 Q -65 -70 -80 -20 Q -50 -50 -20 -60 Z"
+            fill="white" fill-opacity="0.7" stroke="none"/>
+
+      <!-- Tail feathers (fanned, pointing up) -->
+      <path d="M 20 -30 Q 50 -10 55 30 M 30 -25 Q 55 -5 58 35 M 38 -20 Q 58 -5 55 30"
+            stroke-width="6" opacity="0.6"/>
+    </g>
+
+    <!-- ===== Motion lines (descent) ===== -->
+    <path d="M -120 -80 L -100 -50" stroke-width="8" opacity="0.3"/>
+    <path d="M 110 -60 L 95 -30" stroke-width="8" opacity="0.3"/>
+  </g>
 </svg>
