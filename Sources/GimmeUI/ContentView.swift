@@ -43,40 +43,28 @@ struct ContentView: View {
             }
             .navigationTitle("gimme")
             .frame(minWidth: 200)
-        } content: {
-            // Content: depends on selected section.
-            switch selectedSection {
-            case .installed: InstalledToolsView()
-            case .browse: BrowseToolsView()
-            case .taps: TapsView()
-            case .importSources: ImportSourcesView()
-            case .log: ActivityLogView()
-            }
         } detail: {
-            // Detail: tool info when a tool is selected.
-            if let name = selectedTool {
-                ToolDetailView(toolName: name)
-            } else {
-                VStack(spacing: 12) {
-                    Image(systemName: "wrench.and.screwdriver")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.secondary)
-                    Text("Select a tool").font(.title2)
-                    Text("Choose a tool from the list to see details.")
-                        .foregroundStyle(.secondary)
+            // Single detail pane: content depends on selected section.
+            // No separate third pane — avoids the empty "Select a tool" issue.
+            Group {
+                switch selectedSection {
+                case .installed: InstalledToolsView()
+                case .browse: BrowseToolsView()
+                case .taps: TapsView()
+                case .importSources: ImportSourcesView()
+                case .log: ActivityLogView()
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: { store.refresh() }) {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
+                    .disabled(store.isLoading)
+                }
             }
         }
         .onAppear { store.initialize() }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button(action: { store.refresh() }) {
-                    Label("Refresh", systemImage: "arrow.clockwise")
-                }
-                .disabled(store.isLoading)
-            }
-        }
     }
 }
 
