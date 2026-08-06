@@ -69,7 +69,6 @@ public struct Downloader {
             throw GimmeError.usage("invalid asset URL: \(urlString)")
         }
         if url.isFileURL {
-            // Copy with a size check first; reject oversized local assets.
             if let size = fileSize(url), size > maxDownloadBytes {
                 throw GimmeError.network(
                     "local asset is \(size) bytes, exceeds limit \(maxDownloadBytes)")
@@ -79,9 +78,25 @@ public struct Downloader {
         }
         let semaphore = DispatchSemaphore(value: 0)
         var capturedError: Error? = nil
-        let task = URLSession.shared.downloadTask(with: url) { tempURL, response, error in
+
+        // Custom session with a redirect handler that catches broken release
+        // URLs (GitHub returns 302 → /not_found which downloadTask follows
+        // silently and hangs on). We detect redirects to error pages and fail.
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 60
+        let session = URLSession(configuration: config)
+
+        let task = session.downloadTask(with: url) { tempURL, response, error in
             if let error = error {
                 capturedError = GimmeError.network("download failed: \(error.localizedDescription)")
+                semaphore.signal()
+                return
+            }
+            // Check HTTP status — 404/403/etc are errors, not "no file".
+            if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
+                capturedError = GimmeError.network(
+                    "download failed: HTTP \(http.statusCode) from \(urlString)")
                 semaphore.signal()
                 return
             }
@@ -113,7 +128,13 @@ public struct Downloader {
             semaphore.signal()
         }
         task.resume()
-        semaphore.wait()
+        // Timeout: if the download doesn't complete in 90s, cancel + fail.
+        let waitResult = semaphore.wait(timeout: .now() + 90)
+        if waitResult == .timedOut {
+            task.cancel()
+            session.invalidateAndCancel()
+            throw GimmeError.network("download timed out after 90s: \(urlString)")
+        }
         if let error = capturedError { throw error }
     }
 

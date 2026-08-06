@@ -83,19 +83,42 @@ public final class Installer {
         let resolution = try resolver.resolve(query: query)
 
         // 1. Fetch + verify (cached by sha256).
-        // Homebrew formula sha256s are for SOURCE tarballs, not binary release
-        // assets. gimme-core tap formulae have correct binary sha256s. On
-        // checksum mismatch, retry without verification — this is safe because:
-        //   - gimme-core formulae (correct checksums) never mismatch
-        //   - Homebrew formulae download from official HTTPS release pages
-        //   - the Stager's SafeExtractor validates the archive structure
+        // Determine if this formula came from a gimme formula.toml (correct
+        // binary checksums) vs a Homebrew .rb file (source checksums that won't
+        // match binary downloads). If formulaDir is found, it's a gimme formula.
+        // If formulaDir is nil, it's Homebrew — retry without verification on
+        // checksum mismatch.
+        let resolvedFormulaDir = tapStore.enabledTapDirs().compactMap { dir -> URL? in
+            let f = dir.appendingPathComponent("Formula").appendingPathComponent(resolution.formula.name)
+            if FileManager.default.isDirectory(f) { return f }
+            let flat = dir.appendingPathComponent(resolution.formula.name)
+            return FileManager.default.isDirectory(flat) ? flat : nil
+        }.first
+        let isFromHomebrew = resolvedFormulaDir == nil
+
         let assetPath: URL
         do {
             assetPath = try downloader.fetch(asset: resolution.asset, insecure: insecure)
-        } catch GimmeError.checksumMismatch where !insecure {
-            // Checksum mismatch — likely a Homebrew source checksum vs binary
-            // download. Retry without verification.
-            assetPath = try downloader.fetch(asset: resolution.asset, insecure: true)
+        } catch {
+            if case GimmeError.checksumMismatch = error, !insecure, isFromHomebrew {
+                // Homebrew source checksum won't match binary download.
+                do {
+                    assetPath = try downloader.fetch(asset: resolution.asset, insecure: true)
+                } catch {
+                    if case GimmeError.network(let msg) = error, msg.contains("404") {
+                        throw GimmeError.notFound(
+                            "\(resolution.formula.name) has no prebuilt macOS binary. " +
+                            "Use Homebrew instead: brew install \(resolution.formula.name)")
+                    }
+                    throw error
+                }
+            } else if case GimmeError.network(let msg) = error, msg.contains("404") {
+                throw GimmeError.notFound(
+                    "\(resolution.formula.name) has no prebuilt macOS binary. " +
+                    "Use Homebrew instead: brew install \(resolution.formula.name)")
+            } else {
+                throw error
+            }
         }
 
         // 2. Resolve dependency prefixes (install deps first if missing).
@@ -109,12 +132,7 @@ public final class Installer {
         }
 
         // 3. Stage (in staging/, will be cleaned on failure).
-        let formulaDir = tapStore.enabledTapDirs().compactMap { dir -> URL? in
-            let f = dir.appendingPathComponent("Formula").appendingPathComponent(resolution.formula.name)
-            return FileManager.default.isDirectory(f) ? f
-                : (FileManager.default.isDirectory(dir.appendingPathComponent(resolution.formula.name))
-                    ? dir.appendingPathComponent(resolution.formula.name) : nil)
-        }.first
+        let formulaDir = resolvedFormulaDir
         let versionBlock = resolution.formula.versions.first { $0.ver == resolution.version }
             ?? resolution.formula.versions[0]
         let staged = try stager.run(
