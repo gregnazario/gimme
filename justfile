@@ -113,6 +113,19 @@ verify-install-script:
 
 # --- Cleanup ---
 
+# Build the native macOS .app bundle.
+app:
+    sh app/build-app.sh
+
+# Open the native macOS app.
+open-app: app
+    open app/Gimme.app
+
+# Install the .app to /Applications.
+install-app: app
+    cp -R app/Gimme.app /Applications/
+    @echo "Installed to /Applications/Gimme.app"
+
 # Remove all build artifacts.
 clean:
-    rm -rf .build site docs-site/.venv
+    rm -rf .build site docs-site/.venv app/Gimme.app
