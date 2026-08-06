@@ -6,8 +6,10 @@ public struct InstallResult: Equatable {
     public let version: String
     public let active: String
     public let shim: String
-    public init(tool: String, version: String, active: String, shim: String) {
-        self.tool = tool; self.version = version; self.active = version; self.shim = shim
+    public let source: String   // "download", "brew", etc.
+    public init(tool: String, version: String, active: String, shim: String, source: String = "download") {
+        self.tool = tool; self.version = version; self.active = version
+        self.shim = shim; self.source = source
     }
 
     public func toJSON() -> [String: Any] {
@@ -18,7 +20,8 @@ public struct InstallResult: Equatable {
             "tool": tool,
             "version": version,
             "active": active,
-            "shim": shim
+            "shim": shim,
+            "source": source
         ]
     }
 }
@@ -100,25 +103,18 @@ public final class Installer {
         do {
             assetPath = try downloader.fetch(asset: resolution.asset, insecure: insecure)
         } catch {
-            if case GimmeError.checksumMismatch = error, !insecure, isFromHomebrew {
-                // Homebrew source checksum won't match binary download.
-                do {
-                    assetPath = try downloader.fetch(asset: resolution.asset, insecure: true)
-                } catch {
-                    if case GimmeError.network(let msg) = error, msg.contains("404") {
-                        throw GimmeError.notFound(
-                            "\(resolution.formula.name) has no prebuilt macOS binary. " +
-                            "Use Homebrew instead: brew install \(resolution.formula.name)")
-                    }
-                    throw error
-                }
-            } else if case GimmeError.network(let msg) = error, msg.contains("404") {
+            // Binary download failed. If Homebrew is available, delegate to it —
+            // gimme becomes a native Swift frontend for brew.
+            if BrewDelegate.isAvailable {
+                return try delegateToBrew(query: query, resolution: resolution)
+            }
+            // No brew — give a clear error.
+            if case GimmeError.network(let msg) = error, msg.contains("404") {
                 throw GimmeError.notFound(
                     "\(resolution.formula.name) has no prebuilt macOS binary. " +
-                    "Use Homebrew instead: brew install \(resolution.formula.name)")
-            } else {
-                throw error
+                    "Install Homebrew (https://brew.sh) for source-build support.")
             }
+            throw error
         }
 
         // 2. Resolve dependency prefixes (install deps first if missing).
@@ -237,10 +233,23 @@ public final class Installer {
                 "\(tool)@\(removing) is depended on by: \(dependents.joined(separator: ", ")). Use --force to remove anyway.")
         }
 
+        // Check if this was a brew-delegated install — if so, delegate uninstall.
+        let removedPrefix = cellar.prefix(for: tool, version: removing)
+        if let receipt = cellar.receipt(for: tool, version: removing), receipt.source == "brew" {
+            let delegate = BrewDelegate(paths: paths)
+            do {
+                _ = try delegate.uninstall(tool: tool)
+            } catch {
+                throw GimmeError.install("brew uninstall \(tool) failed: \(error)")
+            }
+            try? cellar.remove(tool: tool, version: removing)
+            try state.removeInstalled(tool, version: removing)
+            return
+        }
+
         // Remember provides from the formula, or fall back to reading the bin/
         // dir of the version we're about to remove, so we can repoint/deactivate
         // shims even if the tap was disabled (prevents dangling shims).
-        let removedPrefix = cellar.prefix(for: tool, version: removing)
         let providesBins: [String]
         if let formula = try? tapStore.find(tool) {
             providesBins = formula.provides.bin
@@ -279,6 +288,50 @@ public final class Installer {
         }
         try shims.activate(tool: tool, version: version, bins: formula.provides.bin)
         try state.setActive(tool, version: version)
+    }
+
+    // MARK: brew delegation
+
+    /// Delegate an install to Homebrew when gimme can't do a binary install.
+    /// Runs `brew install <tool>`, records a receipt with `source: "brew"`,
+    /// and returns an InstallResult.
+    private func delegateToBrew(query: String, resolution: Resolution) throws -> InstallResult {
+        let delegate = BrewDelegate(paths: paths)
+        let toolName = resolution.formula.name
+
+        let brewResult: BrewResult
+        do {
+            brewResult = try delegate.install(tool: toolName)
+        } catch {
+            throw GimmeError.install("could not delegate to brew: \(error)")
+        }
+
+        if !brewResult.success {
+            throw GimmeError.install(
+                "brew install \(toolName) failed: \(brewResult.stderr)")
+        }
+
+        let version = brewResult.installedVersion ?? resolution.version
+
+        // Record a receipt so gimme knows about the brew-installed tool.
+        // We don't create a cellar dir (brew manages the files), but we track
+        // it in state so `gimme list` shows it and `gimme uninstall` delegates back.
+        try state.recordInstalled(toolName, version: version)
+        try state.setActive(toolName, version: version)
+
+        // Write a receipt to the cellar with source: "brew" so we know to
+        // delegate uninstall too.
+        let cellarPrefix = cellar.prefix(for: toolName, version: version)
+        try FileManager.default.createDirectory(at: cellarPrefix, withIntermediateDirectories: true)
+        let receipt = Receipt(
+            formula: toolName, tap: "brew", version: version, installedAt: isoNow(),
+            asset: .init(url: "brew://\(toolName)", sha256: ""),
+            source: "brew")
+        try receipt.write(into: cellarPrefix)
+
+        return InstallResult(
+            tool: toolName, version: version, active: version,
+            shim: "", source: "brew")
     }
 
     // MARK: helpers

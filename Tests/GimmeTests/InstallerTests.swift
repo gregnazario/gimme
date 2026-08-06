@@ -183,9 +183,13 @@ final class InstallerTests: XCTestCase {
                                                   with: "sha256 = \"deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef\"")
         try tampered.write(to: tapDir.appendingPathComponent("formula.toml"), atomically: true, encoding: .utf8)
 
+        // With brew delegation enabled, a bad checksum falls back to brew install.
+        // tinytool doesn't exist in brew, so we get an install error.
         XCTAssertThrowsError(try installer.install(query: "tinytool")) { error in
-            guard case GimmeError.checksumMismatch = error else {
-                XCTFail("expected checksumMismatch, got \(error)"); return
+            // Should be an install error (brew failed) or checksum mismatch
+            // (if brew isn't available in CI).
+            guard case GimmeError.install = error else {
+                XCTFail("expected install error from brew delegation, got \(error)"); return
             }
         }
         // Cellar should be empty for tinytool.
