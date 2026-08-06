@@ -4,77 +4,27 @@
       <stop offset="0%" stop-color="#673ab7"/>
       <stop offset="100%" stop-color="#3f51b5"/>
     </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="38%" r="60%">
-      <stop offset="0%" stop-color="#b39ddb" stop-opacity="0.3"/>
+    <radialGradient id="glow" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#b39ddb" stop-opacity="0.25"/>
       <stop offset="100%" stop-color="#3f51b5" stop-opacity="0"/>
     </radialGradient>
   </defs>
 
-  <!-- Squircle -->
   <rect width="1024" height="1024" rx="224" ry="224" fill="url(#bg)"/>
   <rect width="1024" height="1024" rx="224" ry="224" fill="url(#glow)"/>
 
-  <!--
-    "Gimme" hand gesture:
-    The classic beckoning "come here / gimme" — all fingers curled in,
-    repeated inward motion. We show the hand from the viewer's perspective,
-    palm facing, fingers curled inward toward the palm in the beckoning pose.
-
-    Design: bold, chunky, rounded — readable at 16px. White fill on gradient.
-  -->
-  <g transform="translate(512, 520)">
-
-    <!-- ===== PALM (chunky rounded rectangle, slightly tilted) ===== -->
-    <path d="
-      M -150 -30
-      Q -170 -50 -160 -100
-      L -140 -280
-      Q -135 -320 -95 -325
-      Q -55 -325 -50 -285
-      L -55 -160
-      L -50 -50
-      L 140 -50
-      Q 180 -50 180 -10
-      Q 180 30 140 30
-      L 60 30
-      L 130 80
-      Q 165 100 150 140
-      Q 130 175 90 155
-      L 30 120
-      L 60 180
-      Q 75 215 40 230
-      Q 5 240 -15 205
-      L -60 140
-      Q -100 80 -130 30
-      Q -160 0 -150 -30 Z
-    "
-    fill="white" fill-opacity="0.95" stroke="white" stroke-width="6"
-    stroke-linejoin="round"/>
-
-    <!-- ===== THUMB (sticking out to the side, the "gimme" curl) ===== -->
-    <path d="
-      M -150 -80
-      Q -230 -100 -260 -60
-      Q -275 -30 -255 -5
-      Q -230 25 -170 10
-      Q -150 5 -150 -30 Z
-    "
-    fill="white" fill-opacity="0.9" stroke="white" stroke-width="4"
-    stroke-linejoin="round"/>
-
-    <!-- ===== CURL INDICATOR (motion arc suggesting the inward beckoning) ===== -->
-    <path d="M -180 -200 Q -120 -260 -60 -230 Q -20 -210 0 -240"
-          fill="none" stroke="white" stroke-width="12"
-          stroke-linecap="round" opacity="0.35"/>
-
-    <!-- Second smaller motion arc -->
-    <path d="M -140 -140 Q -90 -190 -40 -170 Q -10 -160 10 -185"
-          fill="none" stroke="white" stroke-width="10"
-          stroke-linecap="round" opacity="0.2"/>
-
-    <!-- ===== CUFF / WRIST (sleeve line at the bottom) ===== -->
-    <path d="M -120 220 Q 0 260 120 220 L 120 280 Q 0 320 -120 280 Z"
-          fill="white" fill-opacity="0.15" stroke="white" stroke-width="4"
-          stroke-linejoin="round" opacity="0.6"/>
-  </g>
+  <!-- Clean 5-point star, centered, white -->
+  <path d="
+    M 512 200
+    L 612 420
+    L 850 452
+    L 678 620
+    L 720 858
+    L 512 748
+    L 304 858
+    L 346 620
+    L 174 452
+    L 412 420
+    Z
+  " fill="white"/>
 </svg>
