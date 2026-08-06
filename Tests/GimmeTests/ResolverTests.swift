@@ -124,7 +124,9 @@ final class ResolverTests: XCTestCase {
         XCTAssertEqual(res.deps[0].version, "0.21.1")  // reused
     }
 
-    func testResolveDependencyNotFound() {
+    func testResolveDependencyNotFoundSkipsGracefully() throws {
+        // Soft-fail: deps not in any tap are skipped (not aborted). This lets
+        // gimme install Homebrew formulae with build-only deps it doesn't need.
         let x = Formula(
             package: .init(name: "x"),
             versions: [.init(ver: "1.0.0", assets: [asset()])],
@@ -132,9 +134,9 @@ final class ResolverTests: XCTestCase {
         )
         let r = Resolver(provider: MockProvider(formulae: ["x": x]),
                          cellar: cellar, state: state, host: host)
-        XCTAssertThrowsError(try r.resolve(query: "x")) { error in
-            guard case GimmeError.notFound = error else { XCTFail("expected notFound, got \(error)"); return }
-        }
+        let res = try r.resolve(query: "x")
+        XCTAssertEqual(res.version, "1.0.0")
+        XCTAssertTrue(res.deps.isEmpty, "unresolvable deps should be skipped, not abort")
     }
 
     func testParseQueryNoAt() throws {

@@ -89,12 +89,19 @@ public struct Resolver {
                 throw GimmeError.conflict("circular dependency on \(dep.name) while resolving \(formula.name)")
             }
             let constraint = try dep.ver.map { try VersionConstraint.parse($0) } ?? .any
-            let depFormula = try provider.find(dep.name)
 
-            // Reuse installed if ANY installed version satisfies the constraint
-            // (not just the active one). Pick the highest satisfying installed
-            // version that has a host asset, so we don't re-download something
-            // the user already has.
+            // Try to find the dep formula. If not found, skip it (soft-fail) —
+            // many Homebrew formulae declare build-only deps (autoconf, pkg-config,
+            // rust, etc.) that gimme doesn't need for download-based installs.
+            let depFormula: Formula
+            do {
+                depFormula = try provider.find(dep.name)
+            } catch {
+                // Dep not in any tap — skip rather than abort.
+                continue
+            }
+
+            // Reuse installed if ANY installed version satisfies the constraint.
             if let installed = state.loadInstalled()[dep.name] {
                 let satisfyingInstalled = installed.installed
                     .compactMap { Version($0) }
@@ -108,11 +115,12 @@ public struct Resolver {
                 }
             }
 
+            // Try to find a version with a host asset. If none, skip (soft-fail) —
+            // the dep may be a source-only formula gimme can't download.
             guard let (versionBlock, asset) = depFormula.highestVersion(matching: constraint, host: host) else {
-                throw GimmeError.notFound(
-                    "dependency \(dep.name) \(constraint) has no version for \(host.os)-\(host.arch) (required by \(formula.name))")
+                continue
             }
-            // Recursively resolve this dep's own deps (with the updated visiting chain).
+            // Recursively resolve this dep's own deps.
             _ = try resolveDeps(of: depFormula, version: versionBlock.ver,
                                 visiting: visiting + [depFormula.name])
             resolved.append(.init(formula: depFormula, version: versionBlock.ver, asset: asset))
