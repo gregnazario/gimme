@@ -32,6 +32,18 @@ final class GimmeStore: ObservableObject {
     // System tools from other package managers (brew, mise, cargo, etc.)
     @Published var systemTools: [SystemManagers.SystemTool] = []
     @Published var systemManagers: [SystemManagers.Manager] = []
+
+    // Outdated tools (have updates available).
+    @Published var outdatedTools: [OutdatedToolInfo] = []
+    @Published var isCheckingOutdated: Bool = false
+
+    struct OutdatedToolInfo: Identifiable, Hashable {
+        let id = UUID()
+        let name: String
+        let currentVersion: String
+        let latestVersion: String
+        let source: String   // "gimme" or "brew"
+    }
     @Published var lastError: String?
     @Published var operationLog: [LogEntry] = []
 
@@ -287,6 +299,96 @@ final class GimmeStore: ObservableObject {
                 self.installingTool = nil
                 self.refresh()
             }
+        }
+    }
+
+    /// Check which installed tools have updates available.
+    /// Checks gimme tools via livecheck + brew tools via `brew outdated`.
+    func checkOutdated() {
+        guard let world = _world else { return }
+        isCheckingOutdated = true
+        log("Checking for updates...", level: .info)
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            var outdated: [OutdatedToolInfo] = []
+
+            // gimme tools — use livecheck.
+            let installed = world.state.loadInstalled()
+            for (name, entry) in installed {
+                guard let active = entry.active else { continue }
+                let receipt = world.cellar.receipt(for: name, version: active)
+                if receipt?.source == "brew" { continue }  // skip brew-managed here
+
+                if let formula = try? world.tapStore.find(name),
+                   let latest = try? world.livecheck.latest(for: formula),
+                   latest > (GimmeCore.Version(active) ?? GimmeCore.Version("0")!) {
+                    outdated.append(OutdatedToolInfo(
+                        name: name, currentVersion: active,
+                        latestVersion: latest.description, source: "gimme"))
+                }
+            }
+
+            // Brew tools — use `brew outdated`.
+            if BrewDelegate.isAvailable {
+                let delegate = BrewDelegate(paths: world.paths)
+                if let info = try? delegate.outdated(),
+                   let formulae = info["formulae"] as? [[String: Any]] {
+                    for f in formulae {
+                        guard let name = f["name"] as? String,
+                              let installedVersions = f["installed_versions"] as? [String],
+                              let currentVer = f["current_version"] as? String else { continue }
+                        let installedVer = installedVersions.first ?? "?"
+                        outdated.append(OutdatedToolInfo(
+                            name: name, currentVersion: installedVer,
+                            latestVersion: currentVer, source: "brew"))
+                    }
+                }
+            }
+
+            DispatchQueue.main.async {
+                self.outdatedTools = outdated.sorted { $0.name < $1.name }
+                if outdated.isEmpty {
+                    self.log("✓ All tools up to date", level: .success)
+                } else {
+                    self.log("\(outdated.count) tool(s) need updating", level: .warning)
+                }
+                self.isCheckingOutdated = false
+            }
+        }
+    }
+
+    /// Update a single outdated tool.
+    func updateOutdated(_ tool: OutdatedToolInfo) {
+        if tool.source == "brew" {
+            guard let world = _world else { return }
+            installingTool = tool.name
+            log("Updating \(tool.name) via brew...", level: .info)
+            DispatchQueue.global(qos: .userInitiated).async {
+                let delegate = BrewDelegate(paths: world.paths)
+                do {
+                    _ = try delegate.upgrade(tool: tool.name)
+                    DispatchQueue.main.async {
+                        self.log("✓ Updated \(tool.name) to \(tool.latestVersion)", level: .success)
+                        self.installingTool = nil
+                        self.checkOutdated()
+                        self.refresh()
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        self.log("✗ Failed: \(error)", level: .error)
+                        self.installingTool = nil
+                    }
+                }
+            }
+        } else {
+            install(tool.name)
+        }
+    }
+
+    /// Update all outdated tools.
+    func updateAllOutdated() {
+        for tool in outdatedTools {
+            updateOutdated(tool)
         }
     }
 

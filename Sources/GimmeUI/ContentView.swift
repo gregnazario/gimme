@@ -9,6 +9,7 @@ struct ContentView: View {
 
     enum SidebarSection: String, CaseIterable, Identifiable {
         case installed = "Installed"
+        case outdated = "Updates"
         case browse = "Browse"
         case taps = "Taps"
         case importSources = "Import"
@@ -18,6 +19,7 @@ struct ContentView: View {
         var icon: String {
             switch self {
             case .installed: return "arrow.down.circle"
+            case .outdated: return "arrow.triangle.2.circlepath"
             case .browse: return "magnifyingglass"
             case .taps: return "shippingbox"
             case .importSources: return "square.and.arrow.down"
@@ -50,8 +52,9 @@ struct ContentView: View {
             // No separate third pane — avoids the empty "Select a tool" issue.
             Group {
                 switch selectedSection {
-                case .installed: InstalledToolsView()
-                case .browse: BrowseToolsView()
+            case .installed: InstalledToolsView()
+            case .outdated: OutdatedToolsView()
+            case .browse: BrowseToolsView()
                 case .taps: TapsView()
             case .importSources: ImportSourcesView()
             case .system: SystemToolsView()
@@ -108,15 +111,122 @@ struct InstalledToolsView: View {
     }
 }
 
+/// Shows which tools have updates available, with per-tool and update-all buttons.
+struct OutdatedToolsView: View {
+    @EnvironmentObject var store: GimmeStore
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header bar.
+            HStack {
+                if store.isCheckingOutdated {
+                    HStack(spacing: 6) {
+                        ProgressView().controlSize(.small)
+                        Text("Checking...").foregroundStyle(.secondary)
+                    }
+                } else if store.outdatedTools.isEmpty {
+                    Label("All up to date", systemImage: "checkmark.seal.fill")
+                        .foregroundStyle(.green).font(.headline)
+                } else {
+                    Label("\(store.outdatedTools.count) update(s) available", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.headline)
+                }
+                Spacer()
+                Button("Check for Updates") { store.checkOutdated() }
+                    .buttonStyle(.bordered)
+                    .disabled(store.isCheckingOutdated)
+                if !store.outdatedTools.isEmpty {
+                    Button("Update All") { store.updateAllOutdated() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(store.installingTool != nil)
+                }
+            }
+            .padding(16)
+
+            Divider()
+
+            if store.outdatedTools.isEmpty && !store.isCheckingOutdated {
+                VStack(spacing: 12) {
+                    Image(systemName: "checkmark.seal")
+                        .font(.system(size: 48)).foregroundStyle(.green)
+                    Text("Everything is up to date").font(.title3)
+                    Text("Click 'Check for Updates' to scan again.")
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if store.outdatedTools.isEmpty && store.isCheckingOutdated {
+                ProgressView("Scanning for updates...").frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(store.outdatedTools) { tool in
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text(tool.name).font(.headline)
+                            HStack(spacing: 6) {
+                                Text(tool.currentVersion)
+                                    .foregroundStyle(.secondary)
+                                    .strikethrough()
+                                Image(systemName: "arrow.right").font(.caption2).foregroundStyle(.secondary)
+                                Text(tool.latestVersion)
+                                    .foregroundStyle(.green)
+                                    .font(.body.bold())
+                            }
+                        }
+                        Spacer()
+                        // Source badge.
+                        Text(tool.source)
+                            .font(.caption2.monospaced())
+                            .padding(.horizontal, 8).padding(.vertical, 2)
+                            .background(tool.source == "brew" ? Color.orange.opacity(0.15) : Color.purple.opacity(0.15), in: Capsule())
+                        // Update button.
+                        if store.installingTool == tool.name {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Button("Update") { store.updateOutdated(tool) }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.small)
+                                .disabled(store.installingTool != nil)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .listStyle(.inset)
+            }
+        }
+        .navigationTitle("Updates")
+        .onAppear {
+            if store.outdatedTools.isEmpty && !store.isCheckingOutdated {
+                store.checkOutdated()
+            }
+        }
+    }
+}
+
 struct InstalledToolRow: View {
     @EnvironmentObject var store: GimmeStore
     let tool: GimmeStore.InstalledToolInfo
     @State private var showDetail = false
 
+    var isOutdated: Bool {
+        store.outdatedTools.contains { $0.name == tool.name }
+    }
+
     var body: some View {
         HStack {
             VStack(alignment: .leading) {
-                Text(tool.name).font(.headline)
+                HStack(spacing: 6) {
+                    Text(tool.name).font(.headline)
+                    if isOutdated {
+                        // Update badge.
+                        Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
+                            .foregroundStyle(.orange)
+                            .font(.caption)
+                        if let info = store.outdatedTools.first(where: { $0.name == tool.name }) {
+                            Text("→ \(info.latestVersion)")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
                 Text(tool.activeVersion).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
