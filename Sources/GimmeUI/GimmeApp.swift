@@ -158,12 +158,89 @@ final class GimmeStore: ObservableObject {
         }
     }
 
+    /// Remove a tap.
+    func removeTap(name: String) {
+        guard let world = _world else { return }
+        do {
+            try world.tapStore.remove(name: name)
+            log("✓ Removed tap: \(name)", level: .success)
+            refresh()
+        } catch let e as GimmeError {
+            log("✗ \(e.message)", level: .error)
+        } catch {
+            log("✗ \(error)", level: .error)
+        }
+    }
+
+    /// Import Homebrew homebrew-core (~6000 formulae). Clones the repo and
+    /// adds it as a tap. All formulae become searchable/installable.
+    func importHomebrew() {
+        guard let world = _world else { return }
+        isLoading = true
+        log("Importing Homebrew formulae (~6000 tools)...", level: .info)
+        do {
+            let tapName = "homebrew"
+            let dest = world.paths.taps.appendingPathComponent(tapName)
+            if !FileManager.default.fileExists(atPath: dest.path) {
+                try world.tapStore.add(name: tapName,
+                                       url: "https://github.com/Homebrew/homebrew-core.git")
+            }
+            let formulae = world.tapStore.allFormulae()
+            log("✓ Imported \(formulae.count) formulae from Homebrew", level: .success)
+            refresh()
+        } catch let e as GimmeError {
+            log("✗ \(e.message)", level: .error)
+        } catch {
+            log("✗ \(error)", level: .error)
+        }
+        isLoading = false
+    }
+
+    /// Import Homebrew Casks (GUI apps). Clones homebrew-cask and adds it.
+    func importCasks() {
+        guard let world = _world else { return }
+        isLoading = true
+        log("Importing Homebrew Casks (GUI apps)...", level: .info)
+        do {
+            let tapName = "homebrew-cask"
+            let dest = world.paths.taps.appendingPathComponent(tapName)
+            if !FileManager.default.fileExists(atPath: dest.path) {
+                try world.tapStore.add(name: tapName,
+                                       url: "https://github.com/Homebrew/homebrew-cask.git")
+            }
+            // Count casks by scanning the Casks/ dir.
+            let casksDir = dest.appendingPathComponent("Casks")
+            let caskCount = (try? FileManager.default.contentsOfDirectory(atPath: casksDir.path)
+                .filter { $0.hasSuffix(".rb") }.count) ?? 0
+            log("✓ Imported \(caskCount) casks from Homebrew Cask", level: .success)
+            refresh()
+        } catch let e as GimmeError {
+            log("✗ \(e.message)", level: .error)
+        } catch {
+            log("✗ \(error)", level: .error)
+        }
+        isLoading = false
+    }
+
     var hasTaps: Bool {
-        world?.tapStore.list().isEmpty == false
+        _world?.tapStore.list().isEmpty == false
     }
 
     var tapNames: [String] {
-        world?.tapStore.list() ?? []
+        _world?.tapStore.list() ?? []
+    }
+
+    var hasHomebrew: Bool {
+        tapNames.contains("homebrew")
+    }
+
+    var hasHomebrewCask: Bool {
+        tapNames.contains("homebrew-cask")
+    }
+
+    /// Available formulae count (from all taps).
+    var availableCount: Int {
+        _world?.tapStore.allFormulae().count ?? 0
     }
 
     private func log(_ message: String, level: LogEntry.LogLevel) {

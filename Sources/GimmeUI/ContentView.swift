@@ -11,6 +11,7 @@ struct ContentView: View {
         case installed = "Installed"
         case browse = "Browse"
         case taps = "Taps"
+        case importSources = "Import"
         case log = "Activity"
         var id: String { rawValue }
         var icon: String {
@@ -18,6 +19,7 @@ struct ContentView: View {
             case .installed: return "arrow.down.circle"
             case .browse: return "magnifyingglass"
             case .taps: return "shippingbox"
+            case .importSources: return "square.and.arrow.down"
             case .log: return "text.alignleft"
             }
         }
@@ -47,6 +49,7 @@ struct ContentView: View {
             case .installed: InstalledToolsView()
             case .browse: BrowseToolsView()
             case .taps: TapsView()
+            case .importSources: ImportSourcesView()
             case .log: ActivityLogView()
             }
         } detail: {
@@ -171,6 +174,148 @@ struct BrowseToolsView: View {
         }
         .navigationTitle("Browse")
         .searchable(text: $store.searchText, prompt: "Search tools")
+    }
+}
+
+/// Import sources: Homebrew formulae, Casks, and custom taps.
+struct ImportSourcesView: View {
+    @EnvironmentObject var store: GimmeStore
+    @State private var customTapName = ""
+    @State private var customTapURL = ""
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                // MARK: - Homebrew Formulae
+                importCard(
+                    title: "Homebrew Formulae",
+                    subtitle: "~6,000 CLI tools from the Homebrew library",
+                    icon: "terminal",
+                    isImported: store.hasHomebrew,
+                    importAction: { store.importHomebrew() },
+                    description: "Imports the entire Homebrew homebrew-core library. "
+                               + "All formulae become searchable and installable via gimme. "
+                               + "Ruby formulae are translated on-the-fly."
+                )
+
+                // MARK: - Homebrew Casks
+                importCard(
+                    title: "Homebrew Casks",
+                    subtitle: "GUI macOS apps (.app bundles)",
+                    icon: "app.badge",
+                    isImported: store.hasHomebrewCask,
+                    importAction: { store.importCasks() },
+                    description: "Imports the Homebrew Cask library — macOS GUI applications "
+                               + "like Firefox, VS Code, Slack, etc. Installed to /Applications."
+                )
+
+                // MARK: - Custom Tap
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("Add Custom Tap", systemImage: "plus.circle")
+                        .font(.headline)
+
+                    Text("Point gimme at any git repository containing formula.toml or .rb files.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    HStack {
+                        TextField("Name", text: $customTapName)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 120)
+                        TextField("Git URL", text: $customTapURL)
+                            .textFieldStyle(.roundedBorder)
+                        Button("Add") {
+                            store.addTap(name: customTapName, url: customTapURL)
+                            customTapName = ""
+                            customTapURL = ""
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(customTapName.isEmpty || customTapURL.isEmpty || store.isLoading)
+                    }
+
+                    if !store.tapNames.isEmpty {
+                        Divider()
+                        Text("Active Taps").font(.subheadline.bold())
+                        ForEach(store.tapNames, id: \.self) { tap in
+                            HStack {
+                                Image(systemName: "shippingbox.fill")
+                                    .foregroundStyle(.purple)
+                                Text(tap)
+                                Spacer()
+                                Button(role: .destructive) {
+                                    store.removeTap(name: tap)
+                                } label: {
+                                    Image(systemName: "minus.circle")
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+                .padding()
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+
+                // MARK: - Stats
+                VStack(spacing: 8) {
+                    statRow("Available formulae", value: "\(store.availableCount)")
+                    statRow("Installed tools", value: "\(store.installedTools.count)")
+                    statRow("Active taps", value: "\(store.tapNames.count)")
+                }
+                .padding()
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .padding(24)
+        }
+        .navigationTitle("Import")
+    }
+
+    private func importCard(title: String, subtitle: String, icon: String,
+                            isImported: Bool, importAction: @escaping () -> Void,
+                            description: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundStyle(.purple)
+                    .frame(width: 32)
+
+                VStack(alignment: .leading) {
+                    Text(title).font(.headline)
+                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if isImported {
+                    Label("Imported", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .font(.caption)
+                } else {
+                    Button("Import") {
+                        importAction()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.regular)
+                    .disabled(store.isLoading)
+                }
+            }
+
+            Text(description)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding()
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func statRow(_ label: String, value: String) -> some View {
+        HStack {
+            Text(label).foregroundStyle(.secondary)
+            Spacer()
+            Text(value).font(.body.monospaced())
+        }
     }
 }
 
