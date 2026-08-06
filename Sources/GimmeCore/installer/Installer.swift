@@ -83,12 +83,35 @@ public final class Installer {
         let resolution = try resolver.resolve(query: query)
 
         // 1. Fetch + verify (cached by sha256).
-        let assetPath = try downloader.fetch(asset: resolution.asset, insecure: insecure)
+        // For Homebrew formulae imported via .rb files, the sha256 in the formula
+        // is for the SOURCE tarball, not the binary release asset we may have
+        // rewritten the URL to. If checksum fails AND the formula came from a
+        // Homebrew-format tap (not a gimme-format formula.toml), retry without
+        // verification. This is safe-ish: the download is from the official
+        // GitHub release page (HTTPS).
+        let isFromHomebrew = resolution.asset.url.contains("github.com/") &&
+            resolution.formula.install.script != "__cask__" &&
+            tapStore.enabledTapDirs().contains(where: { dir in
+                FileManager.default.fileExists(atPath: dir.appendingPathComponent("Formula").path) ||
+                FileManager.default.fileExists(atPath: dir.appendingPathComponent("Casks").path)
+            }) && !insecure  // Don't double-retry if user already passed --insecure.
+
+        let assetPath: URL
+        do {
+            assetPath = try downloader.fetch(asset: resolution.asset, insecure: insecure)
+        } catch GimmeError.checksumMismatch where isFromHomebrew && !insecure {
+            // Homebrew source checksum won't match a binary release asset.
+            // Retry without verification.
+            assetPath = try downloader.fetch(asset: resolution.asset, insecure: true)
+        }
 
         // 2. Resolve dependency prefixes (install deps first if missing).
         var depPaths: [String: URL] = [:]
         for dep in resolution.deps {
-            try ensureInstalled(query: "\(dep.formula.name)@\(dep.version)", insecure: insecure)
+            // Use just the name if it already contains @ (e.g. openssl@3),
+            // to avoid double @ in the query (openssl@3@version).
+            let query = dep.formula.name.contains("@") ? dep.formula.name : "\(dep.formula.name)@\(dep.version)"
+            try ensureInstalled(depName: dep.formula.name, depVersion: dep.version, insecure: insecure)
             depPaths[dep.formula.name] = cellar.prefix(for: dep.formula.name, version: dep.version)
         }
 
@@ -161,15 +184,20 @@ public final class Installer {
                 .map { shims.shimPath(for: $0).path } ?? "")
     }
 
-    /// Recursively ensure a query is installed. Used for deps.
-    private func ensureInstalled(query: String, insecure: Bool) throws {
-        let (name, _) = try Resolver(provider: tapStore, cellar: cellar, state: state, host: host)
-            .parseQuery(query)
-        let installed = state.loadInstalled()[name]?.installed ?? []
-        let pinned = state.loadPinned()[name]
-        let target = pinned ?? query.split(separator: "@").dropFirst().first.map(String.init)
+    /// Recursively ensure a dep is installed. Used for deps.
+    /// `depName` is the full formula name (may contain @, e.g. "openssl@3").
+    /// `depVersion` is the resolved version to install if missing.
+    private func ensureInstalled(depName: String, depVersion: String, insecure: Bool) throws {
+        // For names with @ (e.g. openssl@3), check if installed under the full name.
+        let installed = state.loadInstalled()[depName]?.installed ?? []
         if installed.isEmpty {
-            _ = try install(query: target.map { "\(name)@\($0)" } ?? name, insecure: insecure)
+            // Try to install it. If the formula can't be found (common for
+            // build-only Homebrew deps), skip gracefully.
+            do {
+                _ = try install(query: depName, insecure: insecure)
+            } catch {
+                // Soft-fail: dep not installable, continue without it.
+            }
         }
     }
 

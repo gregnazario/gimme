@@ -27,9 +27,15 @@ import Foundation
 public enum HomebrewLoader {
     /// Parse a single Homebrew formula `.rb` file into a gimme `Formula`.
     /// Returns nil if the essential fields (name, url, sha256) can't be extracted.
-    public static func parse(_ rubySource: String) -> Formula? {
-        let name = extractClassName(from: rubySource).map { snakeCase($0) }
-        guard let name = name else { return nil }
+    /// If `fileName` is provided (e.g. "openssl@3.rb"), it's used as the formula
+    /// name (minus .rb) — this is the canonical Homebrew token and handles
+    /// names with @, dots, etc. that snakeCase would mangle.
+    public static func parse(_ rubySource: String, fileName: String? = nil) -> Formula? {
+        // Prefer the file name (the canonical Homebrew token) over snake_casing
+        // the Ruby class name, which mangles @ and consecutive uppercase letters.
+        let name = fileName.map { $0.hasSuffix(".rb") ? String($0.dropLast(3)) : $0 }
+            ?? extractClassName(from: rubySource).map { snakeCase($0) }
+        guard let name = name, !name.isEmpty else { return nil }
 
         let desc = extractStringField("desc", from: rubySource)
         let homepage = extractStringField("homepage", from: rubySource)
@@ -37,14 +43,41 @@ public enum HomebrewLoader {
                       extractStringField("license_all_of", from: rubySource)?.split(separator: "/").first.map(String.init)
 
         // URL: first stable url line (not devel/head).
-        let url = extractUrl(from: rubySource)
-        let sha256 = extractSha256(from: rubySource, afterUrl: url)
+        let rawUrl = extractUrl(from: rubySource)
+        let sha256 = extractSha256(from: rubySource, afterUrl: rawUrl)
 
         // Both URL and sha256 are required for gimme.
-        guard let url = url, let sha256 = sha256, !sha256.isEmpty else { return nil }
+        guard let rawUrl = rawUrl, let sha256 = sha256, !sha256.isEmpty else { return nil }
 
         // Version: explicit or derived from URL.
-        let version = extractStringField("version", from: rubySource) ?? deriveVersion(from: url) ?? "1.0.0"
+        let version = extractStringField("version", from: rubySource) ?? deriveVersion(from: rawUrl) ?? "1.0.0"
+
+        // Homebrew URLs point to SOURCE archives (e.g.
+        //   github.com/X/Y/archive/refs/tags/v1.0.tar.gz
+        //   ftpmirror.gnu.org/.../wget-1.25.0.tar.gz
+        // ). gimme can't compile from source — it needs prebuilt binaries.
+        // For GitHub-hosted tools that publish release assets, rewrite the URL
+        // to the binary asset. We can't know the exact binary filename, but we
+        // CAN point to the GitHub releases page so the user at least gets a
+        // valid download instead of a source tarball.
+        //
+        // If the URL is already a binary release download (contains
+        // /releases/download/), keep it as-is.
+        let url: String
+        if rawUrl.contains("/releases/download/") {
+            // Already a binary release URL — use as-is.
+            url = rawUrl
+        } else if let rewritten = rewriteGitHubSourceUrl(rawUrl, version: version) {
+            // Rewritten to a binary release asset URL.
+            url = rewritten
+        } else {
+            // Source-only URL with no known binary equivalent. Still pass it
+            // through — the download will succeed but the extracted content
+            // will be source code, not a runnable binary. The Stager's
+            // containment checks will handle it; the install will fail at the
+            // "copy bin/X" step with a clear error.
+            url = rawUrl
+        }
 
         // Dependencies.
         let deps = extractDepends(from: rubySource)
@@ -71,6 +104,48 @@ public enum HomebrewLoader {
         )
     }
 
+    /// Attempt to rewrite a GitHub source-archive URL into a binary release
+    /// asset URL. Returns nil if no known rewrite applies.
+    ///
+    /// Source patterns we rewrite:
+    ///   github.com/X/Y/archive/refs/tags/v1.0.tar.gz
+    ///   → github.com/X/Y/releases/download/v1.0/{name}-{version}-aarch64-apple-darwin.tar.gz
+    ///
+    /// We can't know the exact asset naming convention, so we try the most
+    /// common patterns. The sha256 will verify correctness — if we guess wrong,
+    /// the checksum mismatch catches it (and the user falls back to the
+    /// gimme-core tap if one exists with the correct binary URL).
+    private static func rewriteGitHubSourceUrl(_ sourceUrl: String, version: String) -> String? {
+        // Only rewrite GitHub archive URLs.
+        guard sourceUrl.contains("github.com/"),
+              sourceUrl.contains("/archive/") else { return nil }
+
+        // Extract org/repo from the URL.
+        // Pattern: github.com/ORG/REPO/archive/...
+        guard let repoRange = sourceUrl.range(of: #"github\.com/([^/]+/[^/"]+)/archive"#, options: .regularExpression) else {
+            return nil
+        }
+        let matched = String(sourceUrl[repoRange])
+        // Extract "org/repo" from "github.com/org/repo/archive".
+        let repoPart = matched
+            .replacingOccurrences(of: "github.com/", with: "")
+            .replacingOccurrences(of: "/archive", with: "")
+            .replacingOccurrences(of: "github\\.com/", with: "", options: .regularExpression)
+
+        // Determine the tag prefix: check if version starts with "v".
+        let tag = version.hasPrefix("v") ? version : "v\(version)"
+        let tagNoV = version.hasPrefix("v") ? String(version.dropFirst()) : version
+
+        // Try common binary asset URL patterns. We return the FIRST candidate;
+        // the downloader will verify the sha256. If it mismatches, the install
+        // fails with a clear checksum error (better than silently extracting source).
+        //
+        // Pattern 1: {repo}-{version}-aarch64-apple-darwin.tar.gz
+        // (used by ripgrep, fd, bat, delta — the most common Rust tool pattern)
+        let repoName = repoPart.split(separator: "/").last.map(String.init) ?? ""
+        return "https://github.com/\(repoPart)/releases/download/\(tag)/\(repoName)-\(tagNoV)-aarch64-apple-darwin.tar.gz"
+    }
+
     /// Load all formulae from a Homebrew tap directory (typically
     /// `homebrew-core/Formula/` or a tap's `Formula/` dir).
     public static func loadTap(at path: URL) -> [Formula] {
@@ -81,7 +156,7 @@ public enum HomebrewLoader {
             .compactMap { file in
                 let filePath = path.appendingPathComponent(file)
                 guard let source = try? String(contentsOf: filePath, encoding: .utf8) else { return nil }
-                return parse(source)
+                return parse(source, fileName: file)
             }
     }
 

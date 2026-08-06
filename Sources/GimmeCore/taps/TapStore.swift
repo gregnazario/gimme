@@ -90,7 +90,7 @@ public struct TapStore: FormulaProvider {
         for path in candidates {
             guard FileManager.default.fileExists(atPath: path.path),
                   let source = try? String(contentsOf: path, encoding: .utf8),
-                  let formula = HomebrewLoader.parse(source) else { continue }
+                  let formula = HomebrewLoader.parse(source, fileName: path.lastPathComponent) else { continue }
             return formula
         }
         // homebrew-core uses Formula/<first-letter>/<name>.rb (e.g. Formula/w/wget.rb).
@@ -99,7 +99,7 @@ public struct TapStore: FormulaProvider {
             .appendingPathComponent(firstChar).appendingPathComponent("\(name).rb")
         if FileManager.default.fileExists(atPath: nestedFormula.path),
            let source = try? String(contentsOf: nestedFormula, encoding: .utf8),
-           let formula = HomebrewLoader.parse(source) {
+           let formula = HomebrewLoader.parse(source, fileName: nestedFormula.lastPathComponent) {
             return formula
         }
         // Also check Casks/ dir (homebrew-cask uses Casks/<first-letter>/<name>.rb).
@@ -171,7 +171,7 @@ public struct TapStore: FormulaProvider {
             let path = dir.appendingPathComponent(entry)
             if entry.hasSuffix(".rb") {
                 guard let source = try? String(contentsOf: path, encoding: .utf8),
-                      let formula = HomebrewLoader.parse(source) else { continue }
+                      let formula = HomebrewLoader.parse(source, fileName: entry) else { continue }
                 out.append(formula)
             } else if FileManager.default.isDirectory(path) && entry != ".git" {
                 collectRbFiles(from: path, into: &out, maxDepth: maxDepth - 1)
