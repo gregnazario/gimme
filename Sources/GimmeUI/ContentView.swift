@@ -12,6 +12,7 @@ struct ContentView: View {
         case browse = "Browse"
         case taps = "Taps"
         case importSources = "Import"
+        case system = "System"
         case log = "Activity"
         var id: String { rawValue }
         var icon: String {
@@ -20,6 +21,7 @@ struct ContentView: View {
             case .browse: return "magnifyingglass"
             case .taps: return "shippingbox"
             case .importSources: return "square.and.arrow.down"
+            case .system: return "globe"
             case .log: return "text.alignleft"
             }
         }
@@ -51,8 +53,9 @@ struct ContentView: View {
                 case .installed: InstalledToolsView()
                 case .browse: BrowseToolsView()
                 case .taps: TapsView()
-                case .importSources: ImportSourcesView()
-                case .log: ActivityLogView()
+            case .importSources: ImportSourcesView()
+            case .system: SystemToolsView()
+            case .log: ActivityLogView()
                 }
             }
             .toolbar {
@@ -337,6 +340,91 @@ struct ImportSourcesView: View {
             Spacer()
             Text(value).font(.body.monospaced())
         }
+    }
+}
+
+/// Shows all tools installed by every package manager on the system.
+struct SystemToolsView: View {
+    @EnvironmentObject var store: GimmeStore
+    @State private var selectedManager: SystemManagers.Manager?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Manager filter bar.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    managerChip(.gimme, label: "All", isSelected: selectedManager == nil) {
+                        selectedManager = nil
+                    }
+                    ForEach(store.systemManagers) { mgr in
+                        managerChip(mgr, label: mgr.displayName, isSelected: selectedManager == mgr) {
+                            selectedManager = mgr
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            }
+
+            // Tools list, filtered by selected manager.
+            let filtered = selectedManager == nil
+                ? store.systemTools
+                : store.systemTools.filter { $0.manager == selectedManager }
+
+            if filtered.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "globe")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.secondary)
+                    Text("No system tools found").font(.title3)
+                    Text("Other package managers will appear here when detected.")
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    let grouped = Dictionary(grouping: filtered, by: { $0.manager })
+                    ForEach(grouped.keys.sorted(by: { $0.rawValue < $1.rawValue }), id: \.self) { mgr in
+                        SwiftUI.Section {
+                            ForEach(grouped[mgr] ?? []) { tool in
+                                HStack {
+                                    Text(tool.name).font(.body)
+                                    Spacer()
+                                    Text(tool.version)
+                                        .font(.caption.monospaced())
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        } header: {
+                            Label(mgr.displayName, systemImage: mgr.icon)
+                                .font(.headline)
+                        }
+                    }
+                }
+                .listStyle(.inset)
+            }
+        }
+        .navigationTitle("System")
+    }
+
+    private func managerChip(_ mgr: SystemManagers.Manager?, label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                if let mgr {
+                    Image(systemName: mgr.icon)
+                }
+                Text(label)
+                Text("\(store.systemTools.filter { mgr == nil || $0.manager == mgr }.count)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(isSelected ? Color.purple.opacity(0.15) : Color.clear, in: Capsule())
+            .overlay(Capsule().stroke(isSelected ? Color.purple : Color.secondary.opacity(0.3)))
+        }
+        .buttonStyle(.plain)
+        .font(.caption)
     }
 }
 

@@ -28,6 +28,10 @@ final class GimmeStore: ObservableObject {
     @Published var installingTool: String? = nil
     @Published var lastInstallError: String? = nil
     @Published var showErrorAlert: Bool = false
+
+    // System tools from other package managers (brew, mise, cargo, etc.)
+    @Published var systemTools: [SystemManagers.SystemTool] = []
+    @Published var systemManagers: [SystemManagers.Manager] = []
     @Published var lastError: String?
     @Published var operationLog: [LogEntry] = []
 
@@ -106,6 +110,11 @@ final class GimmeStore: ObservableObject {
         browseResults = availableTools
         browseOffset = browsePageSize
         browseHasSearched = false
+
+        // Scan system package managers for tools installed by brew, mise, etc.
+        systemManagers = SystemManagers.detectedManagers()
+        let gimmeInstalled = installedTools.map { (name: $0.name, version: $0.activeVersion) }
+        systemTools = SystemManagers.scanAllTools(gimmeTools: gimmeInstalled)
     }
 
     /// Search/filter the formula cache. Resets pagination to show the first page.
