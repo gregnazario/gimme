@@ -93,7 +93,31 @@ public struct TapStore: FormulaProvider {
                   let formula = HomebrewLoader.parse(source) else { continue }
             return formula
         }
-        // Also check Casks/ dir (Homebrew cask format).
+        // homebrew-core uses Formula/<first-letter>/<name>.rb (e.g. Formula/w/wget.rb).
+        let firstChar = String(name.prefix(1)).lowercased()
+        let nestedFormula = tapDir.appendingPathComponent("Formula")
+            .appendingPathComponent(firstChar).appendingPathComponent("\(name).rb")
+        if FileManager.default.fileExists(atPath: nestedFormula.path),
+           let source = try? String(contentsOf: nestedFormula, encoding: .utf8),
+           let formula = HomebrewLoader.parse(source) {
+            return formula
+        }
+        // Also check Casks/ dir (homebrew-cask uses Casks/<first-letter>/<name>.rb).
+        let nestedCask = tapDir.appendingPathComponent("Casks")
+            .appendingPathComponent(firstChar).appendingPathComponent("\(name).rb")
+        if FileManager.default.fileExists(atPath: nestedCask.path),
+           let source = try? String(contentsOf: nestedCask, encoding: .utf8),
+           let cask = CaskLoader.parse(source) {
+            return Formula(
+                package: .init(name: cask.name, desc: cask.desc,
+                               homepage: cask.homepage, license: nil),
+                versions: [.init(ver: cask.version, assets: [Asset(
+                    arch: Host.current.arch, os: "macos", url: cask.url, sha256: cask.sha256)])],
+                install: .init(strategy: .lua, script: "__cask__"),
+                provides: .init(),
+                livecheck: .init(strategy: "none")
+            )
+        }
         let caskCandidates = [
             tapDir.appendingPathComponent("Casks").appendingPathComponent("\(name).rb"),
         ]
@@ -115,25 +139,68 @@ public struct TapStore: FormulaProvider {
         return nil
     }
 
-    /// Load ALL Homebrew `.rb` formulae from a tap directory. Checks `Formula/`
-    /// subdir (standard homebrew-core layout) and the tap root.
+    /// Load ALL Homebrew `.rb` formulae from a tap directory. Recursively
+    /// scans `Formula/` (which in homebrew-core is organized as `Formula/a/`,
+    /// `Formula/b/`, ...) plus flat root layout.
     private func loadHomebrewFormulae(in tapDir: URL) -> [Formula] {
         var out: [Formula] = []
-        let dirs = [
-            tapDir.appendingPathComponent("Formula"),  // homebrew-core standard
-            tapDir,                                      // flat layout
-        ]
-        for dir in dirs {
-            guard FileManager.default.isDirectory(dir) else { continue }
-            guard let entries = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { continue }
-            for entry in entries where entry.hasSuffix(".rb") {
-                let path = dir.appendingPathComponent(entry)
+        let formulaRoot = tapDir.appendingPathComponent("Formula")
+
+        if FileManager.default.isDirectory(formulaRoot) {
+            // homebrew-core: Formula/ contains subdirs a/, b/, ..., z/ each
+            // holding .rb files. Walk recursively.
+            collectRbFiles(from: formulaRoot, into: &out)
+        }
+        // Also check flat layout (.rb files at tap root).
+        collectRbFiles(from: tapDir, into: &out, maxDepth: 1)
+
+        // Also check Casks/ dir (homebrew-cask layout: Casks/<letter>/<name>.rb).
+        let casksRoot = tapDir.appendingPathComponent("Casks")
+        if FileManager.default.isDirectory(casksRoot) {
+            collectCaskFiles(from: casksRoot, into: &out)
+        }
+
+        return out
+    }
+
+    /// Recursively walk a directory, parsing every `.rb` file as a Homebrew formula.
+    private func collectRbFiles(from dir: URL, into out: inout [Formula], maxDepth: Int = 10) {
+        guard maxDepth > 0,
+              let entries = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { return }
+        for entry in entries.sorted() {
+            let path = dir.appendingPathComponent(entry)
+            if entry.hasSuffix(".rb") {
                 guard let source = try? String(contentsOf: path, encoding: .utf8),
                       let formula = HomebrewLoader.parse(source) else { continue }
                 out.append(formula)
+            } else if FileManager.default.isDirectory(path) && entry != ".git" {
+                collectRbFiles(from: path, into: &out, maxDepth: maxDepth - 1)
             }
         }
-        return out
+    }
+
+    /// Recursively walk a directory, parsing every `.rb` file as a Homebrew cask.
+    private func collectCaskFiles(from dir: URL, into out: inout [Formula], maxDepth: Int = 10) {
+        guard maxDepth > 0,
+              let entries = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { return }
+        for entry in entries.sorted() {
+            let path = dir.appendingPathComponent(entry)
+            if entry.hasSuffix(".rb") {
+                guard let source = try? String(contentsOf: path, encoding: .utf8),
+                      let cask = CaskLoader.parse(source) else { continue }
+                out.append(Formula(
+                    package: .init(name: cask.name, desc: cask.desc,
+                                   homepage: cask.homepage, license: nil),
+                    versions: [.init(ver: cask.version, assets: [Asset(
+                        arch: Host.current.arch, os: "macos", url: cask.url, sha256: cask.sha256)])],
+                    install: .init(strategy: .lua, script: "__cask__"),
+                    provides: .init(),
+                    livecheck: .init(strategy: "none")
+                ))
+            } else if FileManager.default.isDirectory(path) && entry != ".git" {
+                collectCaskFiles(from: path, into: &out, maxDepth: maxDepth - 1)
+            }
+        }
     }
 
     // MARK: tap management
