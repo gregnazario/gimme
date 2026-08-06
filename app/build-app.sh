@@ -28,13 +28,12 @@ chmod 755 "$APP_DIR/Contents/MacOS/GimmeUI"
 # Copy the Info.plist.
 cp "$REPO_ROOT/app/Info.plist" "$APP_DIR/Contents/Info.plist"
 
-# Copy the icon (if we have one).
+# Copy the app icon.
 if [ -f "$REPO_ROOT/app/AppIcon.icns" ]; then
     cp "$REPO_ROOT/app/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
-elif [ -f "$REPO_ROOT/docs-site/docs/assets/logo.svg" ]; then
-    # Generate a simple icon from the logo SVG (best-effort; sips doesn't do SVG,
-    # so we just copy the svg as a placeholder).
-    echo "  (no .icns icon; skipping — add app/AppIcon.icns for a custom icon)"
+    echo "  ✓ AppIcon.icns installed"
+else
+    echo "  (no AppIcon.icns; run the icon generation first)"
 fi
 
 echo "==> App bundle ready: $APP_DIR"

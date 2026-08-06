@@ -6,3 +6,5 @@ DerivedData/
 site/
 docs-site/.venv/
 Gimme.app/
+icon.iconset/
+icon-1024.png
