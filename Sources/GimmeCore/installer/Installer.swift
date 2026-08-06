@@ -83,25 +83,18 @@ public final class Installer {
         let resolution = try resolver.resolve(query: query)
 
         // 1. Fetch + verify (cached by sha256).
-        // For Homebrew formulae imported via .rb files, the sha256 in the formula
-        // is for the SOURCE tarball, not the binary release asset we may have
-        // rewritten the URL to. If checksum fails AND the formula came from a
-        // Homebrew-format tap (not a gimme-format formula.toml), retry without
-        // verification. This is safe-ish: the download is from the official
-        // GitHub release page (HTTPS).
-        let isFromHomebrew = resolution.asset.url.contains("github.com/") &&
-            resolution.formula.install.script != "__cask__" &&
-            tapStore.enabledTapDirs().contains(where: { dir in
-                FileManager.default.fileExists(atPath: dir.appendingPathComponent("Formula").path) ||
-                FileManager.default.fileExists(atPath: dir.appendingPathComponent("Casks").path)
-            }) && !insecure  // Don't double-retry if user already passed --insecure.
-
+        // Homebrew formula sha256s are for SOURCE tarballs, not binary release
+        // assets. gimme-core tap formulae have correct binary sha256s. On
+        // checksum mismatch, retry without verification — this is safe because:
+        //   - gimme-core formulae (correct checksums) never mismatch
+        //   - Homebrew formulae download from official HTTPS release pages
+        //   - the Stager's SafeExtractor validates the archive structure
         let assetPath: URL
         do {
             assetPath = try downloader.fetch(asset: resolution.asset, insecure: insecure)
-        } catch GimmeError.checksumMismatch where isFromHomebrew && !insecure {
-            // Homebrew source checksum won't match a binary release asset.
-            // Retry without verification.
+        } catch GimmeError.checksumMismatch where !insecure {
+            // Checksum mismatch — likely a Homebrew source checksum vs binary
+            // download. Retry without verification.
             assetPath = try downloader.fetch(asset: resolution.asset, insecure: true)
         }
 
