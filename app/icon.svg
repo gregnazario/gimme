@@ -4,8 +4,8 @@
       <stop offset="0%" stop-color="#673ab7"/>
       <stop offset="100%" stop-color="#3f51b5"/>
     </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="35%" r="60%">
-      <stop offset="0%" stop-color="#b39ddb" stop-opacity="0.35"/>
+    <radialGradient id="glow" cx="50%" cy="38%" r="60%">
+      <stop offset="0%" stop-color="#b39ddb" stop-opacity="0.3"/>
       <stop offset="100%" stop-color="#3f51b5" stop-opacity="0"/>
     </radialGradient>
   </defs>
@@ -15,57 +15,66 @@
   <rect width="1024" height="1024" rx="224" ry="224" fill="url(#glow)"/>
 
   <!--
-    Bird in a hand:
-    A stylized bird (simple, rounded, origami-like) descending into an open
-    cupped hand below it. White on the gradient. Clean enough to read at 16px.
+    "Gimme" hand gesture:
+    The classic beckoning "come here / gimme" — all fingers curled in,
+    repeated inward motion. We show the hand from the viewer's perspective,
+    palm facing, fingers curled inward toward the palm in the beckoning pose.
+
+    Design: bold, chunky, rounded — readable at 16px. White fill on gradient.
   -->
-  <g transform="translate(512, 512)" fill="none" stroke="white"
-     stroke-linecap="round" stroke-linejoin="round">
+  <g transform="translate(512, 520)">
 
-    <!-- ===== HAND (open, palm-up, cupped) ===== -->
-    <!-- Palm curve (concave, receiving) -->
-    <path d="M -230 170 Q -100 90 0 120 Q 100 90 230 170"
-          stroke-width="44" opacity="0.9"/>
+    <!-- ===== PALM (chunky rounded rectangle, slightly tilted) ===== -->
+    <path d="
+      M -150 -30
+      Q -170 -50 -160 -100
+      L -140 -280
+      Q -135 -320 -95 -325
+      Q -55 -325 -50 -285
+      L -55 -160
+      L -50 -50
+      L 140 -50
+      Q 180 -50 180 -10
+      Q 180 30 140 30
+      L 60 30
+      L 130 80
+      Q 165 100 150 140
+      Q 130 175 90 155
+      L 30 120
+      L 60 180
+      Q 75 215 40 230
+      Q 5 240 -15 205
+      L -60 140
+      Q -100 80 -130 30
+      Q -160 0 -150 -30 Z
+    "
+    fill="white" fill-opacity="0.95" stroke="white" stroke-width="6"
+    stroke-linejoin="round"/>
 
-    <!-- Left fingers/thumb sweeping up -->
-    <path d="M -230 170 Q -280 100 -250 20"
-          stroke-width="40" opacity="0.85"/>
+    <!-- ===== THUMB (sticking out to the side, the "gimme" curl) ===== -->
+    <path d="
+      M -150 -80
+      Q -230 -100 -260 -60
+      Q -275 -30 -255 -5
+      Q -230 25 -170 10
+      Q -150 5 -150 -30 Z
+    "
+    fill="white" fill-opacity="0.9" stroke="white" stroke-width="4"
+    stroke-linejoin="round"/>
 
-    <!-- Right fingers sweeping up -->
-    <path d="M 230 170 Q 280 100 250 20"
-          stroke-width="40" opacity="0.85"/>
+    <!-- ===== CURL INDICATOR (motion arc suggesting the inward beckoning) ===== -->
+    <path d="M -180 -200 Q -120 -260 -60 -230 Q -20 -210 0 -240"
+          fill="none" stroke="white" stroke-width="12"
+          stroke-linecap="round" opacity="0.35"/>
 
-    <!-- Wrist/life line of the hand -->
-    <path d="M -150 210 Q 0 250 150 210"
-          stroke-width="36" opacity="0.5"/>
+    <!-- Second smaller motion arc -->
+    <path d="M -140 -140 Q -90 -190 -40 -170 Q -10 -160 10 -185"
+          fill="none" stroke="white" stroke-width="10"
+          stroke-linecap="round" opacity="0.2"/>
 
-    <!-- ===== BIRD (stylized, descending, wings folded) ===== -->
-    <g transform="translate(-10, -180)">
-      <!-- Body: a rounded teardrop pointing down (diving) -->
-      <path d="M 0 0 C -45 -25 -60 -80 -35 -120 C -20 -145 20 -145 35 -120 C 60 -80 45 -25 0 0 Z"
-            fill="white" fill-opacity="0.95" stroke="none"/>
-
-      <!-- Head -->
-      <circle cx="0" cy="-135" r="32" fill="white" fill-opacity="0.95" stroke="none"/>
-
-      <!-- Beak (small, pointing down — diving toward the hand) -->
-      <path d="M -6 -108 L 0 -90 L 6 -108 Z"
-            fill="#ffc107" stroke="none"/>
-
-      <!-- Eye -->
-      <circle cx="10" cy="-140" r="5" fill="#3f51b5" stroke="none"/>
-
-      <!-- Wing (folded, swept back) -->
-      <path d="M -15 -100 Q -65 -70 -80 -20 Q -50 -50 -20 -60 Z"
-            fill="white" fill-opacity="0.7" stroke="none"/>
-
-      <!-- Tail feathers (fanned, pointing up) -->
-      <path d="M 20 -30 Q 50 -10 55 30 M 30 -25 Q 55 -5 58 35 M 38 -20 Q 58 -5 55 30"
-            stroke-width="6" opacity="0.6"/>
-    </g>
-
-    <!-- ===== Motion lines (descent) ===== -->
-    <path d="M -120 -80 L -100 -50" stroke-width="8" opacity="0.3"/>
-    <path d="M 110 -60 L 95 -30" stroke-width="8" opacity="0.3"/>
+    <!-- ===== CUFF / WRIST (sleeve line at the bottom) ===== -->
+    <path d="M -120 220 Q 0 260 120 220 L 120 280 Q 0 320 -120 280 Z"
+          fill="white" fill-opacity="0.15" stroke="white" stroke-width="4"
+          stroke-linejoin="round" opacity="0.6"/>
   </g>
 </svg>
