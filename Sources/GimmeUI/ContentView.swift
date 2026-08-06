@@ -106,7 +106,7 @@ struct InstalledToolsView: View {
 struct InstalledToolRow: View {
     @EnvironmentObject var store: GimmeStore
     let tool: GimmeStore.InstalledToolInfo
-    @State private var showVersionPicker = false
+    @State private var showDetail = false
 
     var body: some View {
         HStack {
@@ -116,22 +116,21 @@ struct InstalledToolRow: View {
             }
             Spacer()
             if store.installingTool == tool.name {
-                ProgressView()
-                    .controlSize(.small)
+                ProgressView().controlSize(.small)
             } else {
                 if tool.allVersions.count > 1 {
                     Menu("Versions") {
                         ForEach(tool.allVersions, id: \.self) { version in
-                            Button(version) {
-                                store.useVersion(tool.name, version)
-                            }
+                            Button(version) { store.useVersion(tool.name, version) }
                         }
                     }
                     .menuStyle(.borderlessButton)
                 }
-                Button(role: .destructive) {
-                    store.uninstall(tool.name)
-                } label: {
+                Button { showDetail = true } label: {
+                    Image(systemName: "info.circle")
+                }
+                .buttonStyle(.borderless)
+                Button(role: .destructive) { store.uninstall(tool.name) } label: {
                     Image(systemName: "trash")
                 }
                 .buttonStyle(.borderless)
@@ -139,6 +138,10 @@ struct InstalledToolRow: View {
             }
         }
         .padding(.vertical, 4)
+        .sheet(isPresented: $showDetail) {
+            InstalledToolDetail(tool: tool)
+                .frame(minWidth: 500, minHeight: 400)
+        }
     }
 }
 
@@ -431,10 +434,9 @@ struct SystemToolsView: View {
 struct AvailableToolRow: View {
     @EnvironmentObject var store: GimmeStore
     let tool: GimmeStore.AvailableToolInfo
+    @State private var showDetail = false
 
-    var isInstalling: Bool {
-        store.installingTool == tool.name
-    }
+    var isInstalling: Bool { store.installingTool == tool.name }
 
     var body: some View {
         HStack {
@@ -449,28 +451,29 @@ struct AvailableToolRow: View {
             }
             Spacer()
             if isInstalling {
-                // Spinner while installing this specific tool.
                 HStack(spacing: 6) {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text("Installing...")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    ProgressView().controlSize(.small)
+                    Text("Installing...").font(.caption).foregroundStyle(.secondary)
                 }
             } else if tool.installed {
                 Label("Installed", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                    .font(.caption)
+                    .foregroundStyle(.green).font(.caption)
             } else {
-                Button("Install") {
-                    store.install(tool.name)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .disabled(store.installingTool != nil)
+                Button("Install") { store.install(tool.name) }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(store.installingTool != nil)
             }
+            Button { showDetail = true } label: {
+                Image(systemName: "info.circle")
+            }
+            .buttonStyle(.borderless)
         }
         .padding(.vertical, 4)
+        .sheet(isPresented: $showDetail) {
+            AvailableToolDetail(tool: tool)
+                .frame(minWidth: 500, minHeight: 400)
+        }
     }
 }
 
@@ -617,4 +620,260 @@ struct ToolDetailView: View {
 
 extension GimmeStore {
     var world: World? { _world }
+}
+
+// MARK: - Detail Sheets
+
+/// Detail sheet for an installed tool — shows receipt info, install path,
+/// all versions, formula metadata (if available from a tap).
+struct InstalledToolDetail: View {
+    @EnvironmentObject var store: GimmeStore
+    let tool: GimmeStore.InstalledToolInfo
+    @State private var receipt: Receipt?
+    @State private var formula: Formula?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.largeTitle).foregroundStyle(.purple)
+                VStack(alignment: .leading) {
+                    Text(tool.name).font(.title.bold())
+                    Text("v\(tool.activeVersion)").font(.title3).foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(20)
+
+            Divider()
+
+            Form {
+                if let receipt = receipt {
+                    SwiftUI.Section("Install Info") {
+                        LabeledContent("Installed", value: receipt.installedAt)
+                        LabeledContent("Source", value: receipt.source)
+                        LabeledContent("Tap", value: receipt.tap)
+                        LabeledContent("gimme Version", value: receipt.gimmeVersion)
+                    }
+                    if receipt.source == "brew" {
+                        SwiftUI.Section("Installed via Homebrew") {
+                            Label("This tool was installed by delegating to `brew install`", systemImage: "mug.fill")
+                                .font(.caption)
+                            LabeledContent("Binary path", value: "/opt/homebrew/bin/\(tool.name)")
+                        }
+                    } else {
+                        SwiftUI.Section("Download") {
+                            LabeledContent("URL", value: receipt.asset.url)
+                            if !receipt.asset.sha256.isEmpty {
+                                LabeledContent("SHA256") {
+                                    Text(receipt.asset.sha256)
+                                        .font(.caption.monospaced())
+                                        .textSelection(.enabled)
+                                        .lineLimit(2)
+                                }
+                            }
+                            if let arch = receipt.asset.arch {
+                                LabeledContent("Architecture", value: arch)
+                            }
+                        }
+                    }
+                    if !receipt.deps.isEmpty {
+                        SwiftUI.Section("Dependencies") {
+                            ForEach(receipt.deps, id: \.name) { dep in
+                                HStack {
+                                    Text(dep.name)
+                                    Spacer()
+                                    Text(dep.resolved).foregroundStyle(.secondary).font(.caption)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                SwiftUI.Section("All Versions") {
+                    ForEach(tool.allVersions, id: \.self) { version in
+                        HStack {
+                            Text(version)
+                            if version == tool.activeVersion {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                                Text("active").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+
+                if let formula = formula {
+                    SwiftUI.Section("Formula") {
+                        if let desc = formula.package.desc {
+                            LabeledContent("Description") { Text(desc).textSelection(.enabled) }
+                        }
+                        if let homepage = formula.package.homepage {
+                            LabeledContent("Homepage") {
+                                Link(homepage, destination: URL(string: homepage) ?? URL(string: "https://example.com")!)
+                            }
+                        }
+                        if let license = formula.package.license {
+                            LabeledContent("License", value: license)
+                        }
+                    }
+                    if !formula.provides.bin.isEmpty {
+                        SwiftUI.Section("Provides") {
+                            ForEach(formula.provides.bin, id: \.self) { bin in
+                                Label(bin, systemImage: "terminal")
+                            }
+                        }
+                    }
+                }
+
+                // File system info.
+                SwiftUI.Section("File System") {
+                    let prefix = "\(FileManager.default.homeDirectoryForCurrentUser.path)/.gimme/cellar/\(tool.name)/\(tool.activeVersion)"
+                    LabeledContent("Cellar path") {
+                        Text(prefix).font(.caption.monospaced()).textSelection(.enabled)
+                    }
+                    let shim = "\(FileManager.default.homeDirectoryForCurrentUser.path)/.gimme/bin/\(tool.name)"
+                    if FileManager.default.fileExists(atPath: shim) {
+                        LabeledContent("Shim") {
+                            Text(shim).font(.caption.monospaced()).textSelection(.enabled)
+                        }
+                    }
+                }
+            }
+            .formStyle(.grouped)
+
+            HStack {
+                Spacer()
+                Button("Done") { NSApp.keyWindow?.close() }
+                    .keyboardShortcut(.cancelAction)
+            }
+            .padding(16)
+        }
+        .onAppear {
+            receipt = store.world?.cellar.receipt(for: tool.name, version: tool.activeVersion)
+            formula = store.world?.tapStore.allFormulae().first { $0.name == tool.name }
+        }
+    }
+}
+
+/// Detail sheet for a browsable tool — shows formula metadata, versions,
+/// assets, deps, and install button.
+struct AvailableToolDetail: View {
+    @EnvironmentObject var store: GimmeStore
+    let tool: GimmeStore.AvailableToolInfo
+    @State private var formula: Formula?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack {
+                Image(systemName: "shippingbox")
+                    .font(.largeTitle).foregroundStyle(.purple)
+                VStack(alignment: .leading) {
+                    Text(tool.name).font(.title.bold())
+                    if !tool.desc.isEmpty {
+                        Text(tool.desc).font(.callout).foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                if !tool.installed {
+                    Button("Install") { store.install(tool.name) }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(store.installingTool != nil)
+                }
+            }
+            .padding(20)
+
+            Divider()
+
+            Form {
+                SwiftUI.Section("Available Versions") {
+                    ForEach(tool.versions, id: \.self) { version in
+                        Label(version, systemImage: "tag")
+                    }
+                    if tool.versions.isEmpty {
+                        Text("Version info not available (Homebrew formula)").foregroundStyle(.secondary)
+                    }
+                }
+
+                if let formula = formula {
+                    if let homepage = formula.package.homepage {
+                        SwiftUI.Section("Homepage") {
+                            Link(homepage, destination: URL(string: homepage) ?? URL(string: "https://example.com")!)
+                        }
+                    }
+                    if let license = formula.package.license {
+                        LabeledContent("License", value: license)
+                    }
+                    if !formula.deps.isEmpty {
+                        SwiftUI.Section("Dependencies") {
+                            ForEach(formula.deps, id: \.name) { dep in
+                                HStack {
+                                    Image(systemName: "link")
+                                    Text(dep.name)
+                                    if let ver = dep.ver {
+                                        Spacer()
+                                        Text(ver).foregroundStyle(.secondary).font(.caption)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if !formula.provides.bin.isEmpty {
+                        SwiftUI.Section("Binaries") {
+                            ForEach(formula.provides.bin, id: \.self) { bin in
+                                Label(bin, systemImage: "terminal")
+                            }
+                        }
+                    }
+                    if let firstAsset = formula.versions.first?.assets.first {
+                        SwiftUI.Section("Download") {
+                            LabeledContent("URL") {
+                                Text(firstAsset.url)
+                                    .font(.caption.monospaced())
+                                    .textSelection(.enabled)
+                                    .lineLimit(2)
+                            }
+                            if !firstAsset.sha256.isEmpty {
+                                LabeledContent("SHA256") {
+                                    Text(firstAsset.sha256)
+                                        .font(.caption.monospaced())
+                                        .textSelection(.enabled)
+                                        .lineLimit(2)
+                                }
+                            }
+                        }
+                    }
+                    SwiftUI.Section("Install Strategy") {
+                        Label(formula.install.strategy.rawValue, systemImage: "hammer")
+                    }
+                } else {
+                    SwiftUI.Section("Info") {
+                        Text("This is a Homebrew formula. gimme will attempt a binary download first, then fall back to `brew install` if needed.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                if tool.installed {
+                    SwiftUI.Section("Status") {
+                        Label("Already installed", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    }
+                }
+            }
+            .formStyle(.grouped)
+
+            HStack {
+                Spacer()
+                Button("Done") { NSApp.keyWindow?.close() }
+                    .keyboardShortcut(.cancelAction)
+            }
+            .padding(16)
+        }
+        .onAppear {
+            formula = store.world?.tapStore.allFormulae().first { $0.name == tool.name }
+        }
+    }
 }
