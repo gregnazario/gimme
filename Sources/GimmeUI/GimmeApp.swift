@@ -25,6 +25,7 @@ final class GimmeStore: ObservableObject {
     @Published var availableTools: [AvailableToolInfo] = []
     @Published var searchText: String = ""
     @Published var isLoading: Bool = false
+    @Published var installingTool: String? = nil
     @Published var lastError: String?
     @Published var operationLog: [LogEntry] = []
 
@@ -149,35 +150,58 @@ final class GimmeStore: ObservableObject {
     /// Install a tool by name.
     func install(_ name: String) {
         guard let world = _world else { return }
-        isLoading = true
+        installingTool = name
         log("Installing \(name)...", level: .info)
-        do {
-            let result = try world.installer.install(query: name)
-            log("✓ Installed \(result.tool) \(result.version)", level: .success)
-            refresh()
-        } catch let e as GimmeError {
-            log("✗ \(e.message)", level: .error)
-        } catch {
-            log("✗ Unexpected error: \(error)", level: .error)
+        // Run on a background thread so the UI stays responsive.
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result: Result<(String, String), GimmeError>
+            do {
+                let r = try world.installer.install(query: name)
+                result = .success((r.tool, r.version))
+            } catch let e as GimmeError {
+                result = .failure(e)
+            } catch {
+                result = .failure(.unknown("Unexpected: \(error)"))
+            }
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let (tool, version)):
+                    self.log("✓ Installed \(tool) \(version)", level: .success)
+                case .failure(let e):
+                    self.log("✗ \(e.message)", level: .error)
+                }
+                self.installingTool = nil
+                self.refresh()
+            }
         }
-        isLoading = false
     }
 
     /// Uninstall a tool by name.
     func uninstall(_ name: String) {
         guard let world = _world else { return }
-        isLoading = true
+        installingTool = name
         log("Removing \(name)...", level: .info)
-        do {
-            try world.installer.uninstall(tool: name)
-            log("✓ Removed \(name)", level: .success)
-            refresh()
-        } catch let e as GimmeError {
-            log("✗ \(e.message)", level: .error)
-        } catch {
-            log("✗ Unexpected error: \(error)", level: .error)
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result: Result<Void, GimmeError>
+            do {
+                try world.installer.uninstall(tool: name)
+                result = .success(())
+            } catch let e as GimmeError {
+                result = .failure(e)
+            } catch {
+                result = .failure(.unknown("Unexpected: \(error)"))
+            }
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    self.log("✓ Removed \(name)", level: .success)
+                case .failure(let e):
+                    self.log("✗ \(e.message)", level: .error)
+                }
+                self.installingTool = nil
+                self.refresh()
+            }
         }
-        isLoading = false
     }
 
     /// Update a tool to latest.

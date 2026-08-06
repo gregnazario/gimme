@@ -107,22 +107,28 @@ struct InstalledToolRow: View {
                 Text(tool.activeVersion).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            if tool.allVersions.count > 1 {
-                Menu("Versions") {
-                    ForEach(tool.allVersions, id: \.self) { version in
-                        Button(version) {
-                            store.useVersion(tool.name, version)
+            if store.installingTool == tool.name {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                if tool.allVersions.count > 1 {
+                    Menu("Versions") {
+                        ForEach(tool.allVersions, id: \.self) { version in
+                            Button(version) {
+                                store.useVersion(tool.name, version)
+                            }
                         }
                     }
+                    .menuStyle(.borderlessButton)
                 }
-                .menuStyle(.borderlessButton)
+                Button(role: .destructive) {
+                    store.uninstall(tool.name)
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.borderless)
+                .disabled(store.installingTool != nil)
             }
-            Button(role: .destructive) {
-                store.uninstall(tool.name)
-            } label: {
-                Image(systemName: "trash")
-            }
-            .buttonStyle(.borderless)
         }
         .padding(.vertical, 4)
     }
@@ -333,6 +339,10 @@ struct AvailableToolRow: View {
     @EnvironmentObject var store: GimmeStore
     let tool: GimmeStore.AvailableToolInfo
 
+    var isInstalling: Bool {
+        store.installingTool == tool.name
+    }
+
     var body: some View {
         HStack {
             VStack(alignment: .leading) {
@@ -345,7 +355,16 @@ struct AvailableToolRow: View {
                 }
             }
             Spacer()
-            if tool.installed {
+            if isInstalling {
+                // Spinner while installing this specific tool.
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Installing...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else if tool.installed {
                 Label("Installed", systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.green)
                     .font(.caption)
@@ -355,7 +374,7 @@ struct AvailableToolRow: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .disabled(store.isLoading)
+                .disabled(store.installingTool != nil)
             }
         }
         .padding(.vertical, 4)
