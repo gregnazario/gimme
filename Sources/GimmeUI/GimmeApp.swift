@@ -224,6 +224,84 @@ final class GimmeStore: ObservableObject {
         install(name)
     }
 
+    /// Reinstall a tool (for gimme or brew-managed tools).
+    func reinstall(_ name: String) {
+        guard let world = _world else { return }
+        installingTool = name
+        log("Reinstalling \(name)...", level: .info)
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result: Result<Void, GimmeError>
+            // Check if it's a brew-managed install.
+            let isBrew = (try? world.cellar.receipt(for: name,
+                version: world.state.loadInstalled()[name]?.active ?? ""))?.source == "brew"
+            do {
+                if isBrew {
+                    let delegate = BrewDelegate(paths: world.paths)
+                    _ = try delegate.reinstall(tool: name)
+                } else {
+                    try world.installer.uninstall(tool: name)
+                    _ = try world.installer.install(query: name)
+                }
+                result = .success(())
+            } catch let e as GimmeError {
+                result = .failure(e)
+            } catch {
+                result = .failure(.unknown("Unexpected: \(error)"))
+            }
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    self.log("✓ Reinstalled \(name)", level: .success)
+                case .failure(let e):
+                    self.log("✗ \(e.message)", level: .error)
+                    self.lastInstallError = "Failed to reinstall \(name): \(e.message)"
+                    self.showErrorAlert = true
+                }
+                self.installingTool = nil
+                self.refresh()
+            }
+        }
+    }
+
+    /// Update all tools (gimme + brew).
+    func updateAll() {
+        guard let world = _world else { return }
+        installingTool = "Updating all..."
+        log("Updating all tools...", level: .info)
+        DispatchQueue.global(qos: .userInitiated).async {
+            // gimme tools.
+            let gimmeTools = world.cellar.installedTools()
+            for tool in gimmeTools {
+                let receipt = world.cellar.receipt(for: tool,
+                    version: world.state.loadInstalled()[tool]?.active ?? "")
+                if receipt?.source == "brew" { continue }
+                _ = try? world.installer.install(query: tool)
+            }
+            // Brew tools.
+            if BrewDelegate.isAvailable {
+                let delegate = BrewDelegate(paths: world.paths)
+                _ = try? delegate.upgradeAll()
+            }
+            DispatchQueue.main.async {
+                self.log("✓ Update complete", level: .success)
+                self.installingTool = nil
+                self.refresh()
+            }
+        }
+    }
+
+    /// Find a tool's binary location on disk.
+    func findLocation(_ name: String) -> String? {
+        BrewDelegate.findBinary(name)
+    }
+
+    /// Get brew info for a tool.
+    func brewInfo(_ name: String) -> [String: Any]? {
+        guard let world = _world else { return nil }
+        let delegate = BrewDelegate(paths: world.paths)
+        return try? delegate.info(tool: name)
+    }
+
     /// Switch the active version of a tool.
     func useVersion(_ tool: String, _ version: String) {
         guard let world = _world else { return }

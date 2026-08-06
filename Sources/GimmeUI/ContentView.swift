@@ -59,7 +59,12 @@ struct ContentView: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button(action: { store.updateAll() }) {
+                        Label("Update All", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .disabled(store.installingTool != nil)
+
                     Button(action: { store.refresh() }) {
                         Label("Refresh", systemImage: "arrow.clockwise")
                     }
@@ -606,7 +611,7 @@ struct ToolDetailView: View {
                         Text(formula.install.strategy.rawValue)
                     }
                 }
-                .formStyle(.grouped)
+                
             } else {
                 ProgressView()
             }
@@ -643,43 +648,55 @@ struct InstalledToolDetail: View {
                     Text("v\(tool.activeVersion)").font(.title3).foregroundStyle(.secondary)
                 }
                 Spacer()
+                // Action buttons in the header.
+                VStack(spacing: 8) {
+                    Button("Reinstall") { store.reinstall(tool.name) }
+                        .buttonStyle(.bordered)
+                        .disabled(store.installingTool != nil)
+                    Button("Update") { store.update(tool.name) }
+                        .buttonStyle(.bordered)
+                        .disabled(store.installingTool != nil)
+                    Button(role: .destructive) { store.uninstall(tool.name) } label: {
+                        Label("Uninstall", systemImage: "trash")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(store.installingTool != nil)
+                }
             }
             .padding(20)
 
             Divider()
 
-            Form {
-                if let receipt = receipt {
-                    SwiftUI.Section("Install Info") {
-                        LabeledContent("Installed", value: receipt.installedAt)
-                        LabeledContent("Source", value: receipt.source)
-                        LabeledContent("Tap", value: receipt.tap)
-                        LabeledContent("gimme Version", value: receipt.gimmeVersion)
-                    }
-                    if receipt.source == "brew" {
-                        SwiftUI.Section("Installed via Homebrew") {
-                            Label("This tool was installed by delegating to `brew install`", systemImage: "mug.fill")
-                                .font(.caption)
-                            LabeledContent("Binary path", value: "/opt/homebrew/bin/\(tool.name)")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    detailSection("Install Info") {
+                        if let receipt = receipt {
+                            detailRow("Source", receipt.source)
+                            detailRow("Tap", receipt.tap)
+                            detailRow("Installed", receipt.installedAt)
+                            detailRow("gimme Version", receipt.gimmeVersion)
+                            if receipt.source == "brew" {
+                                Label("Installed via brew install", systemImage: "mug.fill").font(.caption)
+                            }
+                        } else {
+                            Text("No receipt found").foregroundStyle(.secondary)
                         }
-                    } else {
-                        SwiftUI.Section("Download") {
-                            LabeledContent("URL", value: receipt.asset.url)
+                    }
+
+                    if let receipt = receipt, receipt.source != "brew", !receipt.asset.url.isEmpty {
+                        detailSection("Download") {
+                            detailRow("URL", receipt.asset.url, selectable: true)
                             if !receipt.asset.sha256.isEmpty {
-                                LabeledContent("SHA256") {
-                                    Text(receipt.asset.sha256)
-                                        .font(.caption.monospaced())
-                                        .textSelection(.enabled)
-                                        .lineLimit(2)
-                                }
+                                detailRow("SHA256", receipt.asset.sha256, selectable: true)
                             }
                             if let arch = receipt.asset.arch {
-                                LabeledContent("Architecture", value: arch)
+                                detailRow("Architecture", arch)
                             }
                         }
                     }
-                    if !receipt.deps.isEmpty {
-                        SwiftUI.Section("Dependencies") {
+
+                    if let receipt = receipt, !receipt.deps.isEmpty {
+                        detailSection("Dependencies") {
                             ForEach(receipt.deps, id: \.name) { dep in
                                 HStack {
                                     Text(dep.name)
@@ -689,59 +706,82 @@ struct InstalledToolDetail: View {
                             }
                         }
                     }
-                }
 
-                SwiftUI.Section("All Versions") {
-                    ForEach(tool.allVersions, id: \.self) { version in
-                        HStack {
-                            Text(version)
-                            if version == tool.activeVersion {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
-                                Text("active").font(.caption).foregroundStyle(.secondary)
+                    detailSection("All Versions") {
+                        ForEach(tool.allVersions, id: \.self) { version in
+                            HStack {
+                                Text(version)
+                                if version == tool.activeVersion {
+                                    Spacer()
+                                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                                    Text("active").font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+
+                    if let formula = formula {
+                        detailSection("Formula") {
+                            if let desc = formula.package.desc {
+                                detailRow("Description", desc, selectable: true)
+                            }
+                            if let homepage = formula.package.homepage {
+                                HStack {
+                                    Text("Homepage").foregroundStyle(.secondary)
+                                    Spacer()
+                                    Link(homepage, destination: URL(string: homepage) ?? URL(string: "https://example.com")!)
+                                }
+                            }
+                            if let license = formula.package.license {
+                                detailRow("License", license)
+                            }
+                        }
+                        if !formula.provides.bin.isEmpty {
+                            detailSection("Provides") {
+                                ForEach(formula.provides.bin, id: \.self) { bin in
+                                    Label(bin, systemImage: "terminal")
+                                }
+                            }
+                        }
+                    }
+
+                    detailSection("File System") {
+                        let cellarPath = "\(FileManager.default.homeDirectoryForCurrentUser.path)/.gimme/cellar/\(tool.name)/\(tool.activeVersion)"
+                        detailRow("Cellar", cellarPath, selectable: true)
+                        if let which = store.findLocation(tool.name) {
+                            detailRow("which", which, selectable: true)
+                        }
+                        if receipt?.source == "brew" {
+                            ForEach(["/opt/homebrew", "/usr/local"], id: \.self) { brewPrefix in
+                                let cp = "\(brewPrefix)/Cellar/\(tool.name)/\(tool.activeVersion)"
+                                if FileManager.default.fileExists(atPath: cp) {
+                                    detailRow("Brew Cellar", cp, selectable: true)
+                                }
+                            }
+                        }
+                    }
+
+                    detailSection("Actions") {
+                        HStack(spacing: 12) {
+                            Button("Reveal in Finder") {
+                                let path = store.findLocation(tool.name) ?? "\(FileManager.default.homeDirectoryForCurrentUser.path)/.gimme/cellar/\(tool.name)/\(tool.activeVersion)"
+                                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+                            }
+                            if store.findLocation(tool.name) != nil {
+                                Button("Open in Terminal") {
+                                    if let path = store.findLocation(tool.name) {
+                                        let task = Process()
+                                        task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+                                        task.arguments = ["-a", "Terminal", path]
+                                        try? task.run()
+                                    }
+                                }
                             }
                         }
                     }
                 }
-
-                if let formula = formula {
-                    SwiftUI.Section("Formula") {
-                        if let desc = formula.package.desc {
-                            LabeledContent("Description") { Text(desc).textSelection(.enabled) }
-                        }
-                        if let homepage = formula.package.homepage {
-                            LabeledContent("Homepage") {
-                                Link(homepage, destination: URL(string: homepage) ?? URL(string: "https://example.com")!)
-                            }
-                        }
-                        if let license = formula.package.license {
-                            LabeledContent("License", value: license)
-                        }
-                    }
-                    if !formula.provides.bin.isEmpty {
-                        SwiftUI.Section("Provides") {
-                            ForEach(formula.provides.bin, id: \.self) { bin in
-                                Label(bin, systemImage: "terminal")
-                            }
-                        }
-                    }
-                }
-
-                // File system info.
-                SwiftUI.Section("File System") {
-                    let prefix = "\(FileManager.default.homeDirectoryForCurrentUser.path)/.gimme/cellar/\(tool.name)/\(tool.activeVersion)"
-                    LabeledContent("Cellar path") {
-                        Text(prefix).font(.caption.monospaced()).textSelection(.enabled)
-                    }
-                    let shim = "\(FileManager.default.homeDirectoryForCurrentUser.path)/.gimme/bin/\(tool.name)"
-                    if FileManager.default.fileExists(atPath: shim) {
-                        LabeledContent("Shim") {
-                            Text(shim).font(.caption.monospaced()).textSelection(.enabled)
-                        }
-                    }
-                }
+                .padding(20)
             }
-            .formStyle(.grouped)
 
             HStack {
                 Spacer()
@@ -787,83 +827,74 @@ struct AvailableToolDetail: View {
 
             Divider()
 
-            Form {
-                SwiftUI.Section("Available Versions") {
-                    ForEach(tool.versions, id: \.self) { version in
-                        Label(version, systemImage: "tag")
-                    }
-                    if tool.versions.isEmpty {
-                        Text("Version info not available (Homebrew formula)").foregroundStyle(.secondary)
-                    }
-                }
-
-                if let formula = formula {
-                    if let homepage = formula.package.homepage {
-                        SwiftUI.Section("Homepage") {
-                            Link(homepage, destination: URL(string: homepage) ?? URL(string: "https://example.com")!)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    detailSection("Available Versions") {
+                        ForEach(tool.versions, id: \.self) { version in
+                            Label(version, systemImage: "tag")
+                        }
+                        if tool.versions.isEmpty {
+                            Text("Version info not available (Homebrew formula)").foregroundStyle(.secondary)
                         }
                     }
-                    if let license = formula.package.license {
-                        LabeledContent("License", value: license)
-                    }
-                    if !formula.deps.isEmpty {
-                        SwiftUI.Section("Dependencies") {
-                            ForEach(formula.deps, id: \.name) { dep in
-                                HStack {
-                                    Image(systemName: "link")
-                                    Text(dep.name)
-                                    if let ver = dep.ver {
-                                        Spacer()
-                                        Text(ver).foregroundStyle(.secondary).font(.caption)
+
+                    if let formula = formula {
+                        if let homepage = formula.package.homepage {
+                            detailSection("Homepage") {
+                                Link(homepage, destination: URL(string: homepage) ?? URL(string: "https://example.com")!)
+                            }
+                        }
+                        if let license = formula.package.license {
+                            detailSection("License") { Text(license) }
+                        }
+                        if !formula.deps.isEmpty {
+                            detailSection("Dependencies") {
+                                ForEach(formula.deps, id: \.name) { dep in
+                                    HStack {
+                                        Image(systemName: "link")
+                                        Text(dep.name)
+                                        if let ver = dep.ver {
+                                            Spacer()
+                                            Text(ver).foregroundStyle(.secondary).font(.caption)
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    if !formula.provides.bin.isEmpty {
-                        SwiftUI.Section("Binaries") {
-                            ForEach(formula.provides.bin, id: \.self) { bin in
-                                Label(bin, systemImage: "terminal")
-                            }
-                        }
-                    }
-                    if let firstAsset = formula.versions.first?.assets.first {
-                        SwiftUI.Section("Download") {
-                            LabeledContent("URL") {
-                                Text(firstAsset.url)
-                                    .font(.caption.monospaced())
-                                    .textSelection(.enabled)
-                                    .lineLimit(2)
-                            }
-                            if !firstAsset.sha256.isEmpty {
-                                LabeledContent("SHA256") {
-                                    Text(firstAsset.sha256)
-                                        .font(.caption.monospaced())
-                                        .textSelection(.enabled)
-                                        .lineLimit(2)
+                        if !formula.provides.bin.isEmpty {
+                            detailSection("Binaries") {
+                                ForEach(formula.provides.bin, id: \.self) { bin in
+                                    Label(bin, systemImage: "terminal")
                                 }
                             }
                         }
+                        if let firstAsset = formula.versions.first?.assets.first {
+                            detailSection("Download") {
+                                detailRow("URL", firstAsset.url, selectable: true)
+                                if !firstAsset.sha256.isEmpty {
+                                    detailRow("SHA256", firstAsset.sha256, selectable: true)
+                                }
+                            }
+                        }
+                        detailSection("Install Strategy") {
+                            Label(formula.install.strategy.rawValue, systemImage: "hammer")
+                        }
+                    } else {
+                        detailSection("Info") {
+                            Text("This is a Homebrew formula. gimme will attempt a binary download first, then fall back to `brew install` if needed.")
+                                .font(.callout).foregroundStyle(.secondary)
+                        }
                     }
-                    SwiftUI.Section("Install Strategy") {
-                        Label(formula.install.strategy.rawValue, systemImage: "hammer")
-                    }
-                } else {
-                    SwiftUI.Section("Info") {
-                        Text("This is a Homebrew formula. gimme will attempt a binary download first, then fall back to `brew install` if needed.")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    }
-                }
 
-                if tool.installed {
-                    SwiftUI.Section("Status") {
-                        Label("Already installed", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
+                    if tool.installed {
+                        detailSection("Status") {
+                            Label("Already installed", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                        }
                     }
                 }
+                .padding(20)
             }
-            .formStyle(.grouped)
+            
 
             HStack {
                 Spacer()
@@ -874,6 +905,33 @@ struct AvailableToolDetail: View {
         }
         .onAppear {
             formula = store.world?.tapStore.allFormulae().first { $0.name == tool.name }
+        }
+    }
+}
+
+// MARK: - Reusable detail helpers
+
+/// A titled section within a detail scroll view.
+func detailSection<C: View>(_ title: String, @ViewBuilder content: () -> C) -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+        Text(title).font(.headline)
+        VStack(alignment: .leading, spacing: 4) { content() }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+/// A key-value row within a detail section.
+func detailRow(_ key: String, _ value: String, selectable: Bool = false) -> some View {
+    HStack(alignment: .top) {
+        Text(key).foregroundStyle(.secondary)
+        Spacer()
+        if selectable {
+            Text(value).font(.caption.monospaced()).textSelection(.enabled).lineLimit(3)
+                .multilineTextAlignment(.trailing)
+        } else {
+            Text(value).lineLimit(3).multilineTextAlignment(.trailing)
         }
     }
 }

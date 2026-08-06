@@ -53,13 +53,82 @@ public final class BrewDelegate {
         return try runBrew([brew, "uninstall", tool])
     }
 
+    /// Run `brew upgrade <tool>` to update a single tool.
+    public func upgrade(tool: String) throws -> BrewResult {
+        guard let brew = BrewDelegate.findBrew() else {
+            throw GimmeError.notFound("Homebrew is not installed")
+        }
+        return try runBrew([brew, "upgrade", tool])
+    }
+
+    /// Run `brew upgrade` (all tools).
+    public func upgradeAll() throws -> BrewResult {
+        guard let brew = BrewDelegate.findBrew() else {
+            throw GimmeError.notFound("Homebrew is not installed")
+        }
+        return try runBrew([brew, "upgrade"])
+    }
+
+    /// Run `brew reinstall <tool>`.
+    public func reinstall(tool: String) throws -> BrewResult {
+        guard let brew = BrewDelegate.findBrew() else {
+            throw GimmeError.notFound("Homebrew is not installed")
+        }
+        return try runBrew([brew, "reinstall", tool])
+    }
+
+    /// Run `brew outdated --json=v2` — returns the JSON output.
+    public func outdated() throws -> [String: Any] {
+        guard let brew = BrewDelegate.findBrew() else {
+            throw GimmeError.notFound("Homebrew is not installed")
+        }
+        let result = try runBrew([brew, "outdated", "--json=v2"])
+        if let data = result.stdout.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            return json
+        }
+        return ["raw": result.stdout]
+    }
+
+    /// Run `brew pin <tool>` / `brew unpin <tool>`.
+    public func pin(tool: String) throws -> BrewResult {
+        guard let brew = BrewDelegate.findBrew() else {
+            throw GimmeError.notFound("Homebrew is not installed")
+        }
+        return try runBrew([brew, "pin", tool])
+    }
+
+    public func unpin(tool: String) throws -> BrewResult {
+        guard let brew = BrewDelegate.findBrew() else {
+            throw GimmeError.notFound("Homebrew is not installed")
+        }
+        return try runBrew([brew, "unpin", tool])
+    }
+
+    /// Find where a tool's binary lives on disk (which/whereis equivalent).
+    public static func findBinary(_ name: String) -> String? {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+        task.arguments = [name]
+        let pipe = Pipe(); task.standardOutput = pipe
+        task.standardError = Pipe()
+        do {
+            try task.run(); task.waitUntilExit()
+            if task.terminationStatus == 0 {
+                let out = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+                let path = out.trimmingCharacters(in: .whitespacesAndNewlines)
+                return path.isEmpty ? nil : path
+            }
+        } catch {}
+        return nil
+    }
+
     /// Run `brew info --json=v2 <tool>` to get info about a formula/cask.
     public func info(tool: String) throws -> [String: Any] {
         guard let brew = BrewDelegate.findBrew() else {
             throw GimmeError.notFound("Homebrew is not installed")
         }
         let result = try runBrew([brew, "info", "--json=v2", tool])
-        // Parse the JSON output.
         if let data = result.stdout.data(using: .utf8),
            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             return json
