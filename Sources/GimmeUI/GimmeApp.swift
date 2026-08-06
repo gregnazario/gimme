@@ -26,6 +26,8 @@ final class GimmeStore: ObservableObject {
     @Published var searchText: String = ""
     @Published var isLoading: Bool = false
     @Published var installingTool: String? = nil
+    @Published var lastInstallError: String? = nil
+    @Published var showErrorAlert: Bool = false
     @Published var lastError: String?
     @Published var operationLog: [LogEntry] = []
 
@@ -169,6 +171,8 @@ final class GimmeStore: ObservableObject {
                     self.log("✓ Installed \(tool) \(version)", level: .success)
                 case .failure(let e):
                     self.log("✗ \(e.message)", level: .error)
+                    self.lastInstallError = "Failed to install \(name): \(e.message)"
+                    self.showErrorAlert = true
                 }
                 self.installingTool = nil
                 self.refresh()
@@ -197,6 +201,8 @@ final class GimmeStore: ObservableObject {
                     self.log("✓ Removed \(name)", level: .success)
                 case .failure(let e):
                     self.log("✗ \(e.message)", level: .error)
+                    self.lastInstallError = "Failed to remove \(name): \(e.message)"
+                    self.showErrorAlert = true
                 }
                 self.installingTool = nil
                 self.refresh()

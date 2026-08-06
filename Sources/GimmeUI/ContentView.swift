@@ -65,6 +65,11 @@ struct ContentView: View {
             }
         }
         .onAppear { store.initialize() }
+        .alert("Installation Failed", isPresented: $store.showErrorAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(store.lastInstallError ?? "An unknown error occurred.")
+        }
     }
 }
 
