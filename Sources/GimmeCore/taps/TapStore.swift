@@ -93,6 +93,25 @@ public struct TapStore: FormulaProvider {
                   let formula = HomebrewLoader.parse(source) else { continue }
             return formula
         }
+        // Also check Casks/ dir (Homebrew cask format).
+        let caskCandidates = [
+            tapDir.appendingPathComponent("Casks").appendingPathComponent("\(name).rb"),
+        ]
+        for path in caskCandidates {
+            guard FileManager.default.fileExists(atPath: path.path),
+                  let source = try? String(contentsOf: path, encoding: .utf8),
+                  let cask = CaskLoader.parse(source) else { continue }
+            // Convert CaskInfo to a gimme Formula for search/list purposes.
+            return Formula(
+                package: .init(name: cask.name, desc: cask.desc,
+                               homepage: cask.homepage, license: nil),
+                versions: [.init(ver: cask.version, assets: [Asset(
+                    arch: Host.current.arch, os: "macos", url: cask.url, sha256: cask.sha256)])],
+                install: .init(strategy: .lua, script: "__cask__"),
+                provides: .init(),
+                livecheck: .init(strategy: "none")
+            )
+        }
         return nil
     }
 
