@@ -1,5 +1,0 @@
-module GimmeLua {
-    umbrella header "GimmeLua.h"
-    export *
-    module * { export * }
-}
