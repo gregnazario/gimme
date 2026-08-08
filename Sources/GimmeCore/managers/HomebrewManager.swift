@@ -39,6 +39,13 @@ public final class HomebrewManager: PackageManager {
             stream: nil)
     }
 
+    public func version() async -> String? {
+        guard isAvailable() else { return nil }
+        let res = try? await process.run(brewBinary, args: ["--version"], env: nil, stream: nil)
+        guard let res, res.exitCode == 0 else { return nil }
+        return res.stdout.split(separator: "\n").first.map(String.init)
+    }
+
     // MARK: - Search / Info (API-backed)
 
     private struct FormulaAPIDoc: Decodable {

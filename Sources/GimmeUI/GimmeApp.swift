@@ -31,6 +31,7 @@ final class GimmeStore: ObservableObject {
     @Published var loading = false
     @Published var preferences: Preferences = .init()
     @Published var config: Config = .defaults
+    @Published var managerStatuses: [Gimme.ManagerStatus] = []
     @Published var showError = false
     @Published var errorMessage = ""
 
@@ -61,6 +62,26 @@ final class GimmeStore: ObservableObject {
         do {
             installed = try await gimme.list(from: nil, refresh: false)
             outdated = try await gimme.outdated(from: nil, refresh: false)
+        } catch {
+            showError(error)
+        }
+        // Statuses are independent of list/outdated and shouldn't gate the UI.
+        managerStatuses = await gimme.statuses()
+    }
+
+    /// Refresh just the per-manager status (availability + version).
+    func loadStatuses() async {
+        managerStatuses = await gimme.statuses()
+    }
+
+    /// Bootstrap (install) a missing backend manager.
+    func bootstrap(_ id: ManagerID) async {
+        guard let m = gimme.registryLookup(id) else { return }
+        log("bootstrapping \(id.rawValue)…")
+        do {
+            try await Bootstrap.run(m, confirm: { _ in true })
+            log("bootstrapped \(id.rawValue)")
+            await loadStatuses()
         } catch {
             showError(error)
         }

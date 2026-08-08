@@ -34,6 +34,13 @@ public final class BunManager: PackageManager {
             env: nil, stream: nil)
     }
 
+    public func version() async -> String? {
+        guard isAvailable() else { return nil }
+        let res = try? await process.run(bunBinary, args: ["--version"], env: nil, stream: nil)
+        guard let res, res.exitCode == 0 else { return nil }
+        return res.stdout.split(separator: "\n").first.map(String.init)
+    }
+
     private struct NpmSearch: Decodable {
         let objects: [Obj]
         struct Obj: Decodable {

@@ -161,6 +161,7 @@ public protocol PackageManager {
     func outdated() async throws -> [OutdatedPackage]
     func search(_ query: String) async throws -> [SearchHit]
     func info(_ package: PackageRef) async throws -> PackageInfo
+    func version() async -> String?
 }
 
 public extension PackageManager {
@@ -170,4 +171,9 @@ public extension PackageManager {
         if let onProgress { onProgress("installing \(package.name)…") }
         return try await install(package, options: options)
     }
+
+    /// Backend version string (e.g. "Homebrew 6.0.15"), or nil if not installed
+    /// or the version can't be determined. Adapters override; the default
+    /// returns nil so test stubs conform without implementing it.
+    func version() async -> String? { nil }
 }

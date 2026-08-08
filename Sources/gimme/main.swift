@@ -136,9 +136,19 @@ struct GimmeCLI {
             else if let name = p.positional.first { try gimme.forget(name: name); print("forgot \(name)") }
             else { throw GimmeError.usage("usage: gimme forget <name> | --all") }
         case "doctor":
-            let report = gimme.doctor()
-            print("available: \(report.available.map { $0.rawValue }.joined(separator: ", "))")
-            if !report.missing.isEmpty { print("missing: \(report.missing.map { $0.rawValue }.joined(separator: ", "))") }
+            // Verbose form (default): per-manager status with versions.
+            let statuses = await gimme.statuses()
+            if p.json {
+                print((try? JSONEncoder().encode(statuses)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]")
+            } else {
+                for s in statuses {
+                    let state = s.available ? (s.version ?? "installed") : "NOT INSTALLED"
+                    let tag = s.enabled ? "" : " (disabled)"
+                    // Left-pad the id to a fixed width for alignment.
+                    let padded = s.id.rawValue.padding(toLength: 12, withPad: " ", startingAt: 0)
+                    print("  \(padded) \(state)\(tag)")
+                }
+            }
         case "config":
             if p.positional.first == "set", p.positional.count >= 3, p.positional[1] == "priority" {
                 // `gimme config set priority brew,cargo,go,uv,bun`

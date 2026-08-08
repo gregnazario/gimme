@@ -100,6 +100,12 @@ public final class Gimme {
         return try await manager.info(PackageRef(name: name, managerHint: hint))
     }
 
+    /// Look up a registered manager by ID. Used by the GUI for direct actions
+    /// like bootstrapping a missing backend.
+    public func registryLookup(_ id: ManagerID) -> (any PackageManager)? {
+        registry.get(id)
+    }
+
     // list/outdated/search/update/doctor/forget/config added in 7.2–7.4
 }
 
@@ -151,6 +157,50 @@ extension Gimme {
             if m.isAvailable() { avail.append(m.id) } else { miss.append(m.id) }
         }
         return DoctorReport(available: avail, missing: miss)
+    }
+
+    /// Status of one backend manager: availability + version (if installed).
+    public struct ManagerStatus: Identifiable, Equatable, Codable {
+        public let id: ManagerID
+        public let displayName: String
+        public let available: Bool
+        public let version: String?       // nil if not installed
+        public let enabled: Bool          // false if disabled in config
+
+        public init(id: ManagerID, displayName: String, available: Bool, version: String?, enabled: Bool) {
+            self.id = id; self.displayName = displayName
+            self.available = available; self.version = version; self.enabled = enabled
+        }
+    }
+
+    /// Per-manager availability + version, gathered concurrently. Ordered by the
+    /// config priority list first, then any unknown managers. Used by the GUI's
+    /// By Manager view and `gimme doctor -v`.
+    public func statuses() async -> [ManagerStatus] {
+        let all = registry.managers
+        let known = config.priority.compactMap { ManagerID(rawValue: $0) }
+        let ordered = known + all.map(\.id).filter { !known.contains($0) }
+        let unique = Array(NSOrderedSet(array: ordered)) as! [ManagerID]
+        // Fetch version concurrently for installed managers.
+        return await withTaskGroup(of: ManagerStatus.self) { group in
+            for id in unique {
+                guard let m = registry.get(id) else { continue }
+                let available = m.isAvailable()
+                let enabled = !config.disabled.contains(id.rawValue)
+                let displayName = m.displayName
+                if available {
+                    group.addTask { ManagerStatus(id: id, displayName: displayName, available: true, version: await m.version(), enabled: enabled) }
+                } else {
+                    group.addTask { ManagerStatus(id: id, displayName: displayName, available: false, version: nil, enabled: enabled) }
+                }
+            }
+            var out: [ManagerStatus] = []
+            for await s in group { out.append(s) }
+            // Restore priority order (TaskGroup returns unordered).
+            return out.sorted { a, b in
+                (unique.firstIndex(of: a.id) ?? Int.max) < (unique.firstIndex(of: b.id) ?? Int.max)
+            }
+        }
     }
 }
 

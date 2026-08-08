@@ -36,6 +36,13 @@ public final class GoManager: PackageManager {
             env: nil, stream: nil)
     }
 
+    public func version() async -> String? {
+        guard isAvailable() else { return nil }
+        let res = try? await process.run(goBinary, args: ["version"], env: nil, stream: nil)
+        guard let res, res.exitCode == 0 else { return nil }
+        return res.stdout.split(separator: "\n").first.map(String.init)
+    }
+
     /// Existence check via proxy @latest. Used by Resolver; also backs search.
     private func proxyLatest(_ path: String) async -> String? {
         let url = "https://proxy.golang.org/\(path)/@latest"

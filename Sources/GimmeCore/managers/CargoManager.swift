@@ -34,6 +34,13 @@ public final class CargoManager: PackageManager {
             env: nil, stream: nil)
     }
 
+    public func version() async -> String? {
+        guard isAvailable() else { return nil }
+        let res = try? await process.run(cargoBinary, args: ["--version"], env: nil, stream: nil)
+        guard let res, res.exitCode == 0 else { return nil }
+        return res.stdout.split(separator: "\n").first.map(String.init)
+    }
+
     private struct CratesSearch: Decodable {
         let crates: [Crate]
         struct Crate: Decodable { let name: String; let description: String?; let max_version: String?; let homepage: String? }
