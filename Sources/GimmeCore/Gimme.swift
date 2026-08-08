@@ -10,3 +10,17 @@ public final class Gimme {
         // Phase 7 implements install/uninstall/update/list/outdated/search/info/doctor/config/forget + passthrough
     }
 }
+
+extension Gimme {
+    /// Wire the five real adapters with production defaults.
+    public static func defaultRegistry() -> Registry {
+        Registry(managers: [
+            HomebrewManager(),
+            GoManager(),
+            UvManager(),
+            CargoManager(),
+            BunManager()
+        ])
+    }
+}
+
