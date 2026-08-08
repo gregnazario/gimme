@@ -1,0 +1,114 @@
+import Foundation
+
+/// Cargo (Rust) adapter (spec §6.4). crates.io JSON for search/info; cargo CLI.
+public final class CargoManager: PackageManager {
+    public let id: ManagerID = .cargo
+    public let displayName = "Cargo"
+    public let icon = "shippingbox"
+    public let capabilities: Set<Capability> = [.install, .uninstall, .upgrade, .list, .outdated, .search, .info, .bootstrap]
+
+    private let http: HTTPClient
+    private let process: any ProcessRunning
+    private let cargoBinary: String
+
+    public init(http: HTTPClient = URLSessionHTTPClient(),
+                process: any ProcessRunning = ProcessRunner(),
+                cargoBinary: String = "\(FileManager.default.homeDirectoryForCurrentUser.path)/.cargo/bin/cargo") {
+        self.http = http
+        self.process = process
+        self.cargoBinary = cargoBinary
+    }
+
+    public func isAvailable() -> Bool {
+        let proc = Foundation.Process()
+        proc.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+        proc.arguments = ["cargo"]
+        proc.standardOutput = Pipe(); proc.standardError = Pipe()
+        do { try proc.run(); proc.waitUntilExit() } catch { return false }
+        return proc.terminationStatus == 0
+    }
+
+    public func bootstrap() async throws {
+        _ = try await process.run("/bin/bash",
+            args: ["-c", "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"],
+            env: nil, stream: nil)
+    }
+
+    private struct CratesSearch: Decodable {
+        let crates: [Crate]
+        struct Crate: Decodable { let name: String; let description: String?; let max_version: String?; let homepage: String? }
+    }
+    private struct CrateInfo: Decodable {
+        let crate: CratesSearch.Crate
+        struct Version: Decodable { let num: String }
+    }
+
+    public func search(_ query: String) async throws -> [SearchHit] {
+        guard let doc: CratesSearch = try? await http.getJSON("https://crates.io/api/v1/crates?q=\(query)", as: CratesSearch.self) else { return [] }
+        return doc.crates.map { SearchHit(name: $0.name, manager: .cargo, summary: $0.description ?? "", latestVersion: $0.max_version ?? "") }
+    }
+
+    public func info(_ package: PackageRef) async throws -> PackageInfo {
+        guard let doc: CrateInfo = try? await http.getJSON("https://crates.io/api/v1/crates/\(package.name)", as: CrateInfo.self) else {
+            throw GimmeError.notFoundInManagers(name: package.name, searched: [.cargo])
+        }
+        return PackageInfo(name: doc.crate.name, manager: .cargo, latestVersion: doc.crate.max_version ?? "",
+            summary: doc.crate.description ?? "", homepage: doc.crate.homepage, license: nil,
+            installedVersion: nil, location: nil)
+    }
+
+    public func install(_ package: PackageRef, options: InstallOptions) async throws -> InstallResult {
+        var args = ["install"]
+        if let v = options.version { args += ["--version", v] }
+        args.append(package.name)
+        let res = try await process.run(cargoBinary, args: args, env: nil, stream: nil)
+        guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .cargo, op: "install", underlying: res.stderr) }
+        let version = (try? await installedVersion(of: package.name)) ?? "latest"
+        return InstallResult(package: InstalledPackage(name: package.name, version: version, manager: .cargo, installedAt: Date()))
+    }
+
+    public func uninstall(_ package: PackageRef) async throws {
+        let res = try await process.run(cargoBinary, args: ["uninstall", package.name], env: nil, stream: nil)
+        guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .cargo, op: "uninstall", underlying: res.stderr) }
+    }
+
+    public func upgrade(_ package: PackageRef) async throws {
+        // Cargo has no upgrade; reinstall to latest with --force.
+        let res = try await process.run(cargoBinary, args: ["install", package.name, "--force"], env: nil, stream: nil)
+        guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .cargo, op: "upgrade", underlying: res.stderr) }
+    }
+
+    public func listInstalled() async throws -> [InstalledPackage] {
+        let res = try await process.run(cargoBinary, args: ["install", "--list"], env: nil, stream: nil)
+        guard res.exitCode == 0 else { return [] }
+        // Lines: "ripgrep v14.1.0:" then indented binaries.
+        var pkgs: [InstalledPackage] = []
+        for line in res.stdout.split(separator: "\n") {
+            let s = String(line)
+            // Match "name vX.Y.Z:" at column 0.
+            if s.first != " " && s.contains(" v") && s.hasSuffix(":") {
+                let body = String(s.dropLast())  // strip ':'
+                let parts = body.split(separator: " ", maxSplits: 1).map(String.init)
+                if parts.count == 2, parts[1].hasPrefix("v") {
+                    pkgs.append(InstalledPackage(name: parts[0], version: String(parts[1].dropFirst()), manager: .cargo, installedAt: nil))
+                }
+            }
+        }
+        return pkgs
+    }
+
+    public func outdated() async throws -> [OutdatedPackage] {
+        let installed = try await listInstalled()
+        var out: [OutdatedPackage] = []
+        for pkg in installed {
+            guard let doc: CrateInfo = try? await http.getJSON("https://crates.io/api/v1/crates/\(pkg.name)", as: CrateInfo.self),
+                  let latest = doc.crate.max_version else { continue }
+            if pkg.version != latest { out.append(OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .cargo)) }
+        }
+        return out
+    }
+
+    private func installedVersion(of name: String) async throws -> String? {
+        try await listInstalled().first { $0.name == name }?.version
+    }
+}
