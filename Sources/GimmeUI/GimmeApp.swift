@@ -74,7 +74,15 @@ final class GimmeStore: ObservableObject {
     func install(_ hit: SearchHit) async {
         log("installing \(hit.name) via \(hit.manager.rawValue)")
         do {
-            _ = try await gimme.install(name: hit.name, from: hit.manager, options: InstallOptions())
+            _ = try await gimme.install(name: hit.name, from: hit.manager, options: InstallOptions(),
+                                        confirmBootstrap: { id in
+                                            // GUI auto-bootstraps; a future revision could prompt.
+                                            self.log("bootstrapping \(id.rawValue)…")
+                                            return true
+                                        },
+                                        onProgress: { line in
+                                            Task { @MainActor in self.log("\(hit.manager.rawValue): \(line)") }
+                                        })
             log("installed \(hit.name)")
             await loadAll()
         } catch { showError(error) }

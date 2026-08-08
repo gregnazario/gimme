@@ -162,3 +162,12 @@ public protocol PackageManager {
     func search(_ query: String) async throws -> [SearchHit]
     func info(_ package: PackageRef) async throws -> PackageInfo
 }
+
+public extension PackageManager {
+    /// Default streaming install: announce start, then delegate to install().
+    /// Adapters that pipe live subprocess output override this (spec §6.6).
+    func installStreaming(_ package: PackageRef, options: InstallOptions, onProgress: ((String) -> Void)?) async throws -> InstallResult {
+        if let onProgress { onProgress("installing \(package.name)…") }
+        return try await install(package, options: options)
+    }
+}

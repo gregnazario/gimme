@@ -66,12 +66,14 @@ public final class Gimme {
 
     @discardableResult
     public func install(name: String, from hint: ManagerID?, options: InstallOptions,
-                        confirmBootstrap: (ManagerID) -> Bool = { _ in false }) async throws -> InstallResult {
+                        confirmBootstrap: (ManagerID) -> Bool = { _ in false },
+                        onProgress: ((String) -> Void)? = nil) async throws -> InstallResult {
         let manager = try await resolve(name, hint: hint)
         if !manager.isAvailable() {
             try await Bootstrap.run(manager, confirm: confirmBootstrap)
         }
-        let result = try await manager.install(PackageRef(name: name, managerHint: hint), options: options)
+        let result = try await manager.installStreaming(PackageRef(name: name, managerHint: hint),
+                                                        options: options, onProgress: onProgress)
         cache.invalidatePrefix("\(manager.id.rawValue):")
         // Remember only on explicit --from.
         if hint != nil {
