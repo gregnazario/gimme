@@ -10,24 +10,23 @@ public final class GoManager: PackageManager {
 
     private let http: HTTPClient
     private let process: any ProcessRunning
-    private let goBinary: String
+    private let goBinaryOverride: String?   // nil = resolve via `which go`
 
     public init(http: HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
-                goBinary: String = "/usr/local/go/bin/go") {
+                goBinary: String? = nil) {
         self.http = http
         self.process = process
-        self.goBinary = goBinary
+        self.goBinaryOverride = goBinary
+    }
+
+    /// Resolve the real go path (via `which go`), or use the injected override.
+    private var binaryPath: String {
+        goBinaryOverride ?? BinaryResolver.resolve("go", fallback: "/usr/local/go/bin/go") ?? "/usr/local/go/bin/go"
     }
 
     public func isAvailable() -> Bool {
-        let proc = Foundation.Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        proc.arguments = ["go"]
-        proc.standardOutput = Pipe()
-        proc.standardError = Pipe()
-        do { try proc.run(); proc.waitUntilExit() } catch { return false }
-        return proc.terminationStatus == 0
+        BinaryResolver.resolve("go") != nil || goBinaryOverride != nil
     }
 
     public func bootstrap() async throws {
@@ -38,7 +37,7 @@ public final class GoManager: PackageManager {
 
     public func version() async -> String? {
         guard isAvailable() else { return nil }
-        let res = try? await process.run(goBinary, args: ["version"], env: nil, stream: nil)
+        let res = try? await process.run(binaryPath, args: ["version"], env: nil, stream: nil)
         guard let res, res.exitCode == 0 else { return nil }
         return res.stdout.split(separator: "\n").first.map(String.init)
     }
@@ -67,7 +66,7 @@ public final class GoManager: PackageManager {
 
     public func install(_ package: PackageRef, options: InstallOptions) async throws -> InstallResult {
         let target = options.version.map { "\(package.name)@\($0)" } ?? "\(package.name)@latest"
-        let res = try await process.run(goBinary, args: ["install", target], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["install", target], env: nil, stream: nil)
         guard res.exitCode == 0 else {
             throw GimmeError.operationFailed(manager: .go, op: "install", underlying: res.stderr)
         }

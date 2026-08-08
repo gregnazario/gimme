@@ -54,14 +54,17 @@ final class BunManagerTests: XCTestCase {
 
     func testListParsesBunPmLs() async throws {
         let p = StubProcess()
+        // Real `bun pm ls -g` emits tree-drawing characters.
         p.lsOutput = """
-        esbuild@0.21.0
-        typescript@5.4.0
+        ├── esbuild@0.21.0
+        ├── @babel/core@7.0.0
+        └── typescript@5.4.0
         """
         let m = bun(nil, p)
         let pkgs = try await m.listInstalled()
-        XCTAssertEqual(pkgs.count, 2)
-        XCTAssertEqual(pkgs.first?.name, "esbuild")
-        XCTAssertEqual(pkgs.first?.version, "0.21.0")
+        XCTAssertEqual(pkgs.count, 3)
+        XCTAssertTrue(pkgs.contains { $0.name == "esbuild" && $0.version == "0.21.0" })
+        XCTAssertTrue(pkgs.contains { $0.name == "@babel/core" && $0.version == "7.0.0" })
+        XCTAssertTrue(pkgs.contains { $0.name == "typescript" && $0.version == "5.4.0" })
     }
 }

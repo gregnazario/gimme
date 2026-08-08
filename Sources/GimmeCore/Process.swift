@@ -12,6 +12,50 @@ public struct ProcessResult: Equatable {
     }
 }
 
+/// Resolves the on-disk path of an executable by name, via `which`. Caches the
+/// result so repeated calls don't shell out. Adapters use this instead of
+/// hardcoded paths so they work with mise/asdf/volta/rustup home dirs.
+///
+/// Returns nil when the binary isn't on PATH. The `fallback` is used only when
+/// `which` itself is unavailable (extremely unusual), letting callers fall
+/// back to a conventional default.
+public enum BinaryResolver {
+    nonisolated(unsafe) private static var cache: [String: String?] = [:]
+    private static let lock = NSLock()
+
+    /// Resolve `name` to an absolute path, or nil if not found on PATH.
+    public static func resolve(_ name: String, fallback: String? = nil) -> String? {
+        lock.lock()
+        if cache[name] != nil { defer { lock.unlock() }; return cache[name]!! }
+        lock.unlock()
+
+        let proc = Foundation.Process()
+        proc.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+        proc.arguments = [name]
+        let pipe = Pipe()
+        proc.standardOutput = pipe
+        proc.standardError = Pipe()
+        do {
+            try proc.run()
+            proc.waitUntilExit()
+        } catch {
+            let resolved = fallback
+            lock.lock(); cache[name] = resolved; lock.unlock()
+            return resolved
+        }
+        let raw = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let path = raw.split(separator: "\n").first.map { String($0).trimmingCharacters(in: .whitespaces) }
+        let resolved = (path?.isEmpty == false ? path : fallback)
+        lock.lock(); cache[name] = resolved; lock.unlock()
+        return resolved
+    }
+
+    /// Forget cached resolutions (mainly for tests).
+    public static func clearCache() {
+        lock.lock(); cache.removeAll(); lock.unlock()
+    }
+}
+
 /// Indirection so adapters can be tested with a stub instead of a real Process.
 /// Production code injects a `ProcessRunner` value; tests inject a custom conformer.
 public protocol ProcessRunning {

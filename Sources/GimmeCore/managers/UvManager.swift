@@ -9,23 +9,23 @@ public final class UvManager: PackageManager {
 
     private let http: HTTPClient
     private let process: any ProcessRunning
-    private let uvBinary: String
+    private let uvBinaryOverride: String?   // nil = resolve via `which uv`
 
     public init(http: HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
-                uvBinary: String = "/opt/uv/bin/uv") {
+                uvBinary: String? = nil) {
         self.http = http
         self.process = process
-        self.uvBinary = uvBinary
+        self.uvBinaryOverride = uvBinary
+    }
+
+    /// Resolve the real uv path (via `which uv`), or use the injected override.
+    private var binaryPath: String {
+        uvBinaryOverride ?? BinaryResolver.resolve("uv", fallback: "/opt/uv/bin/uv") ?? "/opt/uv/bin/uv"
     }
 
     public func isAvailable() -> Bool {
-        let proc = Foundation.Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        proc.arguments = ["uv"]
-        proc.standardOutput = Pipe(); proc.standardError = Pipe()
-        do { try proc.run(); proc.waitUntilExit() } catch { return false }
-        return proc.terminationStatus == 0
+        BinaryResolver.resolve("uv") != nil || uvBinaryOverride != nil
     }
 
     public func bootstrap() async throws {
@@ -36,7 +36,7 @@ public final class UvManager: PackageManager {
 
     public func version() async -> String? {
         guard isAvailable() else { return nil }
-        let res = try? await process.run(uvBinary, args: ["--version"], env: nil, stream: nil)
+        let res = try? await process.run(binaryPath, args: ["--version"], env: nil, stream: nil)
         guard let res, res.exitCode == 0 else { return nil }
         return res.stdout.split(separator: "\n").first.map(String.init)
     }
@@ -61,23 +61,23 @@ public final class UvManager: PackageManager {
     }
 
     public func install(_ package: PackageRef, options: InstallOptions) async throws -> InstallResult {
-        let res = try await process.run(uvBinary, args: ["tool", "install", package.name], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["tool", "install", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .uv, op: "install", underlying: res.stderr) }
         return InstallResult(package: InstalledPackage(name: package.name, version: "latest", manager: .uv, installedAt: Date()))
     }
 
     public func uninstall(_ package: PackageRef) async throws {
-        let res = try await process.run(uvBinary, args: ["tool", "uninstall", package.name], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["tool", "uninstall", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .uv, op: "uninstall", underlying: res.stderr) }
     }
 
     public func upgrade(_ package: PackageRef) async throws {
-        let res = try await process.run(uvBinary, args: ["tool", "upgrade", package.name], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["tool", "upgrade", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .uv, op: "upgrade", underlying: res.stderr) }
     }
 
     public func listInstalled() async throws -> [InstalledPackage] {
-        let res = try await process.run(uvBinary, args: ["tool", "list"], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["tool", "list"], env: nil, stream: nil)
         guard res.exitCode == 0 else { return [] }
         // Lines like: "httpie (executable: http)"
         return res.stdout.split(separator: "\n").compactMap { line -> InstalledPackage? in

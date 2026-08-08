@@ -36,12 +36,26 @@ struct GimmeCLI {
     }
 
     static func passthroughBinary(for id: ManagerID) -> String {
+        // Resolve the real path via `which`, falling back to a conventional
+        // default. This makes passthrough work with mise/asdf/volta/rustup
+        // home dirs without hardcoded paths.
+        let name: String
+        switch id {
+        case .homebrew: name = "brew"
+        case .go:       name = "go"
+        case .uv:       name = "uv"
+        case .cargo:    name = "cargo"
+        case .bun:      name = "bun"
+        }
+        if let resolved = BinaryResolver.resolve(name) { return resolved }
+        // Fallbacks if `which` somehow fails to find it.
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
         switch id {
         case .homebrew: return "/opt/homebrew/bin/brew"
         case .go:       return "/usr/local/go/bin/go"
         case .uv:       return "/opt/uv/bin/uv"
-        case .cargo:    return "\(FileManager.default.homeDirectoryForCurrentUser.path)/.cargo/bin/cargo"
-        case .bun:      return "\(FileManager.default.homeDirectoryForCurrentUser.path)/.bun/bin/bun"
+        case .cargo:    return "\(home)/.cargo/bin/cargo"
+        case .bun:      return "\(home)/.bun/bin/bun"
         }
     }
 

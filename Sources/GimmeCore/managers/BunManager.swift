@@ -9,23 +9,24 @@ public final class BunManager: PackageManager {
 
     private let http: HTTPClient
     private let process: any ProcessRunning
-    private let bunBinary: String
+    private let bunBinaryOverride: String?   // nil = resolve via `which bun`
 
     public init(http: HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
-                bunBinary: String = "\(FileManager.default.homeDirectoryForCurrentUser.path)/.bun/bin/bun") {
+                bunBinary: String? = nil) {
         self.http = http
         self.process = process
-        self.bunBinary = bunBinary
+        self.bunBinaryOverride = bunBinary
+    }
+
+    /// Resolve the real bun path (via `which bun`), or use the injected override.
+    private var binaryPath: String {
+        let fallback = "\(FileManager.default.homeDirectoryForCurrentUser.path)/.bun/bin/bun"
+        return bunBinaryOverride ?? BinaryResolver.resolve("bun", fallback: fallback) ?? fallback
     }
 
     public func isAvailable() -> Bool {
-        let proc = Foundation.Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        proc.arguments = ["bun"]
-        proc.standardOutput = Pipe(); proc.standardError = Pipe()
-        do { try proc.run(); proc.waitUntilExit() } catch { return false }
-        return proc.terminationStatus == 0
+        BinaryResolver.resolve("bun") != nil || bunBinaryOverride != nil
     }
 
     public func bootstrap() async throws {
@@ -36,7 +37,7 @@ public final class BunManager: PackageManager {
 
     public func version() async -> String? {
         guard isAvailable() else { return nil }
-        let res = try? await process.run(bunBinary, args: ["--version"], env: nil, stream: nil)
+        let res = try? await process.run(binaryPath, args: ["--version"], env: nil, stream: nil)
         guard let res, res.exitCode == 0 else { return nil }
         return res.stdout.split(separator: "\n").first.map(String.init)
     }
@@ -77,30 +78,35 @@ public final class BunManager: PackageManager {
     }
 
     public func install(_ package: PackageRef, options: InstallOptions) async throws -> InstallResult {
-        let res = try await process.run(bunBinary, args: ["install", "-g", package.name], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["install", "-g", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .bun, op: "install", underlying: res.stderr) }
         return InstallResult(package: InstalledPackage(name: package.name, version: "latest", manager: .bun, installedAt: Date()))
     }
 
     public func uninstall(_ package: PackageRef) async throws {
-        let res = try await process.run(bunBinary, args: ["remove", "-g", package.name], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["remove", "-g", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .bun, op: "uninstall", underlying: res.stderr) }
     }
 
     public func upgrade(_ package: PackageRef) async throws {
         // npm semantics: reinstall to latest.
-        let res = try await process.run(bunBinary, args: ["install", "-g", package.name], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["install", "-g", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .bun, op: "upgrade", underlying: res.stderr) }
     }
 
     public func listInstalled() async throws -> [InstalledPackage] {
-        let res = try await process.run(bunBinary, args: ["pm", "ls", "-g"], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["pm", "ls", "-g"], env: nil, stream: nil)
         guard res.exitCode == 0 else { return [] }
-        // Lines like: "esbuild@0.21.0" (and scoped "@babel/core@7.0.0").
-        // The name/version separator is the last '@' that isn't at index 0
-        // (so scoped names starting with '@' are handled correctly).
+        // `bun pm ls -g` emits a tree with drawing characters:
+        //   "├── esbuild@0.21.0"
+        //   "└── @babel/core@7.0.0"
+        // Strip the leading tree-drawing chars + whitespace, then split on the
+        // last '@' that isn't at index 0 (so scoped names like @babel/core work).
         return res.stdout.split(separator: "\n").compactMap { line -> InstalledPackage? in
-            let s = String(line).trimmingCharacters(in: .whitespaces)
+            let raw = String(line)
+            // Find where the package name starts: first '@' or alnum char.
+            guard let nameStart = raw.firstIndex(where: { $0 == "@" || $0.isLetter || $0.isNumber }) else { return nil }
+            let s = String(raw[nameStart...])
             guard let at = s.lastIndex(of: "@"), at != s.startIndex else { return nil }
             let name = String(s[..<at])
             let version = String(s[s.index(after: at)...]).trimmingCharacters(in: .whitespaces)

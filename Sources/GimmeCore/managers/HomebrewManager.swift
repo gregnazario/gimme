@@ -10,25 +10,23 @@ public final class HomebrewManager: PackageManager {
 
     private let http: HTTPClient
     private let process: any ProcessRunning
-    private let brewBinary: String
+    private let brewBinaryOverride: String?   // nil = resolve via `which brew`
 
     public init(http: HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
-                brewBinary: String = "/opt/homebrew/bin/brew") {
+                brewBinary: String? = nil) {
         self.http = http
         self.process = process
-        self.brewBinary = brewBinary
+        self.brewBinaryOverride = brewBinary
+    }
+
+    /// Resolve the real brew path (via `which brew`), or use the injected override.
+    private var binaryPath: String {
+        brewBinaryOverride ?? BinaryResolver.resolve("brew", fallback: "/opt/homebrew/bin/brew") ?? "/opt/homebrew/bin/brew"
     }
 
     public func isAvailable() -> Bool {
-        // Synchronous: `which brew`. Blocking but cheap.
-        let proc = Foundation.Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        proc.arguments = ["brew"]
-        proc.standardOutput = Pipe()
-        proc.standardError = Pipe()
-        do { try proc.run(); proc.waitUntilExit() } catch { return false }
-        return proc.terminationStatus == 0
+        BinaryResolver.resolve("brew") != nil || brewBinaryOverride != nil
     }
 
     public func bootstrap() async throws {
@@ -41,7 +39,7 @@ public final class HomebrewManager: PackageManager {
 
     public func version() async -> String? {
         guard isAvailable() else { return nil }
-        let res = try? await process.run(brewBinary, args: ["--version"], env: nil, stream: nil)
+        let res = try? await process.run(binaryPath, args: ["--version"], env: nil, stream: nil)
         guard let res, res.exitCode == 0 else { return nil }
         return res.stdout.split(separator: "\n").first.map(String.init)
     }
@@ -64,7 +62,7 @@ public final class HomebrewManager: PackageManager {
 
     public func info(_ package: PackageRef) async throws -> PackageInfo {
         // Prefer the local brew info --json=v2 for installed-version accuracy.
-        let res = try await process.run(brewBinary, args: ["info", "--json=v2", package.name], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["info", "--json=v2", package.name], env: nil, stream: nil)
         if res.exitCode == 0, let data = res.stdout.data(using: .utf8) {
             struct Wrapper: Decodable { let formulae: [BrewInfo] }
             struct BrewInfo: Decodable {
@@ -89,7 +87,7 @@ public final class HomebrewManager: PackageManager {
     // MARK: - Actions (CLI-backed)
 
     public func install(_ package: PackageRef, options: InstallOptions) async throws -> InstallResult {
-        let res = try await process.run(brewBinary, args: ["install", package.name], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["install", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else {
             throw GimmeError.operationFailed(manager: .homebrew, op: "install", underlying: res.stderr)
         }
@@ -98,14 +96,14 @@ public final class HomebrewManager: PackageManager {
     }
 
     public func uninstall(_ package: PackageRef) async throws {
-        let res = try await process.run(brewBinary, args: ["uninstall", package.name], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["uninstall", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else {
             throw GimmeError.operationFailed(manager: .homebrew, op: "uninstall", underlying: res.stderr)
         }
     }
 
     public func upgrade(_ package: PackageRef) async throws {
-        let res = try await process.run(brewBinary, args: ["upgrade", package.name], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["upgrade", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else {
             throw GimmeError.operationFailed(manager: .homebrew, op: "upgrade", underlying: res.stderr)
         }
@@ -115,7 +113,7 @@ public final class HomebrewManager: PackageManager {
         // `brew list --json --versions` returns:
         // {"formulae":[{"name","versions":["x"],...}], "casks":[{"token","versions":["x"],...}]}
         // Note: formulae use "name", casks use "token" for the identifier.
-        let res = try await process.run(brewBinary, args: ["list", "--json", "--versions"], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["list", "--json", "--versions"], env: nil, stream: nil)
         guard res.exitCode == 0, let data = res.stdout.data(using: .utf8) else { return [] }
         struct Wrapper: Decodable {
             let formulae: [Formula]; let casks: [Cask]
@@ -135,7 +133,7 @@ public final class HomebrewManager: PackageManager {
     }
 
     public func outdated() async throws -> [OutdatedPackage] {
-        let res = try await process.run(brewBinary, args: ["outdated", "--json=v2"], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["outdated", "--json=v2"], env: nil, stream: nil)
         guard res.exitCode == 0, let data = res.stdout.data(using: .utf8) else { return [] }
         struct Wrapper: Decodable {
             let formulae: [Item]; let casks: [Item]

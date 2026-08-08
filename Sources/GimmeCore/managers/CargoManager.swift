@@ -9,23 +9,24 @@ public final class CargoManager: PackageManager {
 
     private let http: HTTPClient
     private let process: any ProcessRunning
-    private let cargoBinary: String
+    private let cargoBinaryOverride: String?   // nil = resolve via `which cargo`
 
     public init(http: HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
-                cargoBinary: String = "\(FileManager.default.homeDirectoryForCurrentUser.path)/.cargo/bin/cargo") {
+                cargoBinary: String? = nil) {
         self.http = http
         self.process = process
-        self.cargoBinary = cargoBinary
+        self.cargoBinaryOverride = cargoBinary
+    }
+
+    /// Resolve the real cargo path (via `which cargo`), or use the injected override.
+    private var binaryPath: String {
+        let fallback = "\(FileManager.default.homeDirectoryForCurrentUser.path)/.cargo/bin/cargo"
+        return cargoBinaryOverride ?? BinaryResolver.resolve("cargo", fallback: fallback) ?? fallback
     }
 
     public func isAvailable() -> Bool {
-        let proc = Foundation.Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        proc.arguments = ["cargo"]
-        proc.standardOutput = Pipe(); proc.standardError = Pipe()
-        do { try proc.run(); proc.waitUntilExit() } catch { return false }
-        return proc.terminationStatus == 0
+        BinaryResolver.resolve("cargo") != nil || cargoBinaryOverride != nil
     }
 
     public func bootstrap() async throws {
@@ -36,7 +37,7 @@ public final class CargoManager: PackageManager {
 
     public func version() async -> String? {
         guard isAvailable() else { return nil }
-        let res = try? await process.run(cargoBinary, args: ["--version"], env: nil, stream: nil)
+        let res = try? await process.run(binaryPath, args: ["--version"], env: nil, stream: nil)
         guard let res, res.exitCode == 0 else { return nil }
         return res.stdout.split(separator: "\n").first.map(String.init)
     }
@@ -68,25 +69,25 @@ public final class CargoManager: PackageManager {
         var args = ["install"]
         if let v = options.version { args += ["--version", v] }
         args.append(package.name)
-        let res = try await process.run(cargoBinary, args: args, env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: args, env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .cargo, op: "install", underlying: res.stderr) }
         let version = (try? await installedVersion(of: package.name)) ?? "latest"
         return InstallResult(package: InstalledPackage(name: package.name, version: version, manager: .cargo, installedAt: Date()))
     }
 
     public func uninstall(_ package: PackageRef) async throws {
-        let res = try await process.run(cargoBinary, args: ["uninstall", package.name], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["uninstall", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .cargo, op: "uninstall", underlying: res.stderr) }
     }
 
     public func upgrade(_ package: PackageRef) async throws {
         // Cargo has no upgrade; reinstall to latest with --force.
-        let res = try await process.run(cargoBinary, args: ["install", package.name, "--force"], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["install", package.name, "--force"], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .cargo, op: "upgrade", underlying: res.stderr) }
     }
 
     public func listInstalled() async throws -> [InstalledPackage] {
-        let res = try await process.run(cargoBinary, args: ["install", "--list"], env: nil, stream: nil)
+        let res = try await process.run(binaryPath, args: ["install", "--list"], env: nil, stream: nil)
         guard res.exitCode == 0 else { return [] }
         // Lines: "ripgrep v14.1.0:" then indented binaries.
         var pkgs: [InstalledPackage] = []
