@@ -105,23 +105,24 @@ public final class HomebrewManager: PackageManager {
     }
 
     public func listInstalled() async throws -> [InstalledPackage] {
-        let res = try await process.run(brewBinary, args: ["list", "--json=v2"], env: nil, stream: nil)
+        // `brew list --json --versions` returns:
+        // {"formulae":[{"name","versions":["x"],...}], "casks":[{"token","versions":["x"],...}]}
+        // Note: formulae use "name", casks use "token" for the identifier.
+        let res = try await process.run(brewBinary, args: ["list", "--json", "--versions"], env: nil, stream: nil)
         guard res.exitCode == 0, let data = res.stdout.data(using: .utf8) else { return [] }
         struct Wrapper: Decodable {
-            let formulae: [Item]; let casks: [Item]
-            struct Item: Decodable {
-                let name: String; let installed: [Inst]?
-                struct Inst: Decodable { let version: String }
-            }
+            let formulae: [Formula]; let casks: [Cask]
+            struct Formula: Decodable { let name: String; let versions: [String]? }
+            struct Cask: Decodable { let token: String; let versions: [String]? }
         }
         guard let w = try? JSONDecoder().decode(Wrapper.self, from: data) else { return [] }
         let formulas = w.formulae.compactMap { f -> InstalledPackage? in
-            guard let v = f.installed?.first?.version else { return nil }
+            guard let v = f.versions?.first else { return nil }
             return InstalledPackage(name: f.name, version: v, manager: .homebrew, installedAt: nil)
         }
         let casks = w.casks.compactMap { c -> InstalledPackage? in
-            guard let v = c.installed?.first?.version else { return nil }
-            return InstalledPackage(name: c.name, version: v, manager: .homebrew, installedAt: nil)
+            guard let v = c.versions?.first else { return nil }
+            return InstalledPackage(name: c.token, version: v, manager: .homebrew, installedAt: nil)
         }
         return formulas + casks
     }

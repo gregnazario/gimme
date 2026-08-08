@@ -67,16 +67,18 @@ final class HomebrewManagerTests: XCTestCase {
 
     func testListParsesBrewListJSON() async throws {
         let p = StubProcess()
+        // Real shape from `brew list --json --versions`: formulae use "name",
+        // casks use "token" for the identifier.
         p.stubs["list"] = ProcessResult(exitCode: 0, stdout: #"""
-        {"formulae":[{"name":"ripgrep","installed":[{"version":"14.1.0"}]}],
-         "casks":[]}
+        {"formulae":[{"name":"ripgrep","versions":["14.1.0"],"linked_version":"14.1.0"}],
+         "casks":[{"token":"firefox","versions":["125.0"]}]}
         """#, stderr: "")
         let m = brewManager(process: p)
         let pkgs = try await m.listInstalled()
-        XCTAssertEqual(pkgs.count, 1)
-        XCTAssertEqual(pkgs.first?.name, "ripgrep")
-        XCTAssertEqual(pkgs.first?.version, "14.1.0")
-        XCTAssertEqual(pkgs.first?.manager, .homebrew)
+        XCTAssertEqual(pkgs.count, 2)
+        XCTAssertTrue(pkgs.contains { $0.name == "ripgrep" && $0.version == "14.1.0" })
+        XCTAssertTrue(pkgs.contains { $0.name == "firefox" && $0.version == "125.0" })
+        XCTAssertTrue(pkgs.allSatisfy { $0.manager == .homebrew })
     }
 
     func testOutdatedParsesBrewOutdatedJSON() async throws {

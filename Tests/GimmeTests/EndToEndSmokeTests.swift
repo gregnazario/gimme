@@ -22,7 +22,7 @@ final class EndToEndSmokeTests: XCTestCase {
                         return ProcessResult(exitCode: 0, stdout: "", stderr: "")
                     }
                     if args.first == "list" {
-                        let items = installed.map { #"{"name":"\#($0.key)","installed":[{"version":"\#($0.value)"}]}"# }.joined(separator: ",")
+                        let items = installed.map { #"{"name":"\#($0.key)","versions":["\#($0.value)"]}"# }.joined(separator: ",")
                         return ProcessResult(exitCode: 0, stdout: "{\"formulae\":[\(items)],\"casks\":[]}", stderr: "")
                     }
                 }

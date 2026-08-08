@@ -165,9 +165,11 @@ extension Gimme {
             if !refresh, let cached = cache.get(key, ttlSeconds: config.listCacheTTLSeconds, as: [InstalledPackage].self) {
                 all.append(contentsOf: cached); continue
             }
-            let pkgs = (try? await m.listInstalled()) ?? []
-            cache.set(key, value: pkgs)
-            all.append(contentsOf: pkgs)
+            // Cache only on success; a thrown result is never cached as empty.
+            if let pkgs = try? await m.listInstalled() {
+                cache.set(key, value: pkgs)
+                all.append(contentsOf: pkgs)
+            }
         }
         return all
     }
@@ -182,9 +184,10 @@ extension Gimme {
             if !refresh, let cached = cache.get(key, ttlSeconds: config.listCacheTTLSeconds, as: [OutdatedPackage].self) {
                 all.append(contentsOf: cached); continue
             }
-            let pkgs = (try? await m.outdated()) ?? []
-            cache.set(key, value: pkgs)
-            all.append(contentsOf: pkgs)
+            if let pkgs = try? await m.outdated() {
+                cache.set(key, value: pkgs)
+                all.append(contentsOf: pkgs)
+            }
         }
         return all
     }
@@ -210,9 +213,10 @@ extension Gimme {
             if !refresh, let cached = cache.get(key, ttlSeconds: config.infoCacheTTLSeconds, as: [SearchHit].self) {
                 hits.append(contentsOf: cached); continue
             }
-            let h = (try? await m.search(query)) ?? []
-            cache.set(key, value: h)
-            hits.append(contentsOf: h)
+            if let h = try? await m.search(query) {
+                cache.set(key, value: h)
+                hits.append(contentsOf: h)
+            }
         }
         return hits
     }
