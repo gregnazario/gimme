@@ -29,3 +29,27 @@ final class PackageRefTests: XCTestCase {
         XCTAssertEqual(Capability.bootstrap.rawValue, "bootstrap")
     }
 }
+
+final class ResultStructTests: XCTestCase {
+    func testInstalledPackageNamespacedID() {
+        let p = InstalledPackage(name: "ripgrep", version: "14.1.0", manager: .homebrew, installedAt: nil)
+        XCTAssertEqual(p.id, "homebrew:ripgrep")
+    }
+
+    func testOutdatedPackageNamespacedID() {
+        let p = OutdatedPackage(name: "rg", installedVersion: "13.0.0", latestVersion: "14.1.0", manager: .cargo)
+        XCTAssertEqual(p.id, "cargo:rg")
+    }
+
+    func testSearchHitNamespacedID() {
+        let h = SearchHit(name: "esbuild", manager: .bun, summary: "bun", latestVersion: "1.0.0")
+        XCTAssertEqual(h.id, "bun:esbuild")
+    }
+
+    func testInstalledPackageCodableRoundTrip() throws {
+        let p = InstalledPackage(name: "rg", version: "1.0", manager: .go, installedAt: Date(timeIntervalSince1970: 1000))
+        let data = try JSONEncoder().encode(p)
+        let back = try JSONDecoder().decode(InstalledPackage.self, from: data)
+        XCTAssertEqual(back, p)
+    }
+}

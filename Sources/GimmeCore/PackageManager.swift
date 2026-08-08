@@ -46,3 +46,79 @@ public struct PackageRef: Hashable, Codable {
         self.managerHint = managerHint
     }
 }
+
+/// A package installed on the system. ID is manager-namespaced so the same
+/// name on two managers never collides in a unified list.
+public struct InstalledPackage: Identifiable, Hashable, Codable {
+    public let name: String
+    public let version: String
+    public let manager: ManagerID
+    public let installedAt: Date?
+
+    public init(name: String, version: String, manager: ManagerID, installedAt: Date?) {
+        self.name = name
+        self.version = version
+        self.manager = manager
+        self.installedAt = installedAt
+    }
+
+    public var id: String { "\(manager.rawValue):\(name)" }
+}
+
+/// A package with a newer version available.
+public struct OutdatedPackage: Identifiable, Hashable, Codable {
+    public let name: String
+    public let installedVersion: String
+    public let latestVersion: String
+    public let manager: ManagerID
+
+    public init(name: String, installedVersion: String, latestVersion: String, manager: ManagerID) {
+        self.name = name
+        self.installedVersion = installedVersion
+        self.latestVersion = latestVersion
+        self.manager = manager
+    }
+
+    public var id: String { "\(manager.rawValue):\(name)" }
+}
+
+/// A single search result.
+public struct SearchHit: Identifiable, Hashable, Codable {
+    public let name: String
+    public let manager: ManagerID
+    public let summary: String
+    public let latestVersion: String
+
+    public init(name: String, manager: ManagerID, summary: String, latestVersion: String) {
+        self.name = name
+        self.manager = manager
+        self.summary = summary
+        self.latestVersion = latestVersion
+    }
+
+    public var id: String { "\(manager.rawValue):\(name)" }
+}
+
+/// Full info about a package (installed or not).
+public struct PackageInfo: Hashable, Codable {
+    public let name: String
+    public let manager: ManagerID
+    public let latestVersion: String
+    public let summary: String
+    public let homepage: String?
+    public let license: String?
+    public let installedVersion: String?
+    public let location: String?
+
+    public init(name: String, manager: ManagerID, latestVersion: String, summary: String,
+                homepage: String?, license: String?, installedVersion: String?, location: String?) {
+        self.name = name
+        self.manager = manager
+        self.latestVersion = latestVersion
+        self.summary = summary
+        self.homepage = homepage
+        self.license = license
+        self.installedVersion = installedVersion
+        self.location = location
+    }
+}
