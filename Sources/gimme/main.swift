@@ -93,7 +93,12 @@ struct GimmeCLI {
         switch p.verb {
         case "install":
             guard let name = p.positional.first else { throw GimmeError.usage("usage: gimme install <name> [--from <m>]") }
-            let result = try await gimme.install(name: name, from: p.from, options: InstallOptions(version: p.version, yes: p.yes))
+            let result = try await gimme.install(name: name, from: p.from, options: InstallOptions(version: p.version, yes: p.yes)) { id in
+                // Non-interactive (-y) auto-accepts; otherwise prompt on stderr.
+                if p.yes { return true }
+                print("\(id.rawValue) is not installed. Install it? [y/N] ", terminator: "")
+                return readLine()?.lowercased().hasPrefix("y") ?? false
+            }
             if p.json { print((try? JSONEncoder().encode(result)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}") }
             else { print("installed \(result.package.id)") }
         case "uninstall":

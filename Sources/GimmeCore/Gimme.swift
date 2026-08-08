@@ -29,17 +29,48 @@ public final class Gimme {
         switch await resolver.resolve(name, hint: hint) {
         case .chosen(let m): return m
         case .notFound(let searched):
+            // The available managers didn't have it. As a last resort, check
+            // unavailable (uninstalled) managers — if one has the package, we
+            // can still return it and let the caller trigger bootstrap.
+            if let m = await findAmongUnavailable(name, excluding: Set(searched)) {
+                return m
+            }
             throw GimmeError.notFoundInManagers(name: name, searched: searched)
         case .hintNotFound(let id, let n):
             throw GimmeError.notFound("\(id.rawValue) has no package '\(n)'")
         case .hintUnavailable(let id):
+            // --from X where X is installed-but-unavailable: return it so
+            // bootstrap can run (caller knows it may be unavailable).
+            if let m = registry.get(id) { return m }
             throw GimmeError.managerUnavailable(id)
         }
     }
 
+    /// Among managers in the registry that are NOT available, find the
+    /// highest-priority one (per config) whose search includes `name`. Used so
+    /// `install` can bootstrap a missing backend that has the package.
+    private func findAmongUnavailable(_ name: String, excluding: Set<ManagerID>) async -> (any PackageManager)? {
+        let candidates = registry.managers
+            .filter { !$0.isAvailable() && !excluding.contains($0.id) && !config.disabled.contains($0.id.rawValue) }
+        let ordered = config.priority.compactMap { idStr -> (any PackageManager)? in
+            guard let id = ManagerID(rawValue: idStr) else { return nil }
+            return candidates.first { $0.id == id }
+        }
+        for m in ordered {
+            if let hits = try? await m.search(name), hits.contains(where: { $0.name == name }) {
+                return m
+            }
+        }
+        return nil
+    }
+
     @discardableResult
-    public func install(name: String, from hint: ManagerID?, options: InstallOptions) async throws -> InstallResult {
+    public func install(name: String, from hint: ManagerID?, options: InstallOptions,
+                        confirmBootstrap: (ManagerID) -> Bool = { _ in false }) async throws -> InstallResult {
         let manager = try await resolve(name, hint: hint)
+        if !manager.isAvailable() {
+            try await Bootstrap.run(manager, confirm: confirmBootstrap)
+        }
         let result = try await manager.install(PackageRef(name: name, managerHint: hint), options: options)
         cache.invalidatePrefix("\(manager.id.rawValue):")
         // Remember only on explicit --from.
