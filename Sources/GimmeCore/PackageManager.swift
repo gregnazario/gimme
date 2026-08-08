@@ -122,3 +122,43 @@ public struct PackageInfo: Hashable, Codable {
         self.location = location
     }
 }
+
+/// Options passed to install().
+public struct InstallOptions: Hashable, Codable {
+    public let version: String?   // pin to a version if the manager supports it
+    public let yes: Bool          // non-interactive: skip prompts
+    public init(version: String? = nil, yes: Bool = false) {
+        self.version = version
+        self.yes = yes
+    }
+}
+
+/// Result of an install.
+public struct InstallResult: Hashable, Codable {
+    public let package: InstalledPackage
+    public let warnings: [String]  // e.g. "library package — no CLI entry"
+    public init(package: InstalledPackage, warnings: [String] = []) {
+        self.package = package
+        self.warnings = warnings
+    }
+}
+
+/// The single seam every backend conforms to. The engine and UI talk only
+/// through this interface (spec §4).
+public protocol PackageManager {
+    var id: ManagerID { get }
+    var displayName: String { get }
+    var icon: String { get }
+    var capabilities: Set<Capability> { get }
+
+    func isAvailable() -> Bool
+    func bootstrap() async throws
+
+    func install(_ package: PackageRef, options: InstallOptions) async throws -> InstallResult
+    func uninstall(_ package: PackageRef) async throws
+    func upgrade(_ package: PackageRef) async throws
+    func listInstalled() async throws -> [InstalledPackage]
+    func outdated() async throws -> [OutdatedPackage]
+    func search(_ query: String) async throws -> [SearchHit]
+    func info(_ package: PackageRef) async throws -> PackageInfo
+}

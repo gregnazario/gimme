@@ -53,3 +53,40 @@ final class ResultStructTests: XCTestCase {
         XCTAssertEqual(back, p)
     }
 }
+
+final class PackageManagerProtocolTests: XCTestCase {
+    /// A minimal in-memory conformer used only to prove the protocol compiles
+    /// and the contract is internally consistent.
+    struct FakeManager: PackageManager {
+        let id: ManagerID = .homebrew
+        let displayName = "Fake"
+        let icon = "circle"
+        let capabilities: Set<Capability> = [.install, .uninstall, .list, .info, .bootstrap]
+        func isAvailable() -> Bool { true }
+        func bootstrap() async throws {}
+        func install(_ package: PackageRef, options: InstallOptions) async throws -> InstallResult {
+            InstallResult(package: InstalledPackage(name: package.name, version: "1.0", manager: id, installedAt: Date()), warnings: [])
+        }
+        func uninstall(_ package: PackageRef) async throws {}
+        func upgrade(_ package: PackageRef) async throws {}
+        func listInstalled() async throws -> [InstalledPackage] { [] }
+        func outdated() async throws -> [OutdatedPackage] { [] }
+        func search(_ query: String) async throws -> [SearchHit] { [] }
+        func info(_ package: PackageRef) async throws -> PackageInfo {
+            PackageInfo(name: package.name, manager: id, latestVersion: "1.0", summary: "", homepage: nil, license: nil, installedVersion: nil, location: nil)
+        }
+    }
+
+    func testFakeManagerConformsAndRuns() async throws {
+        let m = FakeManager()
+        let result = try await m.install(PackageRef(name: "rg"), options: InstallOptions())
+        XCTAssertEqual(result.package.manager, .homebrew)
+        XCTAssertTrue(m.capabilities.contains(.install))
+    }
+
+    func testInstallOptionsDefaults() {
+        let o = InstallOptions()
+        XCTAssertNil(o.version)
+        XCTAssertFalse(o.yes)
+    }
+}
