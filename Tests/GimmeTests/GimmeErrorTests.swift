@@ -51,4 +51,22 @@ final class GimmeErrorTests: XCTestCase {
         XCTAssertEqual(GimmeError.usage("bad args").message, "bad args")
         XCTAssertEqual(GimmeError.network("down").message, "down")
     }
+
+    func testManagerUnavailable() {
+        let e = GimmeError.managerUnavailable(.cargo)
+        XCTAssertEqual(e.message, "cargo is not installed")
+        XCTAssertEqual(e.category, .USAGE)
+    }
+
+    func testNotFoundInManagersCarriesContext() {
+        let e = GimmeError.notFoundInManagers(name: "ripgrep", searched: [.homebrew, .cargo, .go])
+        XCTAssertEqual(e.message, "no manager has 'ripgrep'; searched: homebrew, cargo, go")
+        XCTAssertEqual(e.category, .NOT_FOUND)
+    }
+
+    func testBootstrapFailed() {
+        let e = GimmeError.bootstrapFailed(.bun, underlying: "exit code 1")
+        XCTAssertEqual(e.category, .INSTALL)
+        XCTAssertTrue(e.message.contains("bun"))
+    }
 }

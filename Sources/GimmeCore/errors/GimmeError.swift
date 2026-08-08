@@ -38,18 +38,23 @@ public enum GimmeError: Error, Equatable {
     case conflict(String)
     case lock(String)
     case unknown(String)
+    // v2 orchestration cases.
+    case managerUnavailable(ManagerID)
+    case notFoundInManagers(name: String, searched: [ManagerID])
+    case bootstrapFailed(ManagerID, underlying: String)
+    case operationFailed(manager: ManagerID, op: String, underlying: String)
 
     public var category: ErrorCategory {
         switch self {
-        case .usage:            return .USAGE
-        case .notFound:         return .NOT_FOUND
-        case .install:          return .INSTALL
-        case .network:          return .NETWORK
-        case .checksumMismatch: return .CHECKSUM
-        case .permission:       return .PERMISSION
-        case .conflict:         return .CONFLICT
-        case .lock:             return .LOCK
-        case .unknown:          return .UNKNOWN
+        case .usage, .managerUnavailable:                  return .USAGE
+        case .notFound, .notFoundInManagers:               return .NOT_FOUND
+        case .install, .bootstrapFailed, .operationFailed: return .INSTALL
+        case .network:                                     return .NETWORK
+        case .checksumMismatch:                            return .CHECKSUM
+        case .permission:                                  return .PERMISSION
+        case .conflict:                                    return .CONFLICT
+        case .lock:                                        return .LOCK
+        case .unknown:                                     return .UNKNOWN
         }
     }
 
@@ -60,6 +65,15 @@ public enum GimmeError: Error, Equatable {
             return s
         case .checksumMismatch(let e, let a):
             return "checksum mismatch: expected \(e), got \(a)"
+        case .managerUnavailable(let m):
+            return "\(m.rawValue) is not installed"
+        case .notFoundInManagers(let name, let searched):
+            let list = searched.map { $0.rawValue }.joined(separator: ", ")
+            return "no manager has '\(name)'; searched: \(list)"
+        case .bootstrapFailed(let m, let underlying):
+            return "failed to bootstrap \(m.rawValue): \(underlying)"
+        case .operationFailed(let m, let op, let underlying):
+            return "\(m.rawValue) \(op) failed: \(underlying)"
         }
     }
 
