@@ -1,201 +1,118 @@
-# gimme
+# gimmie
 
-A Swift-based package manager for macOS, supporting download-based (and
-planned source-based) installation. Tools are described by **formulae** that
-combine a typed TOML manifest with sandboxed Lua logic. `gimme` has a CLI
-designed for both humans and AI agents, with a planned native GUI.
+An all-in-one package management layer for macOS. gimmie is a **pure
+orchestration** tool: it doesn't download, build, or shelve anything itself —
+it drives real package managers (Homebrew, Go, uv, Cargo, bun) through one
+unified interface, so you can address packages by name across all of them
+without remembering which tool owns what.
 
-```bash
-gimme git          # install git if missing, update if stale, no-op if current
-gimme rustup       # same signature shortcut
-gimme list         # show installed tools
-```
-
-## Status
-
-This is the **foundation** plus **mise/asdf interop**: the core engine, the
-manifest + Lua sandbox formula system, version resolution, atomic installs, a
-CLI with a first-class AI-agent contract, reading of `.tool-versions`/`mise.toml`
-project config with coexistence (skips tools mise/asdf already manage), and
-≥90% test coverage on the core library. Follow-on work (source builds,
-Homebrew compatibility, native GUI app, MCP server) builds on the abstractions
-defined here.
-
-## Mise/asdf interop
-
-`gimme install` (no args) auto-detects `.tool-versions` or `mise.toml` in the
-current directory (or a parent up to the `.git` root) and installs the tools it
-declares via gimme formulae. Tools already managed by mise/asdf are skipped
-(never clobbered). Unsupported specs (`ref:`, `path:`, `sub-`) are reported as
-skipped.
+Native Swift, with both a CLI (`gimme`) and a SwiftUI macOS app, sharing one
+engine.
 
 ```bash
-cd ~/my-project        # has a .tool-versions or mise.toml
-gimme install          # auto-detects + installs the batch
-gimme install --no-mise   # opt out of auto-detection
-gimme install --from-mise # force reading config even with a positional arg
-gimme install --dry-run --json   # plan the batch (agent-friendly)
+gimme install ripgrep        # resolves to the right manager automatically
+gimme install --from cargo ripgrep   # force a backend; remembered next time
+gimme list                   # everything installed, across every manager
+gimme outdated               # what can be upgraded, across every manager
+gimme update                 # upgrade all outdated packages
+gimme brew services start postgres   # passthrough to the real tool
 ```
 
-Per-tool outcomes are reported in a structured batch JSON (`cmd:
-"install-from-mise"`, `tools[]`, `summary{installed,skipped,failed}`). See
-`docs/superpowers/specs/2026-08-03-mise-interop-design.md`.
+## Supported managers (v1)
 
-## Building
+| Manager | Backend | Notes |
+|---|---|---|
+| **Homebrew** | `brew` | formulae + casks (casks are first-class packages) |
+| **Go** | `go install` | import-path packages; existence via the Go module proxy |
+| **Python (uv)** | `uv tool` | per-tool isolated venvs (pipx-style), no dependency conflicts |
+| **Cargo** | `cargo install` | crates.io for search/info |
+| **npm (via bun)** | `bun install -g` | npm registry; adapter named `bun` |
 
-Requirements: Swift 6+, macOS 13+.
+Nix is designed for but deferred to v2. Missing a backend? gimmie offers to
+install it for you (`auto-bootstrap`).
 
-**Install (one line):**
+## How it resolves packages
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/gregnazario/gimme/main/install.sh | sh
+When you run `gimme install <name>`, gimmie decides which manager to use:
+
+1. **`--from <manager>`** wins outright. On success, that choice is *remembered*
+   for the package, so `gimme install ripgrep` later goes to the same place.
+2. Otherwise a **remembered preference** is used (if that backend is still
+   installed).
+3. Otherwise the **priority list** (default `homebrew, go, uv, cargo, bun`):
+   gimmie checks which managers have the package (concurrently) and picks the
+   highest-priority one.
+
+Use `gimme forget <name>` (or `--all`) to clear remembered preferences.
+
+## CLI reference
+
+```
+gimme install <name> [--from <manager>] [--version <v>]
+gimme uninstall <name>
+gimme upgrade <name>
+gimme update                       upgrade all outdated, across every manager
+gimme list [--from <manager>]      all installed (default); --from filters to one
+gimme outdated [--from <manager>]
+gimme search <query> [--all]       default-priority manager; --all fans out
+gimme info <name>
+gimme forget <name> | --all
+gimme doctor                       which managers are installed / on PATH
+gimme config [set priority <a,b,c>]
 ```
 
-The installer clones, builds a release binary, and installs to `~/.local/bin`
-plus the man page and tldr page. Override the target with
-`GIMME_INSTALL_DIR=/opt/bin`, or run `sh install.sh --help` for all options.
-For a local clone, `just install` does the same without cloning.
+**Passthrough:** `gimme <manager> <args...>` forwards verbatim to the underlying
+tool — `gimme brew tap ...`, `gimme cargo build --release`, etc. gimmie doesn't
+parse or model it.
 
-**From source:**
+**Flags:** `--from <m>` · `--all` · `--refresh` (bypass cache read) · `--no-cache`
+· `--json` (machine-readable output for `list`/`outdated`/`search`/`info`) ·
+`--version <v>` · `-y` (non-interactive).
 
-```bash
-git clone https://github.com/gregnazario/gimme.git
-cd gimme
-swift build                # build the `gimme` executable
-swift test                 # run the test suite (306 tests)
-swift test --enable-code-coverage   # measure coverage
-.build/debug/gimme --help
-```
+## State
 
-## Quick start
-
-```bash
-# Add gimme's bin to your PATH (one time):
-echo 'export PATH="$HOME/.gimme/bin:$PATH"' >> ~/.zshrc
-
-# Install a tool:
-gimme install <tool>
-
-# The signature shortcut:
-gimme <tool>            # install / update / no-op / pinned-aware
-
-# Manage versions:
-gimme <tool>@2.40       # install a specific version line
-gimme use <tool> 2.40.0 # switch active version (no download)
-gimme pin <tool>        # hold a version
-gimme update --all      # update everything not pinned
-
-# Inspect:
-gimme list [--all]      # installed tools (or all known formulae)
-gimme search <term>
-gimme info <tool>
-gimme outdated
-gimme doctor            # health check
-
-# Formula sources (taps):
-gimme tap add <name> <git-url>
-gimme tap list
-```
-
-## Formulae
-
-A formula is a directory containing `formula.toml` (declarative manifest) and
-optionally an `install.lua` (sandboxed logic). Metadata is type-checked; the
-Lua runtime is restricted to a controlled `ctx` API — `os.execute`, `io.popen`,
-`loadfile`, `require`, and `debug` are blocked.
-
-```toml
-[package]
-name = "hello"
-desc = "A demo tool"
-
-[[version]]
-ver = "1.0.0"
-
-[[version.asset]]
-os = "macos"
-arch = "arm64"
-url = "https://example.com/hello-1.0.0.tar.gz"
-sha256 = "..."     # required
-
-[install]
-strategy = "steps"          # or "lua"
-
-[[install.step]]
-extract = "${asset}"
-[[install.step]]
-copy = { from = "hello-1.0.0", to = "${prefix}" }
-
-[[provides]]
-bin = ["hello"]
-```
-
-For complex installs, `strategy = "lua"` runs `install(ctx)` against the
-sandbox:
-
-```lua
-function install(ctx)
-  local asset = ctx:download()        -- staged + sha256-verified
-  local dir   = ctx:extract(asset)    -- tgz/tbz/zip auto-detected
-  ctx:install_dir(dir .. "/payload")  -- move into the cellar prefix
-  ctx:set_provides({"hello"})         -- declare binaries
-  ctx:mkdir("${prefix}/share/man")
-end
-```
+- **Live query + TTL cache.** gimmie always asks the real managers for the truth
+  on `list`/`outdated`/`info`; the disk cache only avoids re-querying within its
+  TTL window (5 min for list/outdated, 1 hour for info). `--refresh` bypasses it.
+  Cache lives in `~/.cache/gimme/`.
+- **Config:** `~/.config/gimme/config.toml` (priority list, enabled managers,
+  cache TTLs).
+- **Preferences:** `~/.config/gimme/preferences.toml` (per-package remembered
+  overrides).
 
 ## Architecture
 
-A single SwiftPM workspace:
+Single SwiftPM workspace, three targets:
 
-| Target | Role |
-|---|---|
-| `GimmeCore` | The engine: manifest, taps, resolver, downloader, sandboxed Lua, cellar, shims, state, installer, introspect. |
-| `gimme` | The CLI executable. |
-| `GimmeLua` | Vendored Lua 5.4 C sources. |
-| `CGimmeLuaSupport` | C glue: Lua API wrappers + `ctx` dispatch via a runtime function-pointer table. |
+- **`GimmeCore`** — the engine: the `PackageManager` protocol, the `Registry`
+  (discovers adapters), the `Resolver` (priority + remembered prefs), the TTL
+  `Cache`, `Preferences`, and shared `ProcessRunner` / `HTTPClient` / `Bootstrap`
+  helpers. Plus five fat adapters in `managers/` (Homebrew as the reference).
+- **`gimme`** — the CLI.
+- **`GimmeUI`** — the SwiftUI app.
 
-On-disk layout (under `~/.gimme`): `bin/` (PATH shims), `cellar/<tool>/<ver>/`
-(versioned installs, atomic commits), `cache/<sha256>/` (content-addressed
-downloads), `taps/`, `staging/`, `state/` (derived `installed.json` +
-authoritative `pinned.json`), `config.toml`.
+The design is **thin engine, fat adapters**: the engine never knows *how* a
+manager installs things. Each adapter owns its I/O strategy (brew JSON API, Go
+proxy, PyPI, crates.io, npm registry; CLI where no machine API exists) behind
+the one `PackageManager` seam. See
+[`docs/superpowers/specs/2026-08-07-gimmie-v2-orchestrator-design.md`](docs/superpowers/specs/2026-08-07-gimmie-v2-orchestrator-design.md)
+for the full design and
+[`docs/superpowers/plans/2026-08-07-gimmie-v2-orchestrator.md`](docs/superpowers/plans/2026-08-07-gimmie-v2-orchestrator.md)
+for the implementation plan.
 
-## AI agents
+## Building
 
-gimme's CLI is a documented API. See **[docs/agent-interface.md](docs/agent-interface.md)**
-for the full agent contract: `gimme introspect --json` (the machine-readable
-spec), `--dry-run` planning, structured `--json` output with `schema_version`,
-and a fixed error-category ↔ exit-code map. A future `gimme mcp` server will
-expose the same surface as native Model Context Protocol tool calls.
-
-## Documentation
-
-- **Docs site:** build and serve locally with `just docs-serve` (MkDocs Material).
-- **Man page:** `man gimme` (after `just man`), or `gimme man` for the source.
-- **tldr page:** `just tldr` to install locally; source at `tldr-pages/pages/common/gimme.md`.
-- **Per-command help:** `gimme <command> --help` (e.g. `gimme install --help`).
-- **Top-level help:** `gimme --help`.
-- **Machine-readable spec:** `gimme introspect --json` (for agents).
-
-### In this repo
-
-- Decision log: `DECISIONS.md`
-- Foundation design spec: `docs/superpowers/specs/2026-08-03-gimme-foundation-design.md`
-- Foundation implementation plan: `docs/superpowers/plans/2026-08-03-gimme-foundation.md`
-- Mise interop design spec: `docs/superpowers/specs/2026-08-03-mise-interop-design.md`
-- Mise interop implementation plan: `docs/superpowers/plans/2026-08-03-mise-interop.md`
-- Agent interface: `docs/agent-interface.md`
-- Docs site source: `docs-site/` (MkDocs Material; `just docs-serve` to preview)
-
-## Justfile tasks
-
+```bash
+swift build              # debug, all targets
+swift test               # 105+ tests, in-process, no real installs/network in CI
+swift build -c release   # release
 ```
-just build          # swift build
-just release        # swift build -c release
-just test           # swift test
-just docs-setup     # one-time: create docs-site venv + install mkdocs-material
-just docs-serve     # serve docs site with live reload
-just docs-build     # build docs to ./site
-just man            # regenerate + install the man page
-just tldr           # install the tldr page locally
-just install        # install release binary to ~/.local/bin/gimme
-```
+
+The SwiftUI app builds with `swift build -c release --product GimmeUI`; the
+`.app` bundle is assembled by `app/build-app.sh`.
+
+## Status
+
+v2 orchestration layer, working end-to-end against real managers. Pre-1.0;
+breaking changes are expected. The earlier v1 native-pipeline (formulae, TOML
+manifests, Lua sandbox, cellar, taps) has been removed.
