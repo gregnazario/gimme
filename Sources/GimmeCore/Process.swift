@@ -20,18 +20,51 @@ public struct ProcessResult: Equatable {
 /// `which` itself is unavailable (extremely unusual), letting callers fall
 /// back to a conventional default.
 public enum BinaryResolver {
-    nonisolated(unsafe) private static var cache: [String: String?] = [:]
+    /// Cache of resolved paths. Only stores *found* binaries (a missing key
+    /// means "not yet looked up"). Storing nil (not-found) would force callers
+    /// to handle optionals-of-optionals; instead we re-resolve on a miss,
+    /// which is cheap and avoids the class of crash a double-unwrap causes.
+    nonisolated(unsafe) private static var cache: [String: String] = [:]
     private static let lock = NSLock()
+
+    /// Directories prepended to PATH when resolving, so GUI launches (which get
+    /// a minimal PATH) can still find mise/asdf/homebrew/cargo/bun binaries.
+    private static let extraPathDirs: [String] = {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        return [
+            "/opt/homebrew/bin",
+            "/usr/local/bin",
+            "\(home)/.local/bin",
+            "\(home)/.cargo/bin",
+            "\(home)/.bun/bin",
+            "\(home)/.local/share/mise/shims",
+            "\(home)/.local/share/mise/bin",
+        ]
+    }()
 
     /// Resolve `name` to an absolute path, or nil if not found on PATH.
     public static func resolve(_ name: String, fallback: String? = nil) -> String? {
         lock.lock()
-        if cache[name] != nil { defer { lock.unlock() }; return cache[name]!! }
+        if let cached = cache[name] { lock.unlock(); return cached }
         lock.unlock()
 
+        let path = lookup(name) ?? fallback
+        if let path {
+            lock.lock(); cache[name] = path; lock.unlock()
+        }
+        return path
+    }
+
+    /// Run `which <name>` with an augmented PATH. Returns nil if not found.
+    private static func lookup(_ name: String) -> String? {
         let proc = Foundation.Process()
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/which")
         proc.arguments = [name]
+        // Augment PATH so mise/asdf/homebrew/cargo/bun binaries are found even
+        // when the process was launched from Finder (minimal PATH).
+        let existingPath = ProcessInfo.processInfo.environment["PATH"] ?? ""
+        let augmented = extraPathDirs.joined(separator: ":") + ":" + existingPath
+        proc.environment = ["PATH": augmented]
         let pipe = Pipe()
         proc.standardOutput = pipe
         proc.standardError = Pipe()
@@ -39,15 +72,12 @@ public enum BinaryResolver {
             try proc.run()
             proc.waitUntilExit()
         } catch {
-            let resolved = fallback
-            lock.lock(); cache[name] = resolved; lock.unlock()
-            return resolved
+            return nil
         }
+        guard proc.terminationStatus == 0 else { return nil }
         let raw = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        let path = raw.split(separator: "\n").first.map { String($0).trimmingCharacters(in: .whitespaces) }
-        let resolved = (path?.isEmpty == false ? path : fallback)
-        lock.lock(); cache[name] = resolved; lock.unlock()
-        return resolved
+        let first = raw.split(separator: "\n").first.map { String($0).trimmingCharacters(in: .whitespaces) }
+        return (first?.isEmpty == false) ? first : nil
     }
 
     /// Forget cached resolutions (mainly for tests).
