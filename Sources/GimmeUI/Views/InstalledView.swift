@@ -39,7 +39,7 @@ struct InstalledView: View {
                     .buttonStyle(.plain)
                     .help("Clear filter")
                 }
-                Button { Task { await store.loadAll() } } label: {
+                Button { Task { await store.loadAll(refresh: true) } } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
             }

@@ -59,6 +59,13 @@ struct ByManagerView: View {
             }
         }
         .navigationTitle("By Manager")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { Task { await store.loadAll(refresh: true) } } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
+            }
+        }
         .task { await store.loadAll() }
     }
 }

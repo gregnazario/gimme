@@ -68,12 +68,12 @@ final class GimmeStore: ObservableObject {
         let id = UUID(); let text: String; let time = Date()
     }
 
-    func loadAll() async {
+    func loadAll(refresh: Bool = false) async {
         loading = true
         defer { loading = false }
         do {
-            installed = try await gimme.list(from: nil, refresh: false)
-            outdated = try await gimme.outdated(from: nil, refresh: false)
+            installed = try await gimme.list(from: nil, refresh: refresh)
+            outdated = try await gimme.outdated(from: nil, refresh: refresh)
         } catch {
             showError(error)
         }
@@ -138,7 +138,7 @@ final class GimmeStore: ObservableObject {
                                             Task { @MainActor in self.log("\(hit.manager.rawValue): \(line)") }
                                         })
             log("installed \(hit.name)")
-            await loadAll()
+            await loadAll(refresh: true)
         } catch { showError(error) }
     }
 
@@ -147,7 +147,7 @@ final class GimmeStore: ObservableObject {
         do {
             try await gimme.uninstall(name: pkg.name, from: pkg.manager)
             log("uninstalled \(pkg.name)")
-            await loadAll()
+            await loadAll(refresh: true)
         } catch { showError(error) }
     }
 
@@ -167,7 +167,7 @@ final class GimmeStore: ObservableObject {
             try await gimme.upgrade(name: pkg.name, from: pkg.manager)
             upgradeStatus[pkg.id] = .done
             log("upgraded \(pkg.name)")
-            await loadAll()
+            await loadAll(refresh: true)
         } catch {
             upgradeStatus[pkg.id] = .failed("\(error)")
             showError(error)
@@ -195,7 +195,7 @@ final class GimmeStore: ObservableObject {
                 upgradeStatus[failure.id] = .failed(failure.error)
                 log("FAILED \(failure.id): \(failure.error)")
             }
-            await loadAll()
+            await loadAll(refresh: true)
         } catch { showError(error) }
     }
 
