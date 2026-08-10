@@ -118,6 +118,13 @@ final class GimmeStore: ObservableObject {
         try? config.toTOML().write(to: paths.configFile, atomically: true, encoding: .utf8)
     }
 
+    /// Clear the on-disk cache (forces a refresh everywhere on next query).
+    func clearCache() {
+        let paths = GimmePaths.defaultUser
+        let cache = Cache(directory: paths.cacheDir)
+        cache.clear()
+    }
+
     /// Bootstrap (install) a missing backend manager.
     func bootstrap(_ id: ManagerID) async {
         guard let m = gimme.registryLookup(id) else { return }
