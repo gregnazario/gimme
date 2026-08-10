@@ -33,8 +33,23 @@ gimme brew services start postgres   # passthrough to the real tool
 | **RubyGems** | `gem install` | rubygems.org API for search/info |
 | **Composer (PHP)** | `composer global require` | packagist.org API for search/info |
 | **Deno** | `deno install -g` | JSR (jsr.io) + npm; scans ~/.deno/bin. No outdated (no version metadata) |
+| **pipx** | `pipx install` | PyPI; per-tool isolated venvs (Python ecosystem alongside uv) |
+| **aqua** | `aqua install` | owner/repo packages; declarative config. No outdated (pinned) |
+| **ubi** | `ubi --project owner/repo` | GitHub releases. No registry/search; best-effort list scan |
 
 Cargo installs prefer `cargo-binstall` (prebuilt binaries) when available, falling back to compiling from source.
+
+## Consolidation
+
+When the same package ends up in multiple managers within one ecosystem (e.g. `esbuild` in both bun and npm), `gimme consolidate` finds the duplicates and prints the exact commands to consolidate toward one preferred provider per ecosystem. **Report + guide only — no changes are made automatically.**
+
+```bash
+gimme consolidate                     # scan all ecosystems, report duplicates + commands
+gimme config set ecosystem.js bun     # set the JS consolidation target
+gimme config show ecosystems          # show current per-ecosystem preferences
+```
+
+Ecosystems are fixed buckets (JS, Python, Rust, Go, Ruby, PHP, System). Preferences are separate from the install-priority list.
 
 **Runtime version managers (mise, asdf)** are detected and shown in `doctor`,
 but deliberately *not* modeled as package managers — they manage runtimes
