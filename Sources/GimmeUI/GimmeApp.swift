@@ -131,6 +131,16 @@ final class GimmeStore: ObservableObject {
         } catch { showError(error) }
     }
 
+    /// Fetch the manager's full info for an installed package (description,
+    /// latest version, homepage, license) for the detail sheet.
+    func loadInfo(for pkg: InstalledPackage) async -> PackageInfo? {
+        do {
+            return try await gimme.info(name: pkg.name, from: pkg.manager)
+        } catch {
+            return nil
+        }
+    }
+
     func upgrade(_ pkg: OutdatedPackage) async {
         upgradeStatus[pkg.id] = .upgrading
         do {

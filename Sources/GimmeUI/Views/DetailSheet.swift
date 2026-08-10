@@ -10,9 +10,13 @@ struct DetailSheet: View {
     @Environment(\.dismiss) var dismiss
     let package: Subject
 
+    // Fetched info for installed packages (nil while loading or unavailable).
+    @State private var info: PackageInfo?
+    @State private var infoLoaded = false
+
     var body: some View {
         VStack(spacing: 0) {
-            // Header with title + a visible close affordance.
+            // Header with title + close.
             HStack {
                 Text(titleText)
                     .font(.title2)
@@ -35,7 +39,29 @@ struct DetailSheet: View {
                 switch package {
                 case .installed(let p):
                     ManagerBadge(manager: p.manager)
-                    detailRow("Version", p.version)
+                    detailRow("Installed version", p.version)
+                    if !infoLoaded {
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.small)
+                            Text("Loading details…").foregroundStyle(.secondary)
+                        }
+                    } else if let info {
+                        if !info.summary.isEmpty {
+                            detailRow("Description", info.summary)
+                        }
+                        if let latest = latestVersionLine(for: info, installed: p) {
+                            detailRow("Latest version", latest)
+                        }
+                        if let homepage = info.homepage, !homepage.isEmpty {
+                            detailRow("Homepage", homepage)
+                        }
+                        if let license = info.license, !license.isEmpty {
+                            detailRow("License", license)
+                        }
+                    } else {
+                        Text("Details unavailable from \(p.manager.displayName).")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     Button("Uninstall", role: .destructive) {
                         Task { await store.uninstall(p); dismiss() }
                     }
@@ -56,7 +82,15 @@ struct DetailSheet: View {
             Spacer()
         }
         .padding(20)
-        .frame(width: 420, height: 240)
+        .frame(width: 460, height: 340)
+        .task {
+            // Only fetch for installed packages (searchable hits already have
+            // their metadata from the registry search).
+            if case .installed(let p) = package {
+                info = await store.loadInfo(for: p)
+                infoLoaded = true
+            }
+        }
     }
 
     private var titleText: String {
@@ -66,13 +100,23 @@ struct DetailSheet: View {
         }
     }
 
+    /// Build the "latest version" line, flagging when an update is available.
+    private func latestVersionLine(for info: PackageInfo, installed: InstalledPackage) -> String? {
+        guard !info.latestVersion.isEmpty else { return nil }
+        if info.latestVersion != installed.version {
+            return "\(info.latestVersion)  (update available)"
+        }
+        return info.latestVersion
+    }
+
     private func detailRow(_ label: String, _ value: String) -> some View {
         HStack(alignment: .top) {
             Text(label)
                 .foregroundStyle(.secondary)
-                .frame(width: 110, alignment: .leading)
+                .frame(width: 120, alignment: .leading)
             Text(value)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)   // so URLs/versions can be copied
         }
         .font(.callout)
     }
