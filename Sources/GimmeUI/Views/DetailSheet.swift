@@ -40,6 +40,14 @@ struct DetailSheet: View {
                 case .installed(let p):
                     ManagerBadge(manager: p.manager)
                     detailRow("Installed version", p.version)
+                    // If this package is duplicated across managers, flag it.
+                    if store.duplicatedPackageIDs.contains(p.id) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                            Text("Also installed via another manager. Run `gimme consolidate` to review.")
+                                .font(.caption).foregroundStyle(.orange)
+                        }
+                    }
                     if !infoLoaded {
                         HStack(spacing: 6) {
                             ProgressView().controlSize(.small)

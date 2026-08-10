@@ -35,6 +35,7 @@ final class GimmeStore: ObservableObject {
     @Published var config: Config = .defaults
     @Published var managerStatuses: [Gimme.ManagerStatus] = []
     @Published var runtimeManagers: [RuntimeManagerStatus] = []
+    @Published var consolidationReport: ConsolidationReport?
     @Published var showError = false
     @Published var errorMessage = ""
 
@@ -85,6 +86,25 @@ final class GimmeStore: ObservableObject {
     func loadStatuses() async {
         managerStatuses = await gimme.statuses()
         runtimeManagers = await VersionManagerDetector.detect()
+    }
+
+    /// Build the consolidation report (refresh bypasses cache).
+    func loadConsolidationReport(refresh: Bool = false) async {
+        do {
+            consolidationReport = try await gimme.consolidate(refresh: refresh)
+        } catch { showError(error) }
+    }
+
+    /// All package names that are part of a duplicate, for the detail-sheet hint.
+    var duplicatedPackageIDs: Set<String> {
+        guard let report = consolidationReport, report.hasDuplicates else { return [] }
+        return Set(report.duplicates.flatMap { $0.installed.map { $0.id } })
+    }
+
+    /// Persist the current config (used by the Preferences UI bindings).
+    func persistConfig() {
+        let paths = GimmePaths.defaultUser
+        try? config.toTOML().write(to: paths.configFile, atomically: true, encoding: .utf8)
     }
 
     /// Bootstrap (install) a missing backend manager.
