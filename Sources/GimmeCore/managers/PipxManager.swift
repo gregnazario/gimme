@@ -1,0 +1,112 @@
+import Foundation
+
+/// pipx adapter (spec §7). Per-tool isolated venvs (the original; uv tool is the
+/// modern equivalent). Python ecosystem — consolidation nudges toward one of
+/// pipx/uv. Uses PyPI JSON for search/info.
+public final class PipxManager: PackageManager {
+    public let id: ManagerID = .pipx
+    public let displayName = "pipx"
+    public let icon = "tray.full.fill"
+    public let capabilities: Set<Capability> = [.install, .uninstall, .upgrade, .list, .outdated, .search, .info, .bootstrap]
+
+    private let http: HTTPClient
+    private let process: any ProcessRunning
+    private let binaryOverride: String?
+
+    public init(http: HTTPClient = URLSessionHTTPClient(),
+                process: any ProcessRunning = ProcessRunner(),
+                binary: String? = nil) {
+        self.http = http
+        self.process = process
+        self.binaryOverride = binary
+    }
+
+    private var binaryPath: String {
+        binaryOverride ?? BinaryResolver.resolve("pipx", fallback: nil) ?? ""
+    }
+
+    public func isAvailable() -> Bool {
+        BinaryResolver.resolve("pipx") != nil || binaryOverride != nil
+    }
+
+    public func bootstrap() async throws {
+        _ = try await process.run("/bin/bash",
+            args: ["-c", "python3 -m pip install --user pipx || brew install pipx"],
+            env: nil, stream: nil)
+    }
+
+    public func version() async -> String? {
+        guard isAvailable() else { return nil }
+        let res = try? await process.run(binaryPath, args: ["--version"], env: nil, stream: nil)
+        guard let res, res.exitCode == 0 else { return nil }
+        return res.stdout.split(separator: "\n").first.map(String.init)?.trimmingCharacters(in: .whitespaces)
+    }
+
+    // MARK: - Search / Info (PyPI)
+
+    private struct PyPIDoc: Decodable {
+        let info: Info
+        struct Info: Decodable { let name: String; let summary: String?; let version: String? }
+    }
+
+    public func search(_ query: String) async throws -> [SearchHit] {
+        guard let doc: PyPIDoc = try? await http.getJSON("https://pypi.org/pypi/\(query)/json", as: PyPIDoc.self) else { return [] }
+        return [SearchHit(name: doc.info.name, manager: .pipx, summary: doc.info.summary ?? "", latestVersion: doc.info.version ?? "")]
+    }
+
+    public func info(_ package: PackageRef) async throws -> PackageInfo {
+        guard let doc: PyPIDoc = try? await http.getJSON("https://pypi.org/pypi/\(package.name)/json", as: PyPIDoc.self) else {
+            throw GimmeError.notFoundInManagers(name: package.name, searched: [.pipx])
+        }
+        return PackageInfo(name: doc.info.name, manager: .pipx, latestVersion: doc.info.version ?? "",
+            summary: doc.info.summary ?? "", homepage: nil, license: nil,
+            installedVersion: nil, location: nil)
+    }
+
+    // MARK: - Actions
+
+    public func install(_ package: PackageRef, options: InstallOptions) async throws -> InstallResult {
+        let spec = options.version.map { "\(package.name)==\($0)" } ?? package.name
+        let res = try await process.run(binaryPath, args: ["install", spec], env: nil, stream: nil)
+        guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .pipx, op: "install", underlying: res.stderr) }
+        return InstallResult(package: InstalledPackage(name: package.name, version: options.version ?? "latest", manager: .pipx, installedAt: Date()))
+    }
+
+    public func uninstall(_ package: PackageRef) async throws {
+        let res = try await process.run(binaryPath, args: ["uninstall", package.name], env: nil, stream: nil)
+        guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .pipx, op: "uninstall", underlying: res.stderr) }
+    }
+
+    public func upgrade(_ package: PackageRef) async throws {
+        let res = try await process.run(binaryPath, args: ["upgrade", package.name], env: nil, stream: nil)
+        guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .pipx, op: "upgrade", underlying: res.stderr) }
+    }
+
+    public func listInstalled() async throws -> [InstalledPackage] {
+        // pipx list --json: { venvs: { name: { metadata: { main_package: { package_version } } } } }
+        let res = try await process.run(binaryPath, args: ["list", "--json"], env: nil, stream: nil)
+        guard res.exitCode == 0, let data = res.stdout.data(using: .utf8) else { return [] }
+        struct Wrapper: Decodable {
+            let venvs: [String: Venv]?
+            struct Venv: Decodable { let metadata: Metadata?
+                struct Metadata: Decodable { let main_package: Main?
+                    struct Main: Decodable { let package_version: String? } } }
+        }
+        guard let w = try? JSONDecoder().decode(Wrapper.self, from: data) else { return [] }
+        return (w.venvs ?? [:]).compactMap { (name, venv) -> InstalledPackage? in
+            guard let v = venv.metadata?.main_package?.package_version else { return nil }
+            return InstalledPackage(name: name, version: v, manager: .pipx, installedAt: nil)
+        }
+    }
+
+    public func outdated() async throws -> [OutdatedPackage] {
+        let installed = try await listInstalled()
+        var out: [OutdatedPackage] = []
+        for pkg in installed {
+            guard let doc: PyPIDoc = try? await http.getJSON("https://pypi.org/pypi/\(pkg.name)/json", as: PyPIDoc.self),
+                  let latest = doc.info.version else { continue }
+            if pkg.version != latest { out.append(OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .pipx)) }
+        }
+        return out
+    }
+}

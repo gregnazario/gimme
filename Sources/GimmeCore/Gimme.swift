@@ -284,7 +284,7 @@ extension Gimme {
             HomebrewManager(), GoManager(), UvManager(), CargoManager(),
             BunManager(), NpmManager(), PnpmManager(),
             YarnManager(), GemManager(), ComposerManager(),
-            DenoManager()
+            DenoManager(), PipxManager(), AquaManager(), UbiManager()
         ])
     }
 }
