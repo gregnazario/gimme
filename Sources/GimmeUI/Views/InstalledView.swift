@@ -74,5 +74,14 @@ struct InstalledView: View {
         .navigationTitle("Installed")
         .sheet(item: $selected) { pkg in DetailSheet(package: .installed(pkg)) }
         .task { await store.loadAll() }
+        .onAppear {
+            // If we were navigated here with a pending manager filter (e.g.
+            // from Package Managers → "N packages"), apply it once, then clear
+            // it so the user's own filter choices stick afterward.
+            if let pending = store.pendingManagerFilter {
+                filter = pending
+                store.pendingManagerFilter = nil
+            }
+        }
     }
 }

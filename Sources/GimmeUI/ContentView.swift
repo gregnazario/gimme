@@ -4,7 +4,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     case installed = "Installed"
     case updates = "Updates"
     case browse = "Browse"
-    case byManager = "By Manager"
+    case managers = "Package Managers"
     case consolidate = "Consolidate"
     case preferences = "Preferences"
     case activity = "Activity"
@@ -14,7 +14,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .installed: return "square.grid.2x2"
         case .updates: return "arrow.up.circle"
         case .browse: return "magnifyingglass"
-        case .byManager: return "shippingbox"
+        case .managers: return "shippingbox"
         case .consolidate: return "arrow.triangle.merge"
         case .preferences: return "gear"
         case .activity: return "list.bullet.rectangle"
@@ -23,26 +23,25 @@ enum SidebarSection: String, CaseIterable, Identifiable {
 }
 
 struct ContentView: View {
-    @State private var selection: SidebarSection? = .installed
+    @EnvironmentObject var store: GimmeStore
 
     var body: some View {
         NavigationSplitView {
-            List(SidebarSection.allCases, selection: $selection) { section in
+            List(SidebarSection.allCases, selection: $store.sidebarSelection) { section in
                 NavigationLink(value: section) {
                     Label(section.rawValue, systemImage: section.icon)
                 }
             }
             .navigationTitle("gimmie")
         } detail: {
-            switch selection {
+            switch store.sidebarSelection {
             case .installed:     InstalledView()
             case .updates:       UpdatesView()
             case .browse:        BrowseView()
-            case .byManager:     ByManagerView()
+            case .managers:      PackageManagersView()
             case .consolidate:   ConsolidateView()
             case .preferences:   PreferencesView()
             case .activity:      ActivityView()
-            case .none:          Text("Select a section")
             }
         }
     }

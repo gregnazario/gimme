@@ -36,6 +36,11 @@ final class GimmeStore: ObservableObject {
     @Published var managerStatuses: [Gimme.ManagerStatus] = []
     @Published var runtimeManagers: [RuntimeManagerStatus] = []
     @Published var consolidationReport: ConsolidationReport?
+    /// Shared sidebar selection (so other views can navigate, e.g. Package
+    /// Managers → Installed).
+    @Published var sidebarSelection: SidebarSection = .installed
+    /// When set, navigating to Installed applies this manager filter first.
+    @Published var pendingManagerFilter: ManagerID?
     @Published var showError = false
     @Published var errorMessage = ""
 
@@ -99,6 +104,12 @@ final class GimmeStore: ObservableObject {
     var duplicatedPackageIDs: Set<String> {
         guard let report = consolidationReport, report.hasDuplicates else { return [] }
         return Set(report.duplicates.flatMap { $0.installed.map { $0.id } })
+    }
+
+    /// Navigate to the Installed tab pre-filtered to one manager.
+    func showInstalledFiltered(by manager: ManagerID) {
+        pendingManagerFilter = manager
+        sidebarSelection = .installed
     }
 
     /// Persist the current config (used by the Preferences UI bindings).
