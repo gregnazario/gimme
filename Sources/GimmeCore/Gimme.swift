@@ -283,7 +283,8 @@ extension Gimme {
         Registry(managers: [
             HomebrewManager(), GoManager(), UvManager(), CargoManager(),
             BunManager(), NpmManager(), PnpmManager(),
-            YarnManager(), GemManager(), ComposerManager()
+            YarnManager(), GemManager(), ComposerManager(),
+            DenoManager()
         ])
     }
 }

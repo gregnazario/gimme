@@ -65,11 +65,36 @@ public final class CargoManager: PackageManager {
             installedVersion: nil, location: nil)
     }
 
+    /// True when `cargo-binstall` is installed (faster binary installs vs
+    /// compiling from source). Checked once and cached.
+    private var binstallAvailable: Bool {
+        if let cached = Self.binstallCache { return cached }
+        let available = BinaryResolver.resolve("cargo-binstall") != nil
+        Self.binstallCache = available
+        return available
+    }
+    nonisolated(unsafe) private static var binstallCache: Bool? = nil
+
+    /// Test hook: override the binstall-availability check. nil = auto-detect.
+    public static func setBinstallAvailableForTesting(_ value: Bool?) {
+        binstallCache = value
+    }
+
     public func install(_ package: PackageRef, options: InstallOptions) async throws -> InstallResult {
-        var args = ["install"]
-        if let v = options.version { args += ["--version", v] }
-        args.append(package.name)
-        let res = try await process.run(binaryPath, args: args, env: nil, stream: nil)
+        let res: ProcessResult
+        if binstallAvailable {
+            // `cargo binstall` downloads prebuilt binaries — much faster than
+            // compiling. -y auto-confirms (no interactive prompt).
+            var spec = package.name
+            if let v = options.version { spec += "@\(v)" }
+            res = try await process.run(binaryPath, args: ["binstall", "-y", spec], env: nil, stream: nil)
+        } else {
+            // Fallback: compile from source.
+            var args = ["install"]
+            if let v = options.version { args += ["--version", v] }
+            args.append(package.name)
+            res = try await process.run(binaryPath, args: args, env: nil, stream: nil)
+        }
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .cargo, op: "install", underlying: res.stderr) }
         let version = (try? await installedVersion(of: package.name)) ?? "latest"
         return InstallResult(package: InstalledPackage(name: package.name, version: version, manager: .cargo, installedAt: Date()))
@@ -81,9 +106,15 @@ public final class CargoManager: PackageManager {
     }
 
     public func upgrade(_ package: PackageRef) async throws {
-        // Cargo has no upgrade; reinstall to latest with --force.
-        let res = try await process.run(binaryPath, args: ["install", package.name, "--force"], env: nil, stream: nil)
-        guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .cargo, op: "upgrade", underlying: res.stderr) }
+        if binstallAvailable {
+            // Re-run binstall to fetch the latest prebuilt binary.
+            let res = try await process.run(binaryPath, args: ["binstall", "-y", "--force", package.name], env: nil, stream: nil)
+            guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .cargo, op: "upgrade", underlying: res.stderr) }
+        } else {
+            // Cargo has no upgrade; reinstall to latest with --force.
+            let res = try await process.run(binaryPath, args: ["install", package.name, "--force"], env: nil, stream: nil)
+            guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .cargo, op: "upgrade", underlying: res.stderr) }
+        }
     }
 
     public func listInstalled() async throws -> [InstalledPackage] {

@@ -32,6 +32,9 @@ gimme brew services start postgres   # passthrough to the real tool
 | **Yarn** | `yarn global add` | npm registry; classic (v1) global model — berry dropped globals |
 | **RubyGems** | `gem install` | rubygems.org API for search/info |
 | **Composer (PHP)** | `composer global require` | packagist.org API for search/info |
+| **Deno** | `deno install -g` | JSR (jsr.io) + npm; scans ~/.deno/bin. No outdated (no version metadata) |
+
+Cargo installs prefer `cargo-binstall` (prebuilt binaries) when available, falling back to compiling from source.
 
 **Runtime version managers (mise, asdf)** are detected and shown in `doctor`,
 but deliberately *not* modeled as package managers — they manage runtimes

@@ -33,15 +33,49 @@ final class CargoManagerTests: XCTestCase {
         XCTAssertEqual(hits.first?.latestVersion, "14.1.0")
     }
 
-    func testInstallCallsCargoInstall() async throws {
+    override func setUp() {
+        super.setUp()
+        // Reset so each test controls binstall availability explicitly.
+        CargoManager.setBinstallAvailableForTesting(nil)
+        BinaryResolver.clearCache()
+    }
+
+    func testInstallPrefersBinstallWhenAvailable() async throws {
+        CargoManager.setBinstallAvailableForTesting(true)
         let p = StubProcess()
         let m = cargo(nil, p)
         _ = try await m.install(PackageRef(name: "ripgrep"), options: InstallOptions())
-        // install() also calls `install --list` to fetch the version afterward.
-        XCTAssertTrue(p.calls.contains { $0.1 == ["install", "ripgrep"] })
+        XCTAssertTrue(p.calls.contains { $0.1 == ["binstall", "-y", "ripgrep"] },
+                      "expected cargo binstall when cargo-binstall is available")
     }
 
-    func testUpgradeCallsForceReinstall() async throws {
+    func testInstallWithVersionUsesBinstallSpec() async throws {
+        CargoManager.setBinstallAvailableForTesting(true)
+        let p = StubProcess()
+        let m = cargo(nil, p)
+        _ = try await m.install(PackageRef(name: "ripgrep"), options: InstallOptions(version: "14.0.0"))
+        XCTAssertTrue(p.calls.contains { $0.1 == ["binstall", "-y", "ripgrep@14.0.0"] })
+    }
+
+    func testInstallFallsBackToCargoInstallWhenBinstallAbsent() async throws {
+        CargoManager.setBinstallAvailableForTesting(false)
+        let p = StubProcess()
+        let m = cargo(nil, p)
+        _ = try await m.install(PackageRef(name: "ripgrep"), options: InstallOptions())
+        XCTAssertTrue(p.calls.contains { $0.1 == ["install", "ripgrep"] },
+                      "expected cargo install fallback when cargo-binstall absent")
+    }
+
+    func testUpgradeUsesBinstallForceWhenAvailable() async throws {
+        CargoManager.setBinstallAvailableForTesting(true)
+        let p = StubProcess()
+        let m = cargo(nil, p)
+        try await m.upgrade(PackageRef(name: "rg"))
+        XCTAssertTrue(p.calls.contains { $0.1 == ["binstall", "-y", "--force", "rg"] })
+    }
+
+    func testUpgradeFallsBackToForceReinstall() async throws {
+        CargoManager.setBinstallAvailableForTesting(false)
         let p = StubProcess()
         let m = cargo(nil, p)
         try await m.upgrade(PackageRef(name: "rg"))

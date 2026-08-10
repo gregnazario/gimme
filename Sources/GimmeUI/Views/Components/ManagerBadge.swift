@@ -27,6 +27,7 @@ struct ManagerBadge: View {
         case .yarn:     return .blue
         case .gem:      return .pink
         case .composer: return .purple
+        case .deno:     return .cyan
         }
     }
 }
