@@ -103,6 +103,26 @@ public protocol ProcessRunning {
 public struct ProcessRunner: ProcessRunning {
     public init() {}
 
+    /// The current environment with PATH augmented to include common macOS
+    /// package-manager bin dirs. Lets subprocesses (brew/cargo/bun/etc.) work
+    /// when gimmie was launched from Finder, which inherits a minimal PATH.
+    static func augmentedEnvironment() -> [String: String] {
+        var env = ProcessInfo.processInfo.environment
+        let existing = env["PATH"] ?? ""
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let extra = [
+            "/opt/homebrew/bin",
+            "/opt/homebrew/sbin",
+            "/usr/local/bin",
+            "\(home)/.local/bin",
+            "\(home)/.cargo/bin",
+            "\(home)/.bun/bin",
+            "\(home)/.local/share/mise/shims",
+        ].joined(separator: ":")
+        env["PATH"] = "\(extra):\(existing)"
+        return env
+    }
+
     /// Run a command, returning when it exits. If `stream` is non-nil, each
     /// complete line of combined stdout/stderr is delivered to it as it arrives.
     ///
@@ -123,7 +143,12 @@ public struct ProcessRunner: ProcessRunning {
         let stderrPipe = Pipe()
         proc.standardOutput = stdoutPipe
         proc.standardError = stderrPipe
-        if let env { proc.environment = env }
+        // Always set an environment: the caller's if given, otherwise the
+        // current environment with an augmented PATH. The augmentation matters
+        // for GUI launches, which inherit a minimal PATH (/usr/bin:/bin:...)
+        // that omits mise/homebrew/cargo/bun dirs — subprocesses like `brew`
+        // would otherwise fail to find their helpers or not be found at all.
+        proc.environment = env ?? Self.augmentedEnvironment()
 
         let stdoutCarry = LineCarry()
         let stderrCarry = LineCarry()

@@ -118,12 +118,17 @@ extension Gimme {
 
     /// Upgrade every outdated package across all managers. Partial failures
     /// are captured per-package; other managers still complete (spec §9).
-    public func updateAll() async throws -> UpdateSummary {
+    /// `onPackageStart` is invoked (on the calling task) before each upgrade
+    /// so callers (e.g. the GUI) can show per-package progress.
+    public func updateAll(
+        onPackageStart: ((String) -> Void)? = nil
+    ) async throws -> UpdateSummary {
         var summary = UpdateSummary()
         let managers = registry.enabled(config: config).filter { $0.capabilities.contains(.outdated) && $0.capabilities.contains(.upgrade) }
         for m in managers {
             let outdated = (try? await m.outdated()) ?? []
             for pkg in outdated {
+                onPackageStart?(pkg.id)
                 do {
                     try await m.upgrade(PackageRef(name: pkg.name))
                     summary.succeeded.append(pkg.id)

@@ -29,11 +29,21 @@ final class GimmeStore: ObservableObject {
     @Published var searchAll = false
     @Published var activity: [ActivityEntry] = []
     @Published var loading = false
+    @Published var isUpdating = false              // true while updateAll is running
+    @Published var upgradeStatus: [String: UpgradeState] = [:]  // keyed by OutdatedPackage.id
     @Published var preferences: Preferences = .init()
     @Published var config: Config = .defaults
     @Published var managerStatuses: [Gimme.ManagerStatus] = []
     @Published var showError = false
     @Published var errorMessage = ""
+
+    /// Per-package upgrade progress for the Updates view.
+    enum UpgradeState: Equatable {
+        case pending      // queued
+        case upgrading    // in progress
+        case done         // succeeded
+        case failed(String) // failed with message
+    }
 
     private let gimme: Gimme
 
@@ -119,20 +129,52 @@ final class GimmeStore: ObservableObject {
     }
 
     func upgrade(_ pkg: OutdatedPackage) async {
+        upgradeStatus[pkg.id] = .upgrading
         do {
             try await gimme.upgrade(name: pkg.name, from: pkg.manager)
+            upgradeStatus[pkg.id] = .done
             log("upgraded \(pkg.name)")
+            await loadAll()
+        } catch {
+            upgradeStatus[pkg.id] = .failed("\(error)")
+            showError(error)
+        }
+    }
+
+    func updateAll() async {
+        guard !isUpdating else { return }
+        isUpdating = true
+        defer { isUpdating = false }
+        log("updating all outdated packages")
+        // Mark every outdated package as pending so the UI shows the full queue.
+        for pkg in outdated { upgradeStatus[pkg.id] = .pending }
+        do {
+            let summary = try await gimme.updateAll(
+                onPackageStart: { [weak self] id in
+                    Task { @MainActor in self?.upgradeStatus[id] = .upgrading }
+                }
+            )
+            for id in summary.succeeded {
+                upgradeStatus[id] = .done
+                log("updated \(id)")
+            }
+            for failure in summary.failed {
+                upgradeStatus[failure.id] = .failed(failure.error)
+                log("FAILED \(failure.id): \(failure.error)")
+            }
             await loadAll()
         } catch { showError(error) }
     }
 
-    func updateAll() async {
-        log("updating all outdated packages")
+    /// Re-query outdated packages across managers (bypasses cache).
+    func refreshOutdated() async {
         do {
-            let summary = try await gimme.updateAll()
-            summary.succeeded.forEach { log("updated \($0)") }
-            summary.failed.forEach { log("FAILED \($0.id): \($0.error)") }
-            await loadAll()
+            outdated = try await gimme.outdated(from: nil, refresh: true)
+            // Clear stale per-package status for packages no longer outdated.
+            let currentIDs = Set(outdated.map { $0.id })
+            for id in upgradeStatus.keys where !currentIDs.contains(id) {
+                upgradeStatus.removeValue(forKey: id)
+            }
         } catch { showError(error) }
     }
 
