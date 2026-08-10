@@ -27,6 +27,8 @@ gimme brew services start postgres   # passthrough to the real tool
 | **Python (uv)** | `uv tool` | per-tool isolated venvs (pipx-style), no dependency conflicts |
 | **Cargo** | `cargo install` | crates.io for search/info |
 | **npm (via bun)** | `bun install -g` | npm registry; adapter named `bun` |
+| **npm** | `npm install -g` | npm registry; the npm CLI itself |
+| **pnpm** | `pnpm add -g` | npm registry; pnpm's content-addressed store |
 
 Nix is designed for but deferred to v2. Missing a backend? gimmie offers to
 install it for you (`auto-bootstrap`).

@@ -14,7 +14,7 @@ public struct Config: Codable, Equatable {
     public var infoCacheTTLSeconds: Int
 
     public init(
-        priority: [String] = ["homebrew", "go", "uv", "cargo", "bun"],
+        priority: [String] = ["homebrew", "go", "uv", "cargo", "bun", "npm", "pnpm"],
         disabled: [String] = [],
         listCacheTTLSeconds: Int = 300,
         infoCacheTTLSeconds: Int = 3600

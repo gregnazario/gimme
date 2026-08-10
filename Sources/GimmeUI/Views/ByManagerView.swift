@@ -82,6 +82,8 @@ struct ManagerStatusRow: View {
         case .uv:       return .green
         case .cargo:    return .red
         case .bun:      return .pink
+        case .npm:      return .teal
+        case .pnpm:     return .indigo
         }
     }
 }

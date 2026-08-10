@@ -46,6 +46,8 @@ struct GimmeCLI {
         case .uv:       name = "uv"
         case .cargo:    name = "cargo"
         case .bun:      name = "bun"
+        case .npm:      name = "npm"
+        case .pnpm:     name = "pnpm"
         }
         if let resolved = BinaryResolver.resolve(name) { return resolved }
         // Fallbacks if `which` somehow fails to find it.
@@ -56,6 +58,8 @@ struct GimmeCLI {
         case .uv:       return "/opt/uv/bin/uv"
         case .cargo:    return "\(home)/.cargo/bin/cargo"
         case .bun:      return "\(home)/.bun/bin/bun"
+        case .npm:      return "/usr/local/bin/npm"
+        case .pnpm:     return "\(home)/.local/share/pnpm/pnpm"
         }
     }
 

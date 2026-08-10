@@ -278,8 +278,8 @@ extension Gimme {
 }
 
 extension Gimme {
-    /// Wire the five real adapters with production defaults.
+    /// Wire the real adapters with production defaults.
     public static func defaultRegistry() -> Registry {
-        Registry(managers: [HomebrewManager(), GoManager(), UvManager(), CargoManager(), BunManager()])
+        Registry(managers: [HomebrewManager(), GoManager(), UvManager(), CargoManager(), BunManager(), NpmManager(), PnpmManager()])
     }
 }
