@@ -2,7 +2,7 @@ import Foundation
 
 /// Stable identifier for a package manager backend.
 public enum ManagerID: String, Hashable, Codable, CaseIterable {
-    case homebrew, go, uv, cargo, bun, npm, pnpm, yarn, gem, composer, deno
+    case homebrew, go, uv, cargo, bun, npm, pnpm, yarn, gem, composer, deno, pipx, aqua, ubi
 
     /// Display name shown in the GUI (e.g. "Homebrew", "npm (via bun)").
     public var displayName: String {
@@ -18,6 +18,9 @@ public enum ManagerID: String, Hashable, Codable, CaseIterable {
         case .gem:      return "RubyGems"
         case .composer: return "Composer (PHP)"
         case .deno:     return "Deno"
+        case .pipx:     return "pipx"
+        case .aqua:     return "aqua"
+        case .ubi:      return "ubi"
         }
     }
 
@@ -35,6 +38,9 @@ public enum ManagerID: String, Hashable, Codable, CaseIterable {
         case .gem:      return "diamond.fill"
         case .composer: return "music.note"
         case .deno:     return "globe"
+        case .pipx:     return "tray.full.fill"
+        case .aqua:     return "drop.fill"
+        case .ubi:      return "wrench.and.screwdriver"
         }
     }
 }

@@ -52,6 +52,9 @@ struct GimmeCLI {
         case .gem:      name = "gem"
         case .composer: name = "composer"
         case .deno:     name = "deno"
+        case .pipx:     name = "pipx"
+        case .aqua:     name = "aqua"
+        case .ubi:      name = "ubi"
         }
         if let resolved = BinaryResolver.resolve(name) { return resolved }
         // Fallbacks if `which` somehow fails to find it.
@@ -68,6 +71,9 @@ struct GimmeCLI {
         case .gem:      return "/usr/bin/gem"
         case .composer: return "/usr/local/bin/composer"
         case .deno:     return "\(home)/.deno/bin/deno"
+        case .pipx:     return "\(home)/.local/bin/pipx"
+        case .aqua:     return "\(home)/.aqua/bin/aqua"
+        case .ubi:      return "\(home)/.local/bin/ubi"
         }
     }
 
