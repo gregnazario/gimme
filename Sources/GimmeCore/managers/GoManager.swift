@@ -6,7 +6,7 @@ public final class GoManager: PackageManager {
     public let id: ManagerID = .go
     public let displayName = "Go"
     public let icon = "building.columns"
-    public let capabilities: Set<Capability> = [.install, .uninstall, .list, .info, .bootstrap]
+    public let capabilities: Set<Capability> = [.install, .uninstall, .list, .search, .info, .bootstrap]
 
     private let http: HTTPClient
     private let process: any ProcessRunning

@@ -14,10 +14,12 @@ final class GoManagerTests: XCTestCase {
         }
     }
 
-    func testCapabilitiesOmitOutdated() {
+    func testCapabilities() {
         let m = GoManager(http: StubHTTP(), process: StubProcess())
-        XCTAssertFalse(m.capabilities.contains(.outdated))
-        XCTAssertFalse(m.capabilities.contains(.search))  // no fuzzy search
+        XCTAssertFalse(m.capabilities.contains(.outdated), "Go has no reliable outdated")
+        // Go advertises .search even though it's exact-existence only (via the
+        // module proxy). Without it, the resolver skips Go for search/info.
+        XCTAssertTrue(m.capabilities.contains(.search))
     }
 
     func testSearchExactOnly() async throws {

@@ -22,7 +22,7 @@ final class AquaManagerTests: XCTestCase {
         XCTAssertEqual(m.id, .aqua)
         XCTAssertTrue(m.capabilities.contains(.install))
         XCTAssertFalse(m.capabilities.contains(.outdated))   // not supported
-        XCTAssertFalse(m.capabilities.contains(.search))      // exact-existence only
+        XCTAssertTrue(m.capabilities.contains(.search))      // exact-existence only, but advertised
     }
 
     func testInstallCallsAquaInstall() async throws {

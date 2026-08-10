@@ -8,7 +8,7 @@ public final class AquaManager: PackageManager {
     public let id: ManagerID = .aqua
     public let displayName = "aqua"
     public let icon = "drop.fill"
-    public let capabilities: Set<Capability> = [.install, .uninstall, .list, .info, .bootstrap]
+    public let capabilities: Set<Capability> = [.install, .uninstall, .list, .search, .info, .bootstrap]
 
     private let process: any ProcessRunning
     private let binaryOverride: String?
