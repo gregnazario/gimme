@@ -164,6 +164,14 @@ extension Gimme {
         return DoctorReport(available: avail, missing: miss)
     }
 
+    /// Build the consolidation report over the live installed-list (spec §6).
+    /// Uses the cache like `list`; pass refresh=true to bypass.
+    public func consolidate(refresh: Bool) async throws -> ConsolidationReport {
+        let installed = try await list(from: nil, refresh: refresh)
+        let consolidator = Consolidator(preferences: config.ecosystems)
+        return consolidator.report(for: installed)
+    }
+
     /// Status of one backend manager: availability + version (if installed).
     public struct ManagerStatus: Identifiable, Equatable, Codable {
         public let id: ManagerID

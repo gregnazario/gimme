@@ -12,17 +12,22 @@ public struct Config: Codable, Equatable {
     public var listCacheTTLSeconds: Int
     /// Cache TTL in seconds for info/search operations.
     public var infoCacheTTLSeconds: Int
+    /// Per-ecosystem recommended provider for consolidation (spec §5). Separate
+    /// from priority (install routing). Persisted under [ecosystems].
+    public var ecosystems: EcosystemPreferences
 
     public init(
         priority: [String] = ["homebrew", "go", "uv", "cargo", "bun", "npm", "pnpm", "yarn", "gem", "composer", "deno", "pipx", "aqua", "ubi"],
         disabled: [String] = [],
         listCacheTTLSeconds: Int = 300,
-        infoCacheTTLSeconds: Int = 3600
+        infoCacheTTLSeconds: Int = 3600,
+        ecosystems: EcosystemPreferences = EcosystemPreferences()
     ) {
         self.priority = priority
         self.disabled = disabled
         self.listCacheTTLSeconds = listCacheTTLSeconds
         self.infoCacheTTLSeconds = infoCacheTTLSeconds
+        self.ecosystems = ecosystems
     }
 
     public static let defaults = Config()
@@ -47,6 +52,17 @@ public struct Config: Codable, Equatable {
         }
         if let list = root.integer("listCacheTTLSeconds") { c.listCacheTTLSeconds = list }
         if let info = root.integer("infoCacheTTLSeconds") { c.infoCacheTTLSeconds = info }
+        // [ecosystems] table: { js = "bun", python = "uv", ... }
+        if let ecoTable = root.table("ecosystems") {
+            var prefs: [Ecosystem: ManagerID] = [:]
+            for (ecoRaw, value) in ecoTable.children {
+                guard let eco = Ecosystem(rawValue: ecoRaw),
+                      let mgrRaw = value.asString,
+                      let mgr = ManagerID(rawValue: mgrRaw) else { continue }
+                prefs[eco] = mgr
+            }
+            c.ecosystems = EcosystemPreferences(prefs)
+        }
         return c
     }
 
@@ -56,6 +72,13 @@ public struct Config: Codable, Equatable {
         lines.append("disabled = [\(disabled.map { "\"\($0)\"" }.joined(separator: ", "))]")
         lines.append("listCacheTTLSeconds = \(listCacheTTLSeconds)")
         lines.append("infoCacheTTLSeconds = \(infoCacheTTLSeconds)")
+        if !ecosystems.preferences.isEmpty {
+            lines.append("")
+            lines.append("[ecosystems]")
+            for (eco, mgr) in ecosystems.preferences.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
+                lines.append("\(eco.rawValue) = \"\(mgr.rawValue)\"")
+            }
+        }
         return lines.joined(separator: "\n") + "\n"
     }
 }

@@ -200,6 +200,40 @@ struct GimmeCLI {
                     }
                 }
             }
+        case "consolidate":
+            let report = try await gimme.consolidate(refresh: p.refresh)
+            if p.json {
+                print((try? JSONEncoder().encode(report)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}")
+            } else if !report.hasDuplicates {
+                print("No duplicates found across any ecosystem. ✅\n")
+                for eco in Ecosystem.allCases where !eco.managers.isEmpty {
+                    print("  \(eco.displayName.padding(toLength: 14, withPad: " ", startingAt: 0)) clean")
+                }
+            } else {
+                print("Consolidation report — \(report.duplicates.count) duplicate\(report.duplicates.count == 1 ? "" : "s") found.\n")
+                // Group steps by ecosystem for display.
+                var currentEco: Ecosystem? = nil
+                for step in report.steps {
+                    if step.duplicate.ecosystem != currentEco {
+                        currentEco = step.duplicate.ecosystem
+                        print("\(step.duplicate.ecosystem.displayName):")
+                    }
+                    let d = step.duplicate
+                    let managers = d.installed.map { $0.manager.rawValue }.joined(separator: ", ")
+                    print("  \(d.name)")
+                    print("    installed via: \(managers)")
+                    print("    recommended:    \(d.recommendedManager.rawValue)")
+                    print("    to consolidate:")
+                    if let install = step.installCommand { print("      \(install)") }
+                    for cmd in step.uninstallCommands { print("      \(cmd)") }
+                    print("")
+                }
+                // Clean ecosystems compactly.
+                for eco in report.cleanEcosystems {
+                    print("\(eco.displayName.padding(toLength: 12, withPad: " ", startingAt: 0)) clean (no duplicates)")
+                }
+                print("\nRun the commands above to consolidate. No changes are made automatically.")
+            }
         case "config":
             if p.positional.first == "set", p.positional.count >= 3, p.positional[1] == "priority" {
                 // `gimme config set priority brew,cargo,go,uv,bun`
@@ -207,6 +241,30 @@ struct GimmeCLI {
                 cfg.priority = p.positional[2].split(separator: ",").map { String($0) }
                 try cfg.toTOML().write(to: paths.configFile, atomically: true, encoding: .utf8)
                 print("priority updated: \(cfg.priority.joined(separator: ", "))")
+            } else if p.positional.first == "set", p.positional.count >= 3, p.positional[1].hasPrefix("ecosystem.") {
+                // `gimme config set ecosystem.js bun`
+                let ecoRaw = String(p.positional[1].dropFirst("ecosystem.".count))
+                guard let eco = Ecosystem(rawValue: ecoRaw) else {
+                    throw GimmeError.usage("unknown ecosystem '\(ecoRaw)'. Valid: \(Ecosystem.allCases.map { $0.rawValue }.joined(separator: ", "))")
+                }
+                guard let mgr = ManagerID(rawValue: p.positional[2]) else {
+                    throw GimmeError.usage("unknown manager '\(p.positional[2])'")
+                }
+                // Validate the manager belongs to that ecosystem.
+                guard mgr.ecosystem == eco else {
+                    throw GimmeError.usage("\(mgr.rawValue) is in the \(mgr.ecosystem.displayName) ecosystem, not \(eco.displayName)")
+                }
+                var cfg = Config.loadOrCreate(at: paths.configFile)
+                cfg.ecosystems.preferences[eco] = mgr
+                try cfg.toTOML().write(to: paths.configFile, atomically: true, encoding: .utf8)
+                print("\(eco.displayName) consolidation target: \(mgr.rawValue)")
+            } else if p.positional.first == "show", p.positional.count >= 2, p.positional[1] == "ecosystems" {
+                let cfg = Config.loadOrCreate(at: paths.configFile)
+                for eco in Ecosystem.allCases where !eco.managers.isEmpty {
+                    let rec = cfg.ecosystems.recommended(for: eco)
+                    let isDefault = cfg.ecosystems.preferences[eco] == nil
+                    print("  \(eco.rawValue.padding(toLength: 8, withPad: " ", startingAt: 0)) \(rec.rawValue)\(isDefault ? "  (default)" : "")")
+                }
             } else {
                 print(Config.loadOrCreate(at: paths.configFile).toTOML())
             }
@@ -231,6 +289,7 @@ struct GimmeCLI {
           gimme search <query> [--all]
           gimme info <name>
           gimme forget <name> | --all
+          gimme consolidate                    (find duplicates across managers)
           gimme doctor
           gimme config [set priority <a,b,c>]
 
