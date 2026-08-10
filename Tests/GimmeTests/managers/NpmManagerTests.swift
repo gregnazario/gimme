@@ -19,7 +19,7 @@ final class NpmManagerTests: XCTestCase {
     }
 
     private func npm(_ http: HTTPClient? = nil, _ p: StubProcess) -> NpmManager {
-        NpmManager(http: http ?? StubHTTP(), process: p)
+        NpmManager(http: http ?? StubHTTP(), process: p, binary: "/tmp/npm-stub")
     }
 
     func testIDAndCapabilities() {

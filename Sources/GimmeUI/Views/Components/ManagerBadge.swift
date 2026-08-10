@@ -24,6 +24,9 @@ struct ManagerBadge: View {
         case .bun:      return .pink
         case .npm:      return .teal
         case .pnpm:     return .indigo
+        case .yarn:     return .blue
+        case .gem:      return .pink
+        case .composer: return .purple
         }
     }
 }

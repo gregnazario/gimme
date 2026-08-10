@@ -48,6 +48,9 @@ struct GimmeCLI {
         case .bun:      name = "bun"
         case .npm:      name = "npm"
         case .pnpm:     name = "pnpm"
+        case .yarn:     name = "yarn"
+        case .gem:      name = "gem"
+        case .composer: name = "composer"
         }
         if let resolved = BinaryResolver.resolve(name) { return resolved }
         // Fallbacks if `which` somehow fails to find it.
@@ -60,6 +63,9 @@ struct GimmeCLI {
         case .bun:      return "\(home)/.bun/bin/bun"
         case .npm:      return "/usr/local/bin/npm"
         case .pnpm:     return "\(home)/.local/share/pnpm/pnpm"
+        case .yarn:     return "\(home)/.yarn/bin/yarn"
+        case .gem:      return "/usr/bin/gem"
+        case .composer: return "/usr/local/bin/composer"
         }
     }
 
@@ -157,14 +163,33 @@ struct GimmeCLI {
             // Verbose form (default): per-manager status with versions.
             let statuses = await gimme.statuses()
             if p.json {
-                print((try? JSONEncoder().encode(statuses)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]")
+                let runtimeMgrs = await VersionManagerDetector.detect()
+                let payload: [String: Any] = ["managers": statuses, "runtimeManagers": runtimeMgrs]
+                let data = try? JSONSerialization.data(withJSONObject: payload, options: .prettyPrinted)
+                print(String(data: data ?? Data(), encoding: .utf8) ?? "{}")
             } else {
+                print("Package managers:")
                 for s in statuses {
                     let state = s.available ? (s.version ?? "installed") : "NOT INSTALLED"
                     let tag = s.enabled ? "" : " (disabled)"
-                    // Left-pad the id to a fixed width for alignment.
                     let padded = s.id.rawValue.padding(toLength: 12, withPad: " ", startingAt: 0)
                     print("  \(padded) \(state)\(tag)")
+                }
+                // Runtime version managers (mise/asdf) — detect only.
+                let runtimeMgrs = await VersionManagerDetector.detect()
+                if !runtimeMgrs.isEmpty {
+                    print("\nRuntime version managers (coexist; not managed by gimmie):")
+                    for vm in runtimeMgrs {
+                        let count = vm.runtimes.count
+                        print("  \(vm.kind.rawValue.padding(toLength: 8, withPad: " ", startingAt: 0)) \(count) runtime\(count == 1 ? "" : "s")")
+                        // Show up to 8 runtimes as a summary.
+                        for r in vm.runtimes.prefix(8) {
+                            print("           \(r.tool) \(r.version)")
+                        }
+                        if vm.runtimes.count > 8 {
+                            print("           … +\(vm.runtimes.count - 8) more")
+                        }
+                    }
                 }
             }
         case "config":

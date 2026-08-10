@@ -31,6 +31,32 @@ struct ByManagerView: View {
                     }
                 }
             }
+            // Runtime version managers (mise/asdf) — detect only, not managed.
+            if !store.runtimeManagers.isEmpty {
+                Section("Runtime version managers (coexist; not managed by gimmie)") {
+                    ForEach(store.runtimeManagers, id: \.kind) { vm in
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Image(systemName: "clock.arrow.2.circlepath")
+                                    .foregroundStyle(.purple)
+                                Text(vm.kind.rawValue.capitalized).fontWeight(.medium)
+                                Spacer()
+                                Text("\(vm.runtimes.count) runtimes")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            ForEach(Array(vm.runtimes.prefix(10).enumerated()), id: \.offset) { _, r in
+                                Text("    \(r.tool) \(r.version)")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            if vm.runtimes.count > 10 {
+                                Text("    … +\(vm.runtimes.count - 10) more")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            }
         }
         .navigationTitle("By Manager")
         .task { await store.loadAll() }
@@ -84,6 +110,9 @@ struct ManagerStatusRow: View {
         case .bun:      return .pink
         case .npm:      return .teal
         case .pnpm:     return .indigo
+        case .yarn:     return .blue
+        case .gem:      return .pink
+        case .composer: return .purple
         }
     }
 }

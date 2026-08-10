@@ -18,7 +18,7 @@ final class PnpmManagerTests: XCTestCase {
     }
 
     private func pnpm(_ http: HTTPClient? = nil, _ p: StubProcess) -> PnpmManager {
-        PnpmManager(http: http ?? StubHTTP(), process: p)
+        PnpmManager(http: http ?? StubHTTP(), process: p, binary: "/tmp/pnpm-stub")
     }
 
     func testIDAndCapabilities() {

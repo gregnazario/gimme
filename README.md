@@ -29,6 +29,14 @@ gimme brew services start postgres   # passthrough to the real tool
 | **npm (via bun)** | `bun install -g` | npm registry; adapter named `bun` |
 | **npm** | `npm install -g` | npm registry; the npm CLI itself |
 | **pnpm** | `pnpm add -g` | npm registry; pnpm's content-addressed store |
+| **Yarn** | `yarn global add` | npm registry; classic (v1) global model — berry dropped globals |
+| **RubyGems** | `gem install` | rubygems.org API for search/info |
+| **Composer (PHP)** | `composer global require` | packagist.org API for search/info |
+
+**Runtime version managers (mise, asdf)** are detected and shown in `doctor`,
+but deliberately *not* modeled as package managers — they manage runtimes
+(node@20, python@3.12), not CLI packages. gimmie coexists with them via PATH
+augmentation; that's the right relationship.
 
 Nix is designed for but deferred to v2. Missing a backend? gimmie offers to
 install it for you (`auto-bootstrap`).
