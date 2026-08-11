@@ -3,6 +3,7 @@ import GimmeCore
 
 struct PreferencesView: View {
     @EnvironmentObject var store: GimmeStore
+    @State private var cacheCleared = false
 
     var body: some View {
         List {
@@ -163,8 +164,13 @@ struct PreferencesView: View {
                 .labelsHidden()
                 .frame(width: 110)
             }
-            Button("Clear cache now") {
+            Button {
                 store.clearCache()
+                cacheCleared = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { cacheCleared = false }
+            } label: {
+                Label(cacheCleared ? "Cleared" : "Clear cache now",
+                      systemImage: cacheCleared ? "checkmark.circle.fill" : "trash")
             }
         } header: {
             Text("Cache")

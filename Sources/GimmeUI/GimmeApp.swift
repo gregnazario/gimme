@@ -30,6 +30,13 @@ final class GimmeStore: ObservableObject {
     @Published var activity: [ActivityEntry] = []
     @Published var loading = false
     @Published var isUpdating = false              // true while updateAll is running
+    @Published var isSearching = false             // true while a search is running
+    @Published var isInstalling = false            // true while installing from DetailSheet
+    @Published var isUninstalling = false          // true while uninstalling from DetailSheet
+    @Published var isRefreshingStatuses = false    // true while Package Managers refresh
+    @Published var isConsolidating = false         // true while Consolidate refresh
+    @Published var isRefreshingOutdated = false    // true while Updates refresh (beyond updateAll)
+    @Published var bootstrapStatus: [ManagerID: String] = [:]  // manager → "bootstrapping…" or empty when done
     @Published var upgradeStatus: [String: UpgradeState] = [:]  // keyed by OutdatedPackage.id
     @Published var preferences: Preferences = .init()
     @Published var config: Config = .defaults
@@ -92,12 +99,16 @@ final class GimmeStore: ObservableObject {
 
     /// Refresh just the per-manager status (availability + version).
     func loadStatuses() async {
+        isRefreshingStatuses = true
+        defer { isRefreshingStatuses = false }
         managerStatuses = await gimme.statuses()
         runtimeManagers = await VersionManagerDetector.detect()
     }
 
     /// Build the consolidation report (refresh bypasses cache).
     func loadConsolidationReport(refresh: Bool = false) async {
+        isConsolidating = true
+        defer { isConsolidating = false }
         do {
             consolidationReport = try await gimme.consolidate(refresh: refresh)
         } catch { showError(error) }
@@ -131,22 +142,29 @@ final class GimmeStore: ObservableObject {
     /// Bootstrap (install) a missing backend manager.
     func bootstrap(_ id: ManagerID) async {
         guard let m = gimme.registryLookup(id) else { return }
+        bootstrapStatus[id] = "Installing…"
         log("bootstrapping \(id.rawValue)…")
         do {
             try await Bootstrap.run(m, confirm: { _ in true })
             log("bootstrapped \(id.rawValue)")
+            bootstrapStatus.removeValue(forKey: id)
             await loadStatuses()
         } catch {
+            bootstrapStatus.removeValue(forKey: id)
             showError(error)
         }
     }
 
     func runSearch(_ query: String) async {
+        isSearching = true
+        defer { isSearching = false }
         do { searchResults = try await gimme.search(query: query, all: searchAll, refresh: false) }
         catch { showError(error) }
     }
 
     func install(_ hit: SearchHit) async {
+        isInstalling = true
+        defer { isInstalling = false }
         log("installing \(hit.name) via \(hit.manager.rawValue)")
         do {
             _ = try await gimme.install(name: hit.name, from: hit.manager, options: InstallOptions(),
@@ -164,6 +182,8 @@ final class GimmeStore: ObservableObject {
     }
 
     func uninstall(_ pkg: InstalledPackage) async {
+        isUninstalling = true
+        defer { isUninstalling = false }
         log("uninstalling \(pkg.name)")
         do {
             try await gimme.uninstall(name: pkg.name, from: pkg.manager)
@@ -222,6 +242,8 @@ final class GimmeStore: ObservableObject {
 
     /// Re-query outdated packages across managers (bypasses cache).
     func refreshOutdated() async {
+        isRefreshingOutdated = true
+        defer { isRefreshingOutdated = false }
         do {
             outdated = try await gimme.outdated(from: nil, refresh: true)
             // Clear stale per-package status for packages no longer outdated.

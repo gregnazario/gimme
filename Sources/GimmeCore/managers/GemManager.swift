@@ -112,11 +112,16 @@ public final class GemManager: PackageManager {
 
     public func outdated() async throws -> [OutdatedPackage] {
         let installed = try await listInstalled()
-        var out: [OutdatedPackage] = []
-        for pkg in installed {
-            guard let doc: GemSearchHit = try? await http.getJSON("https://rubygems.org/api/v1/gems/\(pkg.name).json", as: GemSearchHit.self) else { continue }
-            if pkg.version != doc.version { out.append(OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: doc.version, manager: .gem)) }
+        return await withTaskGroup(of: OutdatedPackage?.self) { group in
+            for pkg in installed {
+                group.addTask {
+                    guard let doc: GemSearchHit = try? await self.http.getJSON("https://rubygems.org/api/v1/gems/\(pkg.name).json", as: GemSearchHit.self) else { return nil }
+                    return pkg.version != doc.version ? OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: doc.version, manager: .gem) : nil
+                }
+            }
+            var out: [OutdatedPackage] = []
+            for await r in group { if let r { out.append(r) } }
+            return out
         }
-        return out
     }
 }

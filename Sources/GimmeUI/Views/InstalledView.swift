@@ -40,8 +40,13 @@ struct InstalledView: View {
                     .help("Clear filter")
                 }
                 Button { Task { await store.loadAll(refresh: true) } } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    if store.loading {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
                 }
+                .disabled(store.loading)
             }
             .padding(.horizontal)
             .padding(.top, 6)

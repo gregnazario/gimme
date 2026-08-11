@@ -138,13 +138,18 @@ public final class CargoManager: PackageManager {
 
     public func outdated() async throws -> [OutdatedPackage] {
         let installed = try await listInstalled()
-        var out: [OutdatedPackage] = []
-        for pkg in installed {
-            guard let doc: CrateInfo = try? await http.getJSON("https://crates.io/api/v1/crates/\(pkg.name)", as: CrateInfo.self),
-                  let latest = doc.crate.max_version else { continue }
-            if pkg.version != latest { out.append(OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .cargo)) }
+        return await withTaskGroup(of: OutdatedPackage?.self) { group in
+            for pkg in installed {
+                group.addTask {
+                    guard let doc: CrateInfo = try? await self.http.getJSON("https://crates.io/api/v1/crates/\(pkg.name)", as: CrateInfo.self),
+                          let latest = doc.crate.max_version else { return nil }
+                    return pkg.version != latest ? OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .cargo) : nil
+                }
+            }
+            var out: [OutdatedPackage] = []
+            for await r in group { if let r { out.append(r) } }
+            return out
         }
-        return out
     }
 
     private func installedVersion(of name: String) async throws -> String? {

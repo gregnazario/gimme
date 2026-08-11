@@ -21,8 +21,13 @@ struct ConsolidateView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { Task { await store.loadConsolidationReport(refresh: true) } } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    if store.isConsolidating {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
                 }
+                .disabled(store.isConsolidating)
             }
         }
         .task { await store.loadConsolidationReport() }

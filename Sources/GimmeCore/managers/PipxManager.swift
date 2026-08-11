@@ -101,12 +101,17 @@ public final class PipxManager: PackageManager {
 
     public func outdated() async throws -> [OutdatedPackage] {
         let installed = try await listInstalled()
-        var out: [OutdatedPackage] = []
-        for pkg in installed {
-            guard let doc: PyPIDoc = try? await http.getJSON("https://pypi.org/pypi/\(pkg.name)/json", as: PyPIDoc.self),
-                  let latest = doc.info.version else { continue }
-            if pkg.version != latest { out.append(OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .pipx)) }
+        return await withTaskGroup(of: OutdatedPackage?.self) { group in
+            for pkg in installed {
+                group.addTask {
+                    guard let doc: PyPIDoc = try? await self.http.getJSON("https://pypi.org/pypi/\(pkg.name)/json", as: PyPIDoc.self),
+                          let latest = doc.info.version else { return nil }
+                    return pkg.version != latest ? OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .pipx) : nil
+                }
+            }
+            var out: [OutdatedPackage] = []
+            for await r in group { if let r { out.append(r) } }
+            return out
         }
-        return out
     }
 }

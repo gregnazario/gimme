@@ -114,12 +114,17 @@ public final class ComposerManager: PackageManager {
 
     public func outdated() async throws -> [OutdatedPackage] {
         let installed = try await listInstalled()
-        var out: [OutdatedPackage] = []
-        for pkg in installed {
-            guard let doc: PackagistPackage = try? await http.getJSON("https://repo.packagist.org/p2/\(pkg.name).json", as: PackagistPackage.self),
-                  let latest = doc.latestVersion else { continue }
-            if pkg.version != latest { out.append(OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .composer)) }
+        return await withTaskGroup(of: OutdatedPackage?.self) { group in
+            for pkg in installed {
+                group.addTask {
+                    guard let doc: PackagistPackage = try? await self.http.getJSON("https://repo.packagist.org/p2/\(pkg.name).json", as: PackagistPackage.self),
+                          let latest = doc.latestVersion else { return nil }
+                    return pkg.version != latest ? OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .composer) : nil
+                }
+            }
+            var out: [OutdatedPackage] = []
+            for await r in group { if let r { out.append(r) } }
+            return out
         }
-        return out
     }
 }

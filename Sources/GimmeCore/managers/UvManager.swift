@@ -89,15 +89,20 @@ public final class UvManager: PackageManager {
 
     public func outdated() async throws -> [OutdatedPackage] {
         let installed = try await listInstalled()
-        var out: [OutdatedPackage] = []
-        for pkg in installed {
-            guard let doc: PyPIDoc = try? await http.getJSON("https://pypi.org/pypi/\(pkg.name)/json", as: PyPIDoc.self),
-                  let latest = doc.info.version else { continue }
-            // We don't have installed version reliably from `uv tool list`;
-            // mark outdated only if names differ (best-effort). Real version
-            // comparison added when `uv tool list --json` is available.
-            if pkg.version != latest { out.append(OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .uv)) }
+        return await withTaskGroup(of: OutdatedPackage?.self) { group in
+            for pkg in installed {
+                group.addTask {
+                    guard let doc: PyPIDoc = try? await self.http.getJSON("https://pypi.org/pypi/\(pkg.name)/json", as: PyPIDoc.self),
+                          let latest = doc.info.version else { return nil }
+                    // We don't have installed version reliably from `uv tool list`;
+                    // mark outdated only if names differ (best-effort). Real version
+                    // comparison added when `uv tool list --json` is available.
+                    return pkg.version != latest ? OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .uv) : nil
+                }
+            }
+            var out: [OutdatedPackage] = []
+            for await r in group { if let r { out.append(r) } }
+            return out
         }
-        return out
     }
 }

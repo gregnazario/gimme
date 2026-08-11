@@ -70,19 +70,35 @@ struct DetailSheet: View {
                         Text("Details unavailable from \(p.manager.displayName).")
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    Button("Uninstall", role: .destructive) {
-                        Task { await store.uninstall(p); dismiss() }
+                    if store.isUninstalling {
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.small)
+                            Text("Uninstalling…").foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Button("Uninstall", role: .destructive) {
+                            Task { await store.uninstall(p); dismiss() }
+                        }
+                        .disabled(store.isUninstalling)
                     }
                 case .searchable(let h):
                     ManagerBadge(manager: h.manager)
                     if !h.summary.isEmpty { detailRow("Summary", h.summary) }
                     detailRow("Latest version", h.latestVersion)
-                    Button {
-                        Task { await store.install(h); dismiss() }
-                    } label: {
-                        Label("Install", systemImage: "arrow.down.circle")
+                    if store.isInstalling {
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.small)
+                            Text("Installing…").foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Button {
+                            Task { await store.install(h); dismiss() }
+                        } label: {
+                            Label("Install", systemImage: "arrow.down.circle")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(store.isInstalling)
                     }
-                    .buttonStyle(.borderedProminent)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

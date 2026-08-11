@@ -29,9 +29,13 @@ struct UpdatesView: View {
             Button {
                 Task { await store.refreshOutdated() }
             } label: {
-                Label("Refresh", systemImage: "arrow.clockwise")
+                if store.isRefreshingOutdated {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
             }
-            .disabled(store.isUpdating)
+            .disabled(store.isUpdating || store.isRefreshingOutdated)
             .help("Re-check for updates across all managers")
 
             Button {

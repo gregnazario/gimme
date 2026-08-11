@@ -19,7 +19,8 @@ struct PackageManagersView: View {
                         status: status,
                         packageCount: packageCount(for: status.id),
                         onBootstrap: { Task { await store.bootstrap(status.id) } },
-                        onShowPackages: { store.showInstalledFiltered(by: status.id) }
+                        onShowPackages: { store.showInstalledFiltered(by: status.id) },
+                        bootstrapState: store.bootstrapStatus[status.id]
                     )
                 }
             }
@@ -35,8 +36,13 @@ struct PackageManagersView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { Task { await store.loadStatuses() } } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    if store.isRefreshingStatuses {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
                 }
+                .disabled(store.isRefreshingStatuses)
             }
         }
         .task { await store.loadStatuses() }
@@ -57,6 +63,8 @@ struct ManagerStatusRow: View {
     let onBootstrap: () -> Void
     /// Navigate to Installed pre-filtered to this manager.
     let onShowPackages: () -> Void
+    /// Bootstrap state ("Installing…" or nil when idle).
+    let bootstrapState: String?
 
     var body: some View {
         HStack(spacing: 10) {
@@ -90,9 +98,16 @@ struct ManagerStatusRow: View {
             .help(packageCount == 0 ? "No packages installed via \(status.id.rawValue)" : "Show in Installed")
 
             if !status.available {
-                Button("Install", action: onBootstrap)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
+                if let bsState = bootstrapState {
+                    HStack(spacing: 4) {
+                        ProgressView().controlSize(.small)
+                        Text(bsState).font(.caption).foregroundStyle(.secondary)
+                    }
+                } else {
+                    Button("Install", action: onBootstrap)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                }
             } else {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
