@@ -126,7 +126,10 @@ extension Gimme {
         var summary = UpdateSummary()
         let managers = registry.enabled(config: config).filter { $0.capabilities.contains(.outdated) && $0.capabilities.contains(.upgrade) }
         for m in managers {
-            let outdated = (try? await m.outdated()) ?? []
+            // Use the cache-aware path so we don't re-query from scratch when
+            // the GUI already fetched it seconds ago.
+            let outdated = (try? await self.outdated(from: m.id, refresh: false))?
+                .filter { $0.manager == m.id } ?? []
             for pkg in outdated {
                 onPackageStart?(pkg.id)
                 do {
@@ -219,40 +222,51 @@ extension Gimme {
 
 extension Gimme {
     /// All installed packages across managers (or one if `from` is set).
-    /// Uses cache unless `refresh`.
+    /// Queries managers concurrently. Uses cache unless `refresh`.
     public func list(from managerID: ManagerID?, refresh: Bool) async throws -> [InstalledPackage] {
         let managers = managerID.flatMap { id in registry.get(id).map { [$0] } } ?? registry.enabled(config: config)
-        var all: [InstalledPackage] = []
-        for m in managers {
-            let key = "\(m.id.rawValue):list"
-            if !refresh, let cached = cache.get(key, ttlSeconds: config.listCacheTTLSeconds, as: [InstalledPackage].self) {
-                all.append(contentsOf: cached); continue
+        return await withTaskGroup(of: [InstalledPackage].self) { group in
+            for m in managers {
+                group.addTask {
+                    let key = "\(m.id.rawValue):list"
+                    if !refresh, let cached = self.cache.get(key, ttlSeconds: self.config.listCacheTTLSeconds, as: [InstalledPackage].self) {
+                        return cached
+                    }
+                    if let pkgs = try? await m.listInstalled() {
+                        self.cache.set(key, value: pkgs)
+                        return pkgs
+                    }
+                    return []
+                }
             }
-            // Cache only on success; a thrown result is never cached as empty.
-            if let pkgs = try? await m.listInstalled() {
-                cache.set(key, value: pkgs)
-                all.append(contentsOf: pkgs)
-            }
+            var all: [InstalledPackage] = []
+            for await result in group { all.append(contentsOf: result) }
+            return all
         }
-        return all
     }
 
-    /// All outdated packages across managers.
+    /// All outdated packages across managers. Queries managers concurrently.
     public func outdated(from managerID: ManagerID?, refresh: Bool) async throws -> [OutdatedPackage] {
         let managers = managerID.flatMap { id in registry.get(id).map { [$0] } }
             ?? registry.enabled(config: config).filter { $0.capabilities.contains(.outdated) }
-        var all: [OutdatedPackage] = []
-        for m in managers {
-            let key = "\(m.id.rawValue):outdated"
-            if !refresh, let cached = cache.get(key, ttlSeconds: config.listCacheTTLSeconds, as: [OutdatedPackage].self) {
-                all.append(contentsOf: cached); continue
+        return await withTaskGroup(of: [OutdatedPackage].self) { group in
+            for m in managers {
+                group.addTask {
+                    let key = "\(m.id.rawValue):outdated"
+                    if !refresh, let cached = self.cache.get(key, ttlSeconds: self.config.listCacheTTLSeconds, as: [OutdatedPackage].self) {
+                        return cached
+                    }
+                    if let pkgs = try? await m.outdated() {
+                        self.cache.set(key, value: pkgs)
+                        return pkgs
+                    }
+                    return []
+                }
             }
-            if let pkgs = try? await m.outdated() {
-                cache.set(key, value: pkgs)
-                all.append(contentsOf: pkgs)
-            }
+            var all: [OutdatedPackage] = []
+            for await result in group { all.append(contentsOf: result) }
+            return all
         }
-        return all
     }
 
     /// Search the default-priority manager (all=false) or every manager (all=true).
@@ -261,7 +275,6 @@ extension Gimme {
         if all {
             managers = registry.enabled(config: config).filter { $0.capabilities.contains(.search) }
         } else {
-            // Default = first enabled manager in priority order with search.
             managers = config.priority.compactMap { idStr -> (any PackageManager)? in
                 guard let id = ManagerID(rawValue: idStr),
                       let m = registry.get(id), m.isAvailable(),
@@ -270,18 +283,24 @@ extension Gimme {
                 return m
             }.prefix(1).map { $0 }
         }
-        var hits: [SearchHit] = []
-        for m in managers {
-            let key = "\(m.id.rawValue):search:\(query)"
-            if !refresh, let cached = cache.get(key, ttlSeconds: config.infoCacheTTLSeconds, as: [SearchHit].self) {
-                hits.append(contentsOf: cached); continue
+        return await withTaskGroup(of: [SearchHit].self) { group in
+            for m in managers {
+                group.addTask {
+                    let key = "\(m.id.rawValue):search:\(query)"
+                    if !refresh, let cached = self.cache.get(key, ttlSeconds: self.config.infoCacheTTLSeconds, as: [SearchHit].self) {
+                        return cached
+                    }
+                    if let h = try? await m.search(query) {
+                        self.cache.set(key, value: h)
+                        return h
+                    }
+                    return []
+                }
             }
-            if let h = try? await m.search(query) {
-                cache.set(key, value: h)
-                hits.append(contentsOf: h)
-            }
+            var hits: [SearchHit] = []
+            for await result in group { hits.append(contentsOf: result) }
+            return hits
         }
-        return hits
     }
 }
 

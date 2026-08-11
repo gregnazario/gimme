@@ -76,15 +76,18 @@ final class GimmeStore: ObservableObject {
     func loadAll(refresh: Bool = false) async {
         loading = true
         defer { loading = false }
+        // All four are independent — run concurrently so the user waits for
+        // the slowest one, not the sum.
+        async let installedResult = gimme.list(from: nil, refresh: refresh)
+        async let outdatedResult = gimme.outdated(from: nil, refresh: refresh)
+        async let statusesResult = gimme.statuses()
+        async let runtimesResult = VersionManagerDetector.detect()
         do {
-            installed = try await gimme.list(from: nil, refresh: refresh)
-            outdated = try await gimme.outdated(from: nil, refresh: refresh)
-        } catch {
-            showError(error)
-        }
-        // Statuses are independent of list/outdated and shouldn't gate the UI.
-        managerStatuses = await gimme.statuses()
-        runtimeManagers = await VersionManagerDetector.detect()
+            installed = try await installedResult
+            outdated = try await outdatedResult
+        } catch { showError(error) }
+        managerStatuses = await statusesResult
+        runtimeManagers = await runtimesResult
     }
 
     /// Refresh just the per-manager status (availability + version).
@@ -156,7 +159,7 @@ final class GimmeStore: ObservableObject {
                                             Task { @MainActor in self.log("\(hit.manager.rawValue): \(line)") }
                                         })
             log("installed \(hit.name)")
-            await loadAll(refresh: true)
+            await loadAll(refresh: false)
         } catch { showError(error) }
     }
 
@@ -165,7 +168,7 @@ final class GimmeStore: ObservableObject {
         do {
             try await gimme.uninstall(name: pkg.name, from: pkg.manager)
             log("uninstalled \(pkg.name)")
-            await loadAll(refresh: true)
+            await loadAll(refresh: false)
         } catch { showError(error) }
     }
 
@@ -185,7 +188,7 @@ final class GimmeStore: ObservableObject {
             try await gimme.upgrade(name: pkg.name, from: pkg.manager)
             upgradeStatus[pkg.id] = .done
             log("upgraded \(pkg.name)")
-            await loadAll(refresh: true)
+            await loadAll(refresh: false)
         } catch {
             upgradeStatus[pkg.id] = .failed("\(error)")
             showError(error)
@@ -213,7 +216,7 @@ final class GimmeStore: ObservableObject {
                 upgradeStatus[failure.id] = .failed(failure.error)
                 log("FAILED \(failure.id): \(failure.error)")
             }
-            await loadAll(refresh: true)
+            await loadAll(refresh: false)
         } catch { showError(error) }
     }
 
