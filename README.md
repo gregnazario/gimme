@@ -4,6 +4,32 @@ An all-in-one package management layer for macOS. gimmie is a **pure
 orchestration** tool: it doesn't download, build, or shelve anything itself —
 it drives real package managers (Homebrew, Go, uv, Cargo, bun) through one
 unified interface, so you can address packages by name across all of them
+
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gregnazario/gimme/main/install.sh | sh
+```
+
+This downloads a prebuilt binary (Apple Silicon) and installs it to `~/.local/bin`.
+On Intel Macs or if no binary is available, it falls back to building from source
+(requires Swift 5.9+). The SwiftUI app is installed to `/Applications` if available.
+
+**Custom install directory:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/gregnazario/gimme/main/install.sh | GIMME_INSTALL_DIR=/usr/local/bin sh
+```
+
+**Skip the app:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/gregnazario/gimme/main/install.sh | GIMME_SKIP_APP=1 sh
+```
+
+After installing, make sure `~/.local/bin` is on your `PATH`, then:
+```bash
+gimme --help    # see what you can do
+gimme doctor    # check which package managers are installed
+```
 without remembering which tool owns what.
 
 Native Swift, with both a CLI (`gimme`) and a SwiftUI macOS app, sharing one

@@ -1,5 +1,5 @@
 #!/bin/sh
-# gimme — POSIX sh installer
+# gimmie — POSIX sh installer
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/gregnazario/gimme/main/install.sh | sh
@@ -9,290 +9,143 @@
 #   sh install.sh [--prefix <dir>]
 #
 # What it does:
-#   1. Checks for macOS + Swift 6+.
-#   2. Clones (or updates) the repo to a temp build dir.
-#   3. Builds a release binary.
-#   4. Installs the binary + man page + tldr page.
-#   5. Prints next steps (PATH setup).
+#   1. Checks for macOS.
+#   2. Downloads a prebuilt binary from GitHub Releases (fast path).
+#   3. Falls back to building from source if no binary is available.
+#   4. Installs the binary to ~/.local/bin (or GIMME_INSTALL_DIR).
 #
 # Environment overrides:
 #   GIMME_INSTALL_DIR   where to install the binary (default: ~/.local/bin)
-#   GIMME_MAN_DIR       where to install the man page (default: ~/.local/share/man/man1)
-#   GIMME_REPO          git URL to clone from (default: https://github.com/gregnazario/gimme)
-#   GIMME_BRANCH        branch/tag to build (default: main)
-#   GIMME_SKIP_MAN      set to 1 to skip man page installation
-#   GIMME_SKIP_TLDR     set to 1 to skip tldr page installation
+#   GIMME_REPO          git URL (default: https://github.com/gregnazario/gimme)
+#   GIMME_BRANCH        branch/tag to build from source (default: main)
+#   GIMME_SKIP_APP      set to 1 to skip the .app installation
 
 set -eu
 
 # --- defaults ---
-
+REPO="${GIMME_REPO:-https://github.com/gimme/gimme}"
 REPO="${GIMME_REPO:-https://github.com/gregnazario/gimme}"
 BRANCH="${GIMME_BRANCH:-main}"
 INSTALL_DIR="${GIMME_INSTALL_DIR:-${HOME}/.local/bin}"
-MAN_DIR="${GIMME_MAN_DIR:-${HOME}/.local/share/man/man1}"
-SKIP_MAN="${GIMME_SKIP_MAN:-0}"
-SKIP_TLDR="${GIMME_SKIP_TLDR:-0}"
 SKIP_APP="${GIMME_SKIP_APP:-0}"
 APP_DIR="${GIMME_APP_DIR:-/Applications}"
 
 # Allow --prefix <dir> to override INSTALL_DIR (local-clone mode).
 while [ $# -gt 0 ]; do
     case "$1" in
-        --prefix)
-            shift
-            INSTALL_DIR="$1"
-            ;;
-        --prefix=*)
-            INSTALL_DIR="${1#--prefix=}"
-            ;;
-        --help|-h)
-            cat <<'EOF'
-gimme installer — POSIX sh
-
-Usage: sh install.sh [--prefix <dir>]
-
-Environment:
-  GIMME_INSTALL_DIR   binary install dir (default: ~/.local/bin)
-  GIMME_MAN_DIR       man page dir (default: ~/.local/share/man/man1)
-  GIMME_REPO          git URL (default: https://github.com/gregnazario/gimme)
-  GIMME_BRANCH        branch/tag (default: main)
-  GIMME_SKIP_MAN=1    skip man page
-  GIMME_SKIP_TLDR=1   skip tldr page
-  GIMME_SKIP_APP=1    skip building + installing the Gimme.app (default: builds it)
-  GIMME_APP_DIR       where to install Gimme.app (default: /Applications)
-EOF
-            exit 0
-            ;;
-        *)
-            printf 'Unknown option: %s\n' "$1" >&2
-            exit 1
-            ;;
+        --prefix) INSTALL_DIR="$2"; shift 2 ;;
+        *) shift ;;
     esac
-    shift
 done
 
 # --- helpers ---
-
-info()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
-ok()    { printf '\033[1;32m  ✓\033[0m %s\n' "$*"; }
-warn()  { printf '\033[1;33m  !\033[0m %s\n' "$*" >&2; }
-fail()  { printf '\033[1;31m  ✗\033[0m %s\n' "$*" >&2; exit 1; }
-
-need() {
-    command -v "$1" >/dev/null 2>&1 || fail "$1 is required but not found in PATH"
-}
+warn() { printf '%s\n' "$*" >&2; }
+fail() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
 # --- preflight ---
+[ "$(uname -s)" = "Darwin" ] || fail "gimmie is macOS-only. Your OS: $(uname -s)"
 
-info "Checking prerequisites..."
-
-# OS check — gimme is macOS-only for now.
-case "$(uname -s)" in
-    Darwin*) ;;
-    *) fail "gimme currently supports macOS only (got $(uname -s))." ;;
+ARCH="$(uname -m)"
+case "$ARCH" in
+    arm64)   ARCH_TAG="arm64" ;;
+    x86_64)  ARCH_TAG="x86_64" ;;
+    *)       fail "unsupported architecture: $ARCH" ;;
 esac
-ok "macOS detected"
 
-# Swift 6+ check.
-need swift
-SWIFT_VER="$(swift --version 2>/dev/null | head -1 | sed 's/.*version \([0-9]*\).*/\1/')"
-if [ -z "$SWIFT_VER" ] || [ "$SWIFT_VER" -lt 6 ]; then
-    fail "Swift 6+ is required (found: $(swift --version 2>/dev/null | head -1))."
-fi
-ok "Swift ${SWIFT_VER}+ detected"
+echo "==> Installing gimmie ($ARCH)…"
 
-need git
-ok "git detected"
+# --- try downloading a prebuilt binary ---
+BINARY_TARBALL="gimme-darwin-${ARCH_TAG}.tar.gz"
+TMPDIR="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR"' EXIT
 
-# --- build ---
+API_URL="https://api.github.com/repos/gregnazario/gimme/releases/latest"
 
-info "Building gimme from ${BRANCH}..."
-
-# Use a temp dir for the clone. If running from a local checkout (the script
-# is in the repo root), build in-place instead.
-SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
-BUILD_DIR=""
-CLEANUP=""
-
-if [ -f "${SCRIPT_DIR}/Package.swift" ] && [ -f "${SCRIPT_DIR}/install.sh" ]; then
-    # Running from a local clone — build here.
-    BUILD_DIR="$SCRIPT_DIR"
-    ok "Using local checkout: ${BUILD_DIR}"
-else
-    # Clone to a temp dir.
-    BUILD_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t gimme)"
-    CLEANUP="$BUILD_DIR"
-    trap 'rm -rf "$CLEANUP"' EXIT INT TERM
-    info "Cloning to ${BUILD_DIR}..."
-    git clone --depth 1 --branch "$BRANCH" "$REPO" "$BUILD_DIR" || fail "git clone failed"
-    ok "Cloned"
+# Fetch the download URL for the matching tarball.
+DOWNLOAD_URL=""
+if command -v curl >/dev/null 2>&1; then
+    DOWNLOAD_URL="$(curl -fsSL "$API_URL" 2>/dev/null | grep -o "https://[^\"]*${BINARY_TARBALL}" | head -1 || true)"
+elif command -v wget >/dev/null 2>&1; then
+    DOWNLOAD_URL="$(wget -qO- "$API_URL" 2>/dev/null | grep -o "https://[^\"]*${BINARY_TARBALL}" | head -1 || true)"
 fi
 
-info "Compiling (release)..."
+if [ -n "$DOWNLOAD_URL" ]; then
+    echo "==> Downloading prebuilt binary…"
+    if curl -fsSL -o "$TMPDIR/$BINARY_TARBALL" "$DOWNLOAD_URL" 2>/dev/null || \
+       wget -qO "$TMPDIR/$BINARY_TARBALL" "$DOWNLOAD_URL" 2>/dev/null; then
 
-# Always force a clean build of the release binary. SwiftPM's incremental build
-# can produce a stale/0-byte binary if a previous build was interrupted (the
-# linker sees the output file exists and skips relinking).
-rm -rf "${BUILD_DIR}/.build/release"
+        tar xzf "$TMPDIR/$BINARY_TARBALL" -C "$TMPDIR"
+        BINARY="$TMPDIR/gimme"
+        chmod 755 "$BINARY"
 
-swift build -c release --package-path "$BUILD_DIR" 2>&1 || fail "swift build failed"
-
-BINARY="${BUILD_DIR}/.build/release/gimme"
-
-# Wait for the binary to be non-empty AND stable (SwiftPM may still be writing).
-# This prevents the race where swift build returns before the link is flushed.
-_attempts=0
-while [ $_attempts -lt 10 ]; do
-    if [ -s "$BINARY" ]; then
-        # Verify it actually runs.
-        if "$BINARY" --version >/dev/null 2>&1; then
-            break
-        fi
-    fi
-    _attempts=$((_attempts + 1))
-    sleep 0.5
-done
-
-[ -x "$BINARY" ] || fail "binary not found at ${BINARY} after build"
-[ -s "$BINARY" ] || fail "binary is 0 bytes after build (build may have been interrupted)"
-"$BINARY" --version >/dev/null 2>&1 || fail "binary exists but does not run"
-ok "Built and verified ($(wc -c < "$BINARY" | tr -d ' ') bytes)"
-
-VERSION="$("$BINARY" --version 2>/dev/null | head -1 || echo 'gimme')"
-ok "${VERSION}"
-
-# --- install binary (COPY, not symlink — .build/ can be mutated by SwiftPM) ---
-
-info "Installing to ${INSTALL_DIR}..."
-mkdir -p "$INSTALL_DIR"
-
-# Copy the binary to the install dir. A symlink to .build/release/ is fragile:
-# SwiftPM can truncate/replace the build output during incremental builds,
-# leaving the installed binary as 0 bytes. A copy is stable.
-cp "$BINARY" "${INSTALL_DIR}/gimme"
-chmod 755 "${INSTALL_DIR}/gimme"
-
-# Verify the installed copy.
-[ -s "${INSTALL_DIR}/gimme" ] || fail "installed binary is 0 bytes"
-"${INSTALL_DIR}/gimme" --version >/dev/null 2>&1 || fail "installed binary does not run"
-ok "Binary installed: ${INSTALL_DIR}/gimme"
-
-# --- install man page ---
-
-if [ "$SKIP_MAN" = "1" ]; then
-    warn "Skipping man page (--skip-man)"
-else
-    info "Installing man page..."
-    mkdir -p "$MAN_DIR"
-    "${INSTALL_DIR}/gimme" man > "${MAN_DIR}/gimme.1" 2>/dev/null || warn "man page generation failed (non-fatal)"
-    ok "Man page: ${MAN_DIR}/gimme.1"
-fi
-
-# --- install tldr page ---
-
-if [ "$SKIP_TLDR" = "1" ]; then
-    warn "Skipping tldr page"
-elif [ -f "${BUILD_DIR}/tldr-pages/pages/common/gimme.md" ]; then
-    TLDR_DIR="${HOME}/.local/share/tldr/pages/common"
-    info "Installing tldr page..."
-    mkdir -p "$TLDR_DIR"
-    cp "${BUILD_DIR}/tldr-pages/pages/common/gimme.md" "${TLDR_DIR}/gimme.md"
-    ok "tldr page: ${TLDR_DIR}/gimme.md"
-fi
-
-# --- install Gimme.app (native macOS UI) ---
-
-if [ "$SKIP_APP" = "1" ]; then
-    warn "Skipping Gimme.app (--skip-app)"
-else
-    info "Building Gimme.app (native macOS UI)..."
-    # Build the GimmeUI product in release mode.
-    if swift build -c release --product GimmeUI --package-path "$BUILD_DIR" 2>&1; then
-        APP_BINARY="${BUILD_DIR}/.build/release/GimmeUI"
-        if [ -s "$APP_BINARY" ]; then
-            # Assemble the .app bundle.
-            BUNDLE_DIR="${BUILD_DIR}/app/Gimme.app"
-            rm -rf "$BUNDLE_DIR"
-            mkdir -p "${BUNDLE_DIR}/Contents/MacOS"
-            mkdir -p "${BUNDLE_DIR}/Contents/Resources"
-            cp "$APP_BINARY" "${BUNDLE_DIR}/Contents/MacOS/GimmeUI"
-            chmod 755 "${BUNDLE_DIR}/Contents/MacOS/GimmeUI"
-            # Copy Info.plist (from app/ dir or generate inline).
-            if [ -f "${BUILD_DIR}/app/Info.plist" ]; then
-                cp "${BUILD_DIR}/app/Info.plist" "${BUNDLE_DIR}/Contents/Info.plist"
-            fi
-            printf 'APPL????' > "${BUNDLE_DIR}/Contents/PkgInfo"
-            # Copy icon if available.
-            if [ -f "${BUILD_DIR}/app/AppIcon.icns" ]; then
-                cp "${BUILD_DIR}/app/AppIcon.icns" "${BUNDLE_DIR}/Contents/Resources/AppIcon.icns"
-            fi
-            ok "Gimme.app built"
-
-            # Copy to the app dir (default /Applications).
-            DEST_APP="${APP_DIR}/Gimme.app"
-            if [ -w "$APP_DIR" ] || [ "$EUID" = "0" ]; then
-                rm -rf "$DEST_APP"
-                cp -R "$BUNDLE_DIR" "$DEST_APP"
-                ok "Gimme.app installed to ${DEST_APP}"
-            else
-                # /Applications may need elevated permissions.
-                warn "Cannot write to ${APP_DIR} — trying with osascript..."
-                if osascript -e "tell application \\"Finder\\" to move POSIX file \\"${BUNDLE_DIR}\\" to POSIX file \\"${APP_DIR}\\"" 2>/dev/null; then
-                    ok "Gimme.app installed to ${DEST_APP}"
-                else
-                    warn "Could not install to ${APP_DIR}. The app bundle is at:"
-                    warn "  ${BUNDLE_DIR}"
-                    warn "Copy it manually: cp -R \"${BUNDLE_DIR}\" \"${APP_DIR}/\""
-                fi
-            fi
-        else
-            warn "GimmeUI binary not found or empty — skipping app"
-        fi
+        # Verify it runs.
+        VERSION="$("$BINARY" --version 2>/dev/null | head -1 || echo 'gimme')"
+        echo "==> Downloaded $VERSION"
     else
-        warn "GimmeUI build failed — skipping app"
+        echo "==> Download failed, falling back to source build…"
+        DOWNLOAD_URL=""
+    fi
+fi
+
+# --- fallback: build from source ---
+if [ -z "$DOWNLOAD_URL" ]; then
+    echo "==> Building from source (requires Swift 5.9+)…"
+
+    command -v swift >/dev/null 2>&1 || fail "Swift not found. Install from https://swift.org or run 'brew install swift'"
+
+    # Are we in the repo already?
+    if [ -f "Package.swift" ] && [ -f "install.sh" ]; then
+        REPO_ROOT="$(pwd)"
+    else
+        REPO_ROOT="$TMPDIR/gimme-src"
+        git clone --depth 1 --branch "$BRANCH" "$REPO" "$REPO_ROOT"
+    fi
+
+    cd "$REPO_ROOT"
+    swift build -c release
+    BINARY="$REPO_ROOT/.build/release/gimme"
+
+    [ -s "$BINARY" ] || fail "build succeeded but binary not found"
+    VERSION="$("$BINARY" --version 2>/dev/null | head -1 || echo 'gimme')"
+    echo "==> Built $VERSION"
+fi
+
+# --- install binary ---
+mkdir -p "$INSTALL_DIR"
+cp "$BINARY" "$INSTALL_DIR/gimme"
+chmod 755 "$INSTALL_DIR/gimme"
+
+echo "  ✓ Installed to $INSTALL_DIR/gimme"
+
+# --- install app (unless skipped) ---
+if [ "$SKIP_APP" != "1" ]; then
+    APP_TARBALL="Gimme-darwin-${ARCH_TAG}.tar.gz"
+    APP_URL=""
+    if command -v curl >/dev/null 2>&1; then
+        APP_URL="$(curl -fsSL "$API_URL" 2>/dev/null | grep -o "https://[^\"]*${APP_TARBALL}" | head -1 || true)"
+    fi
+
+    if [ -n "$APP_URL" ]; then
+        echo "==> Downloading Gimme.app…"
+        if curl -fsSL -o "$TMPDIR/$APP_TARBALL" "$APP_URL" 2>/dev/null; then
+            tar xzf "$TMPDIR/$APP_TARBALL" -C "$TMPDIR"
+            if [ -w "$APP_DIR" ]; then
+                cp -R "$TMPDIR/Gimme.app" "$APP_DIR/"
+                echo "  ✓ Installed Gimme.app to $APP_DIR"
+            else
+                echo "  (need sudo to install to $APP_DIR)"
+                sudo cp -R "$TMPDIR/Gimme.app" "$APP_DIR/" && echo "  ✓ Installed Gimme.app to $APP_DIR" || warn "  could not install app"
+            fi
+        fi
     fi
 fi
 
 # --- PATH check ---
-
-GIMME_BIN_DIR="${HOME}/.gimme/bin"
-
-case ":${PATH}:" in
-    *":${INSTALL_DIR}:"*) ;;
-    *)
-        printf '\n'
-        warn "${INSTALL_DIR} is not on your PATH."
-        printf '  Add this line to your shell config (~/.zshrc or ~/.bashrc):\n'
-        printf '    export PATH="%s:$PATH"\n\n' "$INSTALL_DIR"
-        ;;
+case ":$PATH:" in
+    *":$INSTALL_DIR:"*) ;;
+    *) warn "note: $INSTALL_DIR is not on your PATH. Add it to your shell profile:" ;;
 esac
 
-case ":${PATH}:" in
-    *":${GIMME_BIN_DIR}:"*) ;;
-    *)
-        warn "${GIMME_BIN_DIR} (for installed tools) is not on your PATH."
-        printf '  Add this line too:\n'
-        printf '    export PATH="%s:$PATH"\n\n' "$GIMME_BIN_DIR"
-        ;;
-esac
-
-# --- done ---
-
-# Final verification: the installed binary runs and produces output.
-INSTALLED="${INSTALL_DIR}/gimme"
-if "$INSTALLED" --version >/dev/null 2>&1; then
-    ok "Installed binary runs: $("$INSTALLED" --version 2>/dev/null)"
-else
-    fail "Installed binary does not run"
-fi
-
-printf '\n'
-info 'Done! Next steps:'
-printf '  hash -r             # clear shell command cache (important if reinstalling)\n'
-printf '  gimme --version     # verify CLI\n'
-printf '  gimme doctor        # health check\n'
-printf '  gimme --help        # see all commands\n'
-printf '  open %s/Gimme.app   # launch the native macOS UI\n' "$APP_DIR"
-printf '  man gimme           # read the man page\n'
-printf '\n'
+# --- final verify ---
+INSTALLED="$INSTALL_DIR/gimme"
+"$INSTALLED" --version >/dev/null 2>&1 && echo "==> Done! Run 'gimme --help' to get started." || fail "installation verification failed"

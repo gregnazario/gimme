@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # Overwrite the dev version in the source.
+          sed -i '' "s/2.0.0-dev/$VERSION/" Sources/GimmeCore/Version.swift
+          echo "Set version to $VERSION"
+
+      - name: Build release (CLI)
+        run: swift build -c release
+
+      - name: Test
+        run: swift test
+
+      - name: Verify binary
+        run: |
+          .build/release/gimme --version
+          test -s .build/release/gimme
+
+      - name: Strip binary
+        run: strip .build/release/gimme
+
+      - name: Create CLI tarball
+        run: |
+          cd .build/release
+          tar czf ../../gimme-darwin-arm64.tar.gz gimme
+          cd ../..
+
+      - name: Build app bundle
+        run: |
+          # Update Info.plist version.
+          sed -i '' "s/0.1.0/${{ steps.version.outputs.version }}/" app/Info.plist
+          sh app/build-app.sh
+
+      - name: Create app tarball
+        run: tar czf Gimme-darwin-arm64.tar.gz -C app Gimme.app
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            gimme-darwin-arm64.tar.gz \
+            Gimme-darwin-arm64.tar.gz \
+            --title "gimmie ${{ steps.version.outputs.version }}" \
+            --generate-notes
