@@ -42,21 +42,30 @@ jobs:
           tar czf ../../gimme-darwin-arm64.tar.gz gimme
           cd ../..
 
-      - name: Build app bundle
+      - name: Build app bundle (best-effort — headless CI may not support SwiftUI)
+        continue-on-error: true
         run: |
-          # Update Info.plist version.
           sed -i '' "s/0.1.0/${{ steps.version.outputs.version }}/" app/Info.plist
           sh app/build-app.sh
 
-      - name: Create app tarball
-        run: tar czf Gimme-darwin-arm64.tar.gz -C app Gimme.app
+      - name: Create app tarball (if built)
+        run: |
+          if [ -d "app/Gimme.app" ]; then
+            tar czf Gimme-darwin-arm64.tar.gz -C app Gimme.app
+            echo "APP_TARBALL=Gimme-darwin-arm64.tar.gz" >> "$GITHUB_ENV"
+          else
+            echo "App bundle not built; skipping."
+          fi
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          ASSETS="gimme-darwin-arm64.tar.gz"
+          if [ -n "$APP_TARBALL" ] && [ -f "$APP_TARBALL" ]; then
+            ASSETS="$ASSETS $APP_TARBALL"
+          fi
           gh release create "$GITHUB_REF_NAME" \
-            gimme-darwin-arm64.tar.gz \
-            Gimme-darwin-arm64.tar.gz \
+            $ASSETS \
             --title "gimmie ${{ steps.version.outputs.version }}" \
             --generate-notes
