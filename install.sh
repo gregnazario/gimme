@@ -115,6 +115,10 @@ mkdir -p "$INSTALL_DIR"
 cp "$BINARY" "$INSTALL_DIR/gimme"
 chmod 755 "$INSTALL_DIR/gimme"
 
+# Strip macOS quarantine attribute if present (browser-downloaded tarballs
+# get one; curl|sh doesn't). Without this, Gatekeeper blocks the binary.
+xattr -cr "$INSTALL_DIR/gimme" 2>/dev/null || true
+
 echo "  ✓ Installed to $INSTALL_DIR/gimme"
 
 # --- install app (unless skipped) ---
@@ -129,12 +133,16 @@ if [ "$SKIP_APP" != "1" ]; then
         echo "==> Downloading Gimme.app…"
         if curl -fsSL -o "$TMPDIR/$APP_TARBALL" "$APP_URL" 2>/dev/null; then
             tar xzf "$TMPDIR/$APP_TARBALL" -C "$TMPDIR"
+            # Strip quarantine so Gatekeeper doesn't block the unsigned app.
+            xattr -cr "$TMPDIR/Gimme.app" 2>/dev/null || true
             if [ -w "$APP_DIR" ]; then
                 cp -R "$TMPDIR/Gimme.app" "$APP_DIR/"
+                xattr -cr "$APP_DIR/Gimme.app" 2>/dev/null || true
                 echo "  ✓ Installed Gimme.app to $APP_DIR"
             else
                 echo "  (need sudo to install to $APP_DIR)"
-                sudo cp -R "$TMPDIR/Gimme.app" "$APP_DIR/" && echo "  ✓ Installed Gimme.app to $APP_DIR" || warn "  could not install app"
+                sudo cp -R "$TMPDIR/Gimme.app" "$APP_DIR/" && sudo xattr -cr "$APP_DIR/Gimme.app" 2>/dev/null || true
+                echo "  ✓ Installed Gimme.app to $APP_DIR" || warn "  could not install app"
             fi
         fi
     fi
