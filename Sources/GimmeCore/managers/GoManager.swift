@@ -79,7 +79,9 @@ public final class GoManager: PackageManager {
         // `go` provides no uninstall; remove the binary from GOBIN.
         let gobin = ProcessInfo.processInfo.environment["GOBIN"]
             ?? (FileManager.default.homeDirectoryForCurrentUser.path + "/go/bin")
-        let binary = goBinaryName(for: package.name)
+        guard let binary = safeBinaryName(goBinaryName(for: package.name)) else {
+            throw GimmeError.notFound("unsafe binary name derived from '\(package.name)'")
+        }
         let target = URL(fileURLWithPath: gobin).appendingPathComponent(binary)
         guard FileManager.default.fileExists(atPath: target.path) else {
             throw GimmeError.notFound("\(binary) not found in GOBIN")

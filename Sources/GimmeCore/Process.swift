@@ -86,6 +86,19 @@ public enum BinaryResolver {
     }
 }
 
+/// Validate that a derived binary name is safe to use as a path component.
+/// Rejects empty strings, `.`, `..`, and anything containing `/` or `\` —
+/// preventing path traversal in uninstall operations that `rm` a file derived
+/// from a package name. Returns the name if safe, nil if unsafe.
+public func safeBinaryName(_ name: String) -> String? {
+    guard !name.isEmpty,
+          name != ".",
+          name != "..",
+          !name.contains("/"),
+          !name.contains("\\") else { return nil }
+    return name
+}
+
 /// Indirection so adapters can be tested with a stub instead of a real Process.
 /// Production code injects a `ProcessRunner` value; tests inject a custom conformer.
 public protocol ProcessRunning {

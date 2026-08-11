@@ -68,7 +68,9 @@ public final class UbiManager: PackageManager {
 
     public func uninstall(_ package: PackageRef) async throws {
         // ubi has no uninstall; remove the binary from the install dir.
-        let binaryName = ubiBinaryName(for: package.name)
+        guard let binaryName = safeBinaryName(ubiBinaryName(for: package.name)) else {
+            throw GimmeError.notFound("unsafe binary name derived from '\(package.name)'")
+        }
         let target = URL(fileURLWithPath: installDir).appendingPathComponent(binaryName)
         guard FileManager.default.fileExists(atPath: target.path) else {
             throw GimmeError.notFound("\(binaryName) not found in \(installDir)")

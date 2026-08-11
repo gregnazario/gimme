@@ -108,7 +108,9 @@ public final class DenoManager: PackageManager {
         // Deno has no uninstall command; remove the binary from ~/.deno/bin.
         // The binary name is the package's last path segment (or a -n override
         // we can't know), so we attempt the most likely name.
-        let binaryName = denoBinaryName(for: package.name)
+        guard let binaryName = safeBinaryName(denoBinaryName(for: package.name)) else {
+            throw GimmeError.notFound("unsafe binary name derived from '\(package.name)'")
+        }
         let target = URL(fileURLWithPath: denoBinDir).appendingPathComponent(binaryName)
         guard FileManager.default.fileExists(atPath: target.path) else {
             throw GimmeError.notFound("\(binaryName) not found in \(denoBinDir)")
