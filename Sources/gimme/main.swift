@@ -7,6 +7,14 @@ struct GimmeCLI {
         let args = Array(CommandLine.arguments.dropFirst())
         guard let first = args.first else { printHelp(); exit(0) }
 
+        // Version check — intercept as a top-level command so it doesn't
+        // collide with `gimme install <name> --version <v>` (that --version
+        // is not the first arg, so it falls through to parseArgs).
+        if first == "--version" || first == "-v" {
+            print("gimmie \(GimmeVersion.current)")
+            exit(0)
+        }
+
         // Passthrough: `gimme brew <args>`, `gimme cargo <args>`, etc.
         if let managerID = ManagerID(rawValue: first) {
             let binary = passthroughBinary(for: managerID)
