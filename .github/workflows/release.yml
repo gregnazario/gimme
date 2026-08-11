@@ -21,7 +21,7 @@ jobs:
           sed -i '' "s/2.0.0-dev/$VERSION/" Sources/GimmeCore/Version.swift
           echo "Set version to $VERSION"
 
-      - name: Build release (CLI)
+      - name: Build release (CLI + UI)
         run: swift build -c release
 
       - name: Test
@@ -32,18 +32,113 @@ jobs:
           .build/release/gimme --version
           test -s .build/release/gimme
 
+      # --- Code Signing ---
+
+      - name: Import signing certificate
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+        run: |
+          # Decode and import the Developer ID Application certificate into
+          # a temporary keychain so codesign can use it.
+          CERT_FILE=$(mktemp /tmp/certificate.XXXXXX.p12)
+          KEYCHAIN_FILE=$(mktemp /tmp/keychain.XXXXXX.keychain-db)
+          KEYCHAIN_PWD=$(uuidgen)
+
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$CERT_FILE"
+
+          security create-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_FILE"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_FILE"
+          security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_FILE"
+
+          security import "$CERT_FILE" -P "$MACOS_CERTIFICATE_PWD" -A \
+            -t cert -f pkcs12 -k "$KEYCHAIN_FILE"
+          security list-keychains -d user -s "$KEYCHAIN_FILE" login.keychain
+
+          # Persist keychain path for later steps.
+          echo "KEYCHAIN_FILE=$KEYCHAIN_FILE" >> "$GITHUB_ENV"
+          echo "KEYCHAIN_PWD=$KEYCHAIN_PWD" >> "$GITHUB_ENV"
+
+          # Clean up the cert file.
+          rm "$CERT_FILE"
+
+      - name: Sign CLI binary
+        env:
+          APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+        run: |
+          codesign --verbose --force --options=runtime \
+            --sign "$APPLE_DEVELOPER_ID" \
+            .build/release/gimme
+
+      - name: Build + sign app bundle
+        env:
+          APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+        run: |
+          sed -i '' "s/0.1.0/${{ steps.version.outputs.version }}/" app/Info.plist
+          sh app/build-app.sh
+          codesign --verbose --force --deep --options=runtime \
+            --sign "$APPLE_DEVELOPER_ID" \
+            app/Gimme.app
+          # Verify the signature.
+          codesign --verify --verbose=2 app/Gimme.app
+
+      # --- Notarization ---
+
+      - name: Notarize CLI binary
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PWD: ${{ secrets.APPLE_ID_PWD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Zip for notarization (notarization requires a zip/dmg, not a bare binary).
+          cd .build/release
+          ditto -c -k --keepParent gimme gimme-notarize.zip
+          cd ../..
+
+          # Submit and wait.
+          xcrun notarytool submit .build/release/gimme-notarize.zip \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PWD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+          # Staple (works on .app; for a bare binary we skip stapling and
+          # rely on the notarization ticket being online).
+          rm .build/release/gimme-notarize.zip
+
+      - name: Notarize + staple app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PWD: ${{ secrets.APPLE_ID_PWD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          ditto -c -k --keepParent app/Gimme.app app/Gimme-notarize.zip
+
+          xcrun notarytool submit app/Gimme-notarize.zip \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PWD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+          xcrun stapler staple app/Gimme.app
+          rm app/Gimme-notarize.zip
+
+      # --- Package + Release ---
+
       - name: Strip + tarball CLI
         run: |
           strip .build/release/gimme
           tar czf gimme-darwin-arm64.tar.gz -C .build/release gimme
 
-      - name: Build app bundle (best-effort)
-        id: app
-        continue-on-error: true
+      - name: Tarball app
+        run: tar czf Gimme-darwin-arm64.tar.gz -C app Gimme.app
+
+      - name: Clean up keychain
+        if: always()
         run: |
-          sed -i '' "s/0.1.0/${{ steps.version.outputs.version }}/" app/Info.plist
-          sh app/build-app.sh
-          tar czf Gimme-darwin-arm64.tar.gz -C app Gimme.app
+          if [ -n "$KEYCHAIN_FILE" ]; then
+            security delete-keychain "$KEYCHAIN_FILE" 2>/dev/null || true
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
