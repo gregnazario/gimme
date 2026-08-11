@@ -18,7 +18,6 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          # Overwrite the dev version in the source.
           sed -i '' "s/2.0.0-dev/$VERSION/" Sources/GimmeCore/Version.swift
           echo "Set version to $VERSION"
 
@@ -33,39 +32,24 @@ jobs:
           .build/release/gimme --version
           test -s .build/release/gimme
 
-      - name: Strip binary
-        run: strip .build/release/gimme
-
-      - name: Create CLI tarball
+      - name: Strip + tarball CLI
         run: |
-          cd .build/release
-          tar czf ../../gimme-darwin-arm64.tar.gz gimme
-          cd ../..
+          strip .build/release/gimme
+          tar czf gimme-darwin-arm64.tar.gz -C .build/release gimme
 
-      - name: Build app bundle (best-effort — headless CI may not support SwiftUI)
+      - name: Build app bundle (best-effort)
+        id: app
         continue-on-error: true
         run: |
           sed -i '' "s/0.1.0/${{ steps.version.outputs.version }}/" app/Info.plist
           sh app/build-app.sh
-
-      - name: Create app tarball (if built)
-        run: |
-          if [ -d "app/Gimme.app" ]; then
-            tar czf Gimme-darwin-arm64.tar.gz -C app Gimme.app
-            echo "APP_TARBALL=Gimme-darwin-arm64.tar.gz" >> "$GITHUB_ENV"
-          else
-            echo "App bundle not built; skipping."
-          fi
+          tar czf Gimme-darwin-arm64.tar.gz -C app Gimme.app
 
       - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          ASSETS="gimme-darwin-arm64.tar.gz"
-          if [ -n "$APP_TARBALL" ] && [ -f "$APP_TARBALL" ]; then
-            ASSETS="$ASSETS $APP_TARBALL"
-          fi
-          gh release create "$GITHUB_REF_NAME" \
-            $ASSETS \
-            --title "gimmie ${{ steps.version.outputs.version }}" \
-            --generate-notes
+        uses: softprops/action-gh-release@v2
+        with:
+          name: gimmie ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            gimme-darwin-arm64.tar.gz
+            Gimme-darwin-arm64.tar.gz
