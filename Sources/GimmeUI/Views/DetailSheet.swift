@@ -35,10 +35,11 @@ struct DetailSheet: View {
             }
             .padding(.bottom, 4)
 
-            VStack(alignment: .leading, spacing: 12) {
-                switch package {
-                case .installed(let p):
-                    ManagerBadge(manager: p.manager)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    switch package {
+                    case .installed(let p):
+                        ManagerBadge(manager: p.manager)
                     detailRow("Installed version", p.version)
                     // If this package is duplicated across managers, flag it.
                     if store.duplicatedPackageIDs.contains(p.id) {
@@ -102,11 +103,12 @@ struct DetailSheet: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-
+                }
             Spacer()
         }
         .padding(20)
-        .frame(width: 460, height: 340)
+        // Flexible: grows for long descriptions (up to a point), then scrolls.
+        .frame(minWidth: 460, idealWidth: 460, minHeight: 340, maxHeight: 560)
         .task {
             // Only fetch for installed packages (searchable hits already have
             // their metadata from the registry search).

@@ -70,15 +70,31 @@ struct InstalledView: View {
             .padding(.horizontal)
             .padding(.top, 4)
 
-            List(filtered) { pkg in
-                HStack {
-                    ManagerBadge(manager: pkg.manager)
-                    Text(pkg.name).fontWeight(.medium)
-                    Text(pkg.version).foregroundStyle(.secondary)
-                    Spacer()
+            if filtered.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: store.installed.isEmpty ? "shippingbox" : "line.3.horizontal.decrease.circle")
+                        .font(.system(size: 36)).foregroundStyle(.secondary)
+                    Text(store.installed.isEmpty ? "No packages found" : "No packages match your filter")
+                        .font(.title3).fontWeight(.medium)
+                    if !store.installed.isEmpty {
+                        Button("Clear filter") {
+                            searchText = ""
+                            filter = nil
+                        }
+                    }
                 }
-                .contentShape(Rectangle())
-                .onTapGesture { selected = pkg }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(filtered) { pkg in
+                    HStack {
+                        ManagerBadge(manager: pkg.manager)
+                        Text(pkg.name).fontWeight(.medium)
+                        Text(pkg.version).foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { selected = pkg }
+                }
             }
         }
         .navigationTitle("Installed")

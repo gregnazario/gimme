@@ -180,22 +180,26 @@ final class GimmeStore: ObservableObject {
         case .installed, .managers: Task { await loadAll(refresh: true) }
         case .updates:              Task { await refreshOutdated() }
         case .consolidate:          Task { await loadConsolidationReport(refresh: true) }
-        case .browse:               Task { await runSearch(lastQuery) }  // no-op until first search
+        case .browse:
+            // Re-run only when a real query exists — empty would flood with
+            // irrelevant hits (the Search button guards this; ⌘R must too).
+            if !lastQuery.isEmpty { Task { await runSearch(lastQuery) } }
         case .preferences, .activity: break
         }
     }
 
     /// The most recent Browse query (so ⌘R re-runs it after results exist).
-    var lastQuery: String {
-        get { _lastQuery }
-        set { _lastQuery = newValue }
-    }
-    @Published private var _lastQuery: String = ""
+    @Published var lastQuery: String = ""
 
-    /// ⌘F — jump to Installed and focus the filter field.
+    /// ⌘F — jump to Installed and focus the filter field. The focus trigger
+    /// increments AFTER the section switch so InstalledView is mounted and its
+    /// onChange actually fires (same-tick increment would be missed).
     func focusInstalledFilter() {
         sidebarSelection = .installed
-        installedFilterFocusTrigger += 1
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 100_000_000)  // let the view mount
+            installedFilterFocusTrigger += 1
+        }
     }
     /// Incremented each time ⌘F fires; InstalledView focuses its field on change.
     @Published var installedFilterFocusTrigger: Int = 0
@@ -224,7 +228,8 @@ final class GimmeStore: ObservableObject {
             try await Bootstrap.run(m, confirm: { _ in true })
             log("bootstrapped \(id.rawValue)")
             bootstrapStatus.removeValue(forKey: id)
-            await loadStatuses()
+            // force: the TTL-cached statuses would still say NOT INSTALLED.
+            await loadStatuses(force: true)
         } catch {
             bootstrapStatus.removeValue(forKey: id)
             showError(error)
