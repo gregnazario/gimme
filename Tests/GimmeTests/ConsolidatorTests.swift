@@ -107,3 +107,36 @@ final class ConsolidatorTests: XCTestCase {
         XCTAssertFalse(report.cleanEcosystems.contains(.js))
     }
 }
+
+// MARK: - Config [ecosystems] TOML round-trip
+
+final class ConfigEcosystemsTests: XCTestCase {
+    func testEcosystemsRoundTrip() throws {
+        var cfg = Config.defaults
+        cfg.ecosystems.preferences[.js] = .pnpm
+        cfg.ecosystems.preferences[.python] = .pipx
+        cfg.ecosystems.preferences[.system] = .homebrew
+
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let file = dir.appendingPathComponent("config.toml")
+        try cfg.toTOML().write(to: file, atomically: true, encoding: .utf8)
+
+        let loaded = Config.loadOrCreate(at: file)
+        XCTAssertEqual(loaded.ecosystems.preferences[.js], .pnpm)
+        XCTAssertEqual(loaded.ecosystems.preferences[.python], .pipx)
+        XCTAssertEqual(loaded.ecosystems.preferences[.system], .homebrew)
+    }
+
+    func testEcosystemsEmptyWhenUnset() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let file = dir.appendingPathComponent("config.toml")
+        try Config.defaults.toTOML().write(to: file, atomically: true, encoding: .utf8)
+
+        let loaded = Config.loadOrCreate(at: file)
+        XCTAssertTrue(loaded.ecosystems.preferences.isEmpty)
+        // Defaults still resolve via ecosystem.managers.first.
+        XCTAssertEqual(loaded.ecosystems.recommended(for: .js), Ecosystem.js.managers.first)
+    }
+}

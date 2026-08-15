@@ -11,7 +11,14 @@ struct UpdatesView: View {
             list
         }
         .navigationTitle("Updates")
-        .task { await store.refreshOutdated() }
+        // Only auto-load on first visit — loadAll keeps `outdated` fresh
+        // elsewhere. Forcing a full refresh here would spin for up to a
+        // minute (per-package registry lookups) on every tab switch.
+        .task {
+            if store.outdated.isEmpty {
+                await store.refreshOutdated()
+            }
+        }
     }
 
     private var header: some View {

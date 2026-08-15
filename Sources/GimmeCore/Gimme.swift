@@ -4,7 +4,7 @@ import Foundation
 public final class Gimme {
     public let registry: Registry
     public var preferences: Preferences
-    public let config: Config
+    public var config: Config
     public let cache: Cache
     private let preferencesFile: URL
 
@@ -56,12 +56,18 @@ public final class Gimme {
             guard let id = ManagerID(rawValue: idStr) else { return nil }
             return candidates.first { $0.id == id }
         }
-        for m in ordered {
-            if let hits = try? await m.search(name), hits.contains(where: { $0.name == name }) {
-                return m
+        // Concurrent existence checks; keep priority order so .first wins.
+        return await withTaskGroup(of: (Int, Bool).self) { group in
+            for (i, m) in ordered.enumerated() {
+                group.addTask {
+                    let has = (try? await m.search(name))?.contains { $0.name == name } ?? false
+                    return (i, has)
+                }
             }
+            var results = Array(repeating: false, count: ordered.count)
+            for await (i, has) in group { results[i] = has }
+            return zip(ordered, results).first(where: { $0.1 })?.0
         }
-        return nil
     }
 
     @discardableResult
@@ -192,7 +198,19 @@ extension Gimme {
     /// Per-manager availability + version, gathered concurrently. Ordered by the
     /// config priority list first, then any unknown managers. Used by the GUI's
     /// By Manager view and `gimme doctor -v`.
-    public func statuses() async -> [ManagerStatus] {
+    /// Per-manager availability + version, TTL-cached (each `--version` is a
+    /// subprocess; ~7 spawns per call). Pass refresh=true to bypass.
+    public func statuses(refresh: Bool = false) async -> [ManagerStatus] {
+        let key = "meta:statuses"
+        if !refresh, let cached = cache.get(key, ttlSeconds: config.listCacheTTLSeconds, as: [ManagerStatus].self) {
+            return cached
+        }
+        let fresh = await computeStatuses()
+        cache.set(key, value: fresh)
+        return fresh
+    }
+
+    private func computeStatuses() async -> [ManagerStatus] {
         let all = registry.managers
         let known = config.priority.compactMap { ManagerID(rawValue: $0) }
         let ordered = known + all.map(\.id).filter { !known.contains($0) }

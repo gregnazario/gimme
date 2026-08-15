@@ -15,6 +15,9 @@ public enum Bootstrap {
             throw GimmeError.managerUnavailable(manager.id)
         }
         try await manager.bootstrap()
+        // The resolver caches not-found lookups; clear before re-checking so a
+        // just-installed backend is actually detected.
+        BinaryResolver.clearCache()
         guard manager.isAvailable() else {
             throw GimmeError.bootstrapFailed(manager.id, underlying: "still unavailable after bootstrap")
         }

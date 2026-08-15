@@ -35,7 +35,7 @@ struct PackageManagersView: View {
         .navigationTitle("Package Managers")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button { Task { await store.loadStatuses() } } label: {
+                Button { Task { await store.loadStatuses(force: true) } } label: {
                     if store.isRefreshingStatuses {
                         ProgressView().controlSize(.small)
                     } else {
@@ -45,7 +45,9 @@ struct PackageManagersView: View {
                 .disabled(store.isRefreshingStatuses)
             }
         }
-        .task { await store.loadStatuses() }
+        // loadAll (not just statuses) so the per-card package counts come from
+        // `store.installed` — otherwise they read 0 on a first visit.
+        .task { await store.loadAll() }
     }
 
     /// Count installed packages for a manager from the cached installed list.

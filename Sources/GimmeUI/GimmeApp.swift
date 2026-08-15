@@ -98,11 +98,14 @@ final class GimmeStore: ObservableObject {
     }
 
     /// Refresh just the per-manager status (availability + version).
-    func loadStatuses() async {
+    /// force=true bypasses the statuses TTL cache (Refresh button).
+    func loadStatuses(force: Bool = false) async {
         isRefreshingStatuses = true
         defer { isRefreshingStatuses = false }
-        managerStatuses = await gimme.statuses()
-        runtimeManagers = await VersionManagerDetector.detect()
+        async let statusesResult = gimme.statuses(refresh: force)
+        async let runtimesResult = VersionManagerDetector.detect()
+        managerStatuses = await statusesResult
+        runtimeManagers = await runtimesResult
     }
 
     /// Build the consolidation report (refresh bypasses cache).
@@ -126,8 +129,10 @@ final class GimmeStore: ObservableObject {
         sidebarSelection = .installed
     }
 
-    /// Persist the current config (used by the Preferences UI bindings).
+    /// Persist the current config (used by the Preferences UI bindings) and
+    /// sync it into the engine so changes take effect immediately (no restart).
     func persistConfig() {
+        gimme.config = config
         let paths = GimmePaths.defaultUser
         try? config.toTOML().write(to: paths.configFile, atomically: true, encoding: .utf8)
     }

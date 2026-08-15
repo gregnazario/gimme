@@ -20,11 +20,13 @@ public struct ProcessResult: Equatable {
 /// `which` itself is unavailable (extremely unusual), letting callers fall
 /// back to a conventional default.
 public enum BinaryResolver {
-    /// Cache of resolved paths. Only stores *found* binaries (a missing key
-    /// means "not yet looked up"). Storing nil (not-found) would force callers
-    /// to handle optionals-of-optionals; instead we re-resolve on a miss,
-    /// which is cheap and avoids the class of crash a double-unwrap causes.
+    /// Cache of resolved paths (found binaries only).
     nonisolated(unsafe) private static var cache: [String: String] = [:]
+    /// Names confirmed NOT on PATH this session. Caching negatives avoids
+    /// re-spawning `which` for every unavailable manager on every operation
+    /// (~10 spawns per registry scan otherwise). Cleared by clearCache() —
+    /// notably after a successful bootstrap so the new manager is found.
+    nonisolated(unsafe) private static var notFound: Set<String> = []
     private static let lock = NSLock()
 
     /// Directories prepended to PATH when resolving, so GUI launches (which get
@@ -46,13 +48,17 @@ public enum BinaryResolver {
     public static func resolve(_ name: String, fallback: String? = nil) -> String? {
         lock.lock()
         if let cached = cache[name] { lock.unlock(); return cached }
+        if notFound.contains(name) { lock.unlock(); return fallback }
         lock.unlock()
 
-        let path = lookup(name) ?? fallback
-        if let path {
+        if let path = lookup(name) {
             lock.lock(); cache[name] = path; lock.unlock()
+            return path
         }
-        return path
+        if fallback == nil {
+            lock.lock(); notFound.insert(name); lock.unlock()
+        }
+        return fallback
     }
 
     /// Run `which <name>` with an augmented PATH. Returns nil if not found.
@@ -80,9 +86,10 @@ public enum BinaryResolver {
         return (first?.isEmpty == false) ? first : nil
     }
 
-    /// Forget cached resolutions (mainly for tests).
+    /// Forget cached resolutions (mainly for tests, and after a bootstrap so
+    /// a newly installed manager is detected).
     public static func clearCache() {
-        lock.lock(); cache.removeAll(); lock.unlock()
+        lock.lock(); cache.removeAll(); notFound.removeAll(); lock.unlock()
     }
 }
 
