@@ -5,16 +5,56 @@ import GimmeCore
 struct GimmeApp: App {
     @StateObject private var store = GimmeStore()
 
+    /// Brand accent — matches the icon gradient's indigo.
+    static let accent = Color("#4F46E5")
+
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
+                .tint(Self.accent)
+                .frame(minWidth: 760, minHeight: 500)
                 .alert("Error", isPresented: $store.showError) {
                     Button("OK", role: .cancel) {}
                 } message: {
                     Text(store.errorMessage)
                 }
         }
+        .commands {
+            CommandGroup(after: .appInfo) {
+                AboutGimmie()
+            }
+            CommandGroup(replacing: .toolbar) {
+                Button("Refresh Current Section") { store.refreshCurrentSection() }
+                    .keyboardShortcut("r", modifiers: .command)
+                Button("Find Packages…") { store.focusInstalledFilter() }
+                    .keyboardShortcut("f", modifiers: .command)
+            }
+        }
+    }
+}
+
+/// Standard macOS About view — icon, name, version, one-liner.
+struct AboutGimmie: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable()
+                .frame(width: 128, height: 128)
+            Text("gimmie").font(.title).fontWeight(.bold)
+            Text("Version \(GimmeVersion.current)")
+                .foregroundStyle(.secondary)
+            Text("One interface for every package manager on your Mac.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text("Homebrew · Go · uv · Cargo · bun · npm · pnpm · Yarn · RubyGems · Composer · Deno · pipx · aqua · ubi")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+        }
+        .padding(24)
+        .frame(width: 360, height: 360)
     }
 }
 
@@ -134,6 +174,32 @@ final class GimmeStore: ObservableObject {
         sidebarSelection = .installed
     }
 
+    /// ⌘R — refresh whatever section is showing.
+    func refreshCurrentSection() {
+        switch sidebarSelection {
+        case .installed, .managers: Task { await loadAll(refresh: true) }
+        case .updates:              Task { await refreshOutdated() }
+        case .consolidate:          Task { await loadConsolidationReport(refresh: true) }
+        case .browse:               Task { await runSearch(lastQuery) }  // no-op until first search
+        case .preferences, .activity: break
+        }
+    }
+
+    /// The most recent Browse query (so ⌘R re-runs it after results exist).
+    var lastQuery: String {
+        get { _lastQuery }
+        set { _lastQuery = newValue }
+    }
+    @Published private var _lastQuery: String = ""
+
+    /// ⌘F — jump to Installed and focus the filter field.
+    func focusInstalledFilter() {
+        sidebarSelection = .installed
+        installedFilterFocusTrigger += 1
+    }
+    /// Incremented each time ⌘F fires; InstalledView focuses its field on change.
+    @Published var installedFilterFocusTrigger: Int = 0
+
     /// Persist the current config (used by the Preferences UI bindings) and
     /// sync it into the engine so changes take effect immediately (no restart).
     func persistConfig() {
@@ -168,6 +234,7 @@ final class GimmeStore: ObservableObject {
     func runSearch(_ query: String) async {
         isSearching = true
         defer { isSearching = false }
+        lastQuery = query
         do { searchResults = try await gimme.search(query: query, all: searchAll, refresh: false) }
         catch { showError(error) }
     }

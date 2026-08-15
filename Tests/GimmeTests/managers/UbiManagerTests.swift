@@ -40,14 +40,17 @@ final class UbiManagerTests: XCTestCase {
     func testListScansInstallDir() async throws {
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
-        // Create fake binaries.
-        try Data().write(to: tmp.appendingPathComponent("rg"))
-        try Data().write(to: tmp.appendingPathComponent("bat"))
+        // Real binaries carry a Mach-O header; shims are scripts and get filtered.
+        let machO = Data([0xCF, 0xFA, 0xED, 0xFE, 0, 0, 0, 0])
+        try machO.write(to: tmp.appendingPathComponent("rg"))
+        try machO.write(to: tmp.appendingPathComponent("bat"))
+        try Data("#!/bin/sh\n".utf8).write(to: tmp.appendingPathComponent("mise-shim"))
         let m = ubi(StubProcess(), binDir: tmp.path)
         let pkgs = try await m.listInstalled()
         let names = Set(pkgs.map { $0.name })
         XCTAssertTrue(names.contains("rg"))
         XCTAssertTrue(names.contains("bat"))
+        XCTAssertFalse(names.contains("mise-shim"), "script shims must not be listed as ubi packages")
     }
 
     func testUninstallRemovesBinary() async throws {

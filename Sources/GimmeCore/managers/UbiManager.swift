@@ -85,12 +85,27 @@ public final class UbiManager: PackageManager {
 
     public func listInstalled() async throws -> [InstalledPackage] {
         // Best-effort scan of the install dir. ubi doesn't keep a manifest, so
-        // we can't distinguish ubi-installed binaries from others — we list
-        // everything that's executable. Same limitation shape as the Go adapter.
+        // we list Mach-O binaries only — that excludes shell-script shims
+        // (mise/asdf) that share ~/.local/bin. Still includes binaries from
+        // other installers; same limitation shape as the Go adapter.
         guard let names = try? FileManager.default.contentsOfDirectory(atPath: installDir) else { return [] }
-        return names.filter { !$0.hasPrefix(".") }.map {
-            InstalledPackage(name: $0, version: "unknown", manager: .ubi, installedAt: nil)
-        }
+        return names.filter { !$0.hasPrefix(".") && isMachO(URL(fileURLWithPath: installDir).appendingPathComponent($0)) }
+            .map { InstalledPackage(name: $0, version: "unknown", manager: .ubi, installedAt: nil) }
+    }
+
+    /// True when the file starts with a Mach-O magic (64-bit, 32-bit, or fat).
+    private func isMachO(_ url: URL) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        guard let data = try? handle.read(upToCount: 4), data.count == 4 else { return false }
+        let bytes = [UInt8](data)
+        let magics: [[UInt8]] = [
+            [0xCF, 0xFA, 0xED, 0xFE],  // Mach-O 64 (LE)
+            [0xCE, 0xFA, 0xED, 0xFE],  // Mach-O 32 (LE)
+            [0xCA, 0xFE, 0xBA, 0xBE],  // Fat/universal
+            [0xCA, 0xFE, 0xBA, 0xBF],  // Fat 64
+        ]
+        return magics.contains { $0 == bytes }
     }
 
     public func outdated() async throws -> [OutdatedPackage] { [] }  // not supported

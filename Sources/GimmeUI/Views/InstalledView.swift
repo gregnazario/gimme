@@ -6,6 +6,7 @@ struct InstalledView: View {
     @State private var filter: ManagerID?
     @State private var searchText = ""
     @State private var selected: InstalledPackage?
+    @FocusState private var filterFocused: Bool
 
     var filtered: [InstalledPackage] {
         var result = filter.map { f in store.installed.filter { $0.manager == f } } ?? store.installed
@@ -34,6 +35,7 @@ struct InstalledView: View {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                 TextField("Filter installed packages…", text: $searchText)
                     .textFieldStyle(.roundedBorder)
+                    .focused($filterFocused)
                     .onChange(of: searchText) { _ in }  // live filter via @State
                 if !searchText.isEmpty {
                     Button { searchText = "" } label: {
@@ -90,6 +92,9 @@ struct InstalledView: View {
                 filter = pending
                 store.pendingManagerFilter = nil
             }
+        }
+        .onChange(of: store.installedFilterFocusTrigger) { _ in
+            filterFocused = true
         }
     }
 }

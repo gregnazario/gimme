@@ -118,24 +118,7 @@ struct ManagerStatusRow: View {
         .padding(.vertical, 2)
     }
 
-    private var statusColor: Color {
-        switch status.id {
-        case .homebrew: return .orange
-        case .go:       return .blue
-        case .uv:       return .green
-        case .cargo:    return .red
-        case .bun:      return .pink
-        case .npm:      return .teal
-        case .pnpm:     return .indigo
-        case .yarn:     return .blue
-        case .gem:      return .pink
-        case .composer: return .purple
-        case .deno:     return .cyan
-        case .pipx:     return .teal
-        case .aqua:     return .mint
-        case .ubi:      return .brown
-        }
-    }
+    private var statusColor: Color { ManagerPalette.color(for: status.id) }
 }
 
 
