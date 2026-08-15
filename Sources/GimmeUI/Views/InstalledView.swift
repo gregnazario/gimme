@@ -18,14 +18,17 @@ struct InstalledView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Filter row: manager chips + search field + refresh.
-            HStack(spacing: 8) {
-                ForEach(ManagerID.allCases, id: \.self) { m in
-                    ManagerFilterChip(manager: m, isSelected: filter == m) {
-                        filter = (filter == m) ? nil : m
+            // Filter row: manager chips scroll horizontally (14 chips overflow
+            // a normal window width), then the search field + refresh.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(ManagerID.allCases, id: \.self) { m in
+                        ManagerFilterChip(manager: m, isSelected: filter == m) {
+                            filter = (filter == m) ? nil : m
+                        }
                     }
                 }
-                Spacer()
+                .padding(.horizontal)
             }
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)

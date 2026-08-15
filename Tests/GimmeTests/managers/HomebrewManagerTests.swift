@@ -28,18 +28,64 @@ final class HomebrewManagerTests: XCTestCase {
         XCTAssertTrue(m.capabilities.isSuperset(of: [.install, .uninstall, .upgrade, .list, .outdated, .search, .info, .bootstrap]))
     }
 
-    func testSearchFiltersFormulaJSON() async throws {
+    func testSearchUsesBrewCli() async throws {
+        // Primary path: `brew search` (local, instant). Names only; enrichment
+        // from a warm cached index is separate.
+        let p = StubProcess()
+        p.stubs["search"] = ProcessResult(exitCode: 0, stdout: """
+        ripgrep
+        ripgrep-all
+        """, stderr: "")
+        let m = brewManager(process: p)
+        let hits = try await m.search("ripgrep")
+        XCTAssertEqual(hits.map { $0.name }, ["ripgrep", "ripgrep-all"])
+        XCTAssertEqual(p.calls.last?.1, ["search", "ripgrep"])
+    }
+
+    func testSearchFallsBackToApiWhenCliFails() async throws {
+        // CLI errors (exit 1) → API fallback with rich metadata.
         let http = StubHTTP()
         let payload = #"""
         [{"name":"ripgrep","desc":"Search tool","versions":{"stable":"14.1.0"}},
          {"name":"bat","desc":"Cat clone","versions":{"stable":"0.24.0"}}]
         """#
         http.dataByURL["https://formulae.brew.sh/api/formula.json"] = Data(payload.utf8)
-        let m = HomebrewManager(http: http, process: StubProcess())
+        let p = StubProcess()
+        p.stubs["search"] = ProcessResult(exitCode: 1, stdout: "", stderr: "boom")
+        let m = HomebrewManager(http: http, process: p, brewBinary: "/opt/homebrew/bin/brew")
         let hits = try await m.search("ripgrep")
         XCTAssertEqual(hits.count, 1)
         XCTAssertEqual(hits.first?.name, "ripgrep")
         XCTAssertEqual(hits.first?.latestVersion, "14.1.0")
+    }
+
+    func testApiSearchIncludesCasksBestEffort() async throws {
+        let http = StubHTTP()
+        http.dataByURL["https://formulae.brew.sh/api/formula.json"] = Data(#"[]"#.utf8)
+        http.dataByURL["https://formulae.brew.sh/api/cask.json"] = Data(#"""
+        [{"token":"firefox","desc":"Web browser","version":"125.0"}]
+        """#.utf8)
+        let p = StubProcess()
+        p.stubs["search"] = ProcessResult(exitCode: 1, stdout: "", stderr: "cli down")
+        let m = HomebrewManager(http: http, process: p, brewBinary: "/opt/homebrew/bin/brew")
+        let hits = try await m.search("fire")
+        XCTAssertEqual(hits.count, 1)
+        XCTAssertEqual(hits.first?.name, "firefox")
+        XCTAssertEqual(hits.first?.latestVersion, "125.0")
+    }
+
+    func testApiSearchSurvivesCaskIndexFailure() async throws {
+        let http = StubHTTP()
+        // Formula index fine; cask URL unstubbed → empty data → best-effort [].
+        http.dataByURL["https://formulae.brew.sh/api/formula.json"] = Data(#"""
+        [{"name":"ripgrep","desc":"Search tool","versions":{"stable":"14.1.0"}}]
+        """#.utf8)
+        let p = StubProcess()
+        p.stubs["search"] = ProcessResult(exitCode: 1, stdout: "", stderr: "cli down")
+        let m = HomebrewManager(http: http, process: p, brewBinary: "/opt/homebrew/bin/brew")
+        let hits = try await m.search("ripgrep")
+        XCTAssertEqual(hits.count, 1, "formula hits must survive cask-index failure")
+        XCTAssertEqual(hits.first?.name, "ripgrep")
     }
 
     func testInstallCallsBrewInstall() async throws {

@@ -74,6 +74,11 @@ final class GimmeStore: ObservableObject {
         self.gimme = g
         self.preferences = g.preferences
         self.config = g.config
+        // Warm Homebrew's search indexes in the background so Browse results
+        // gain descriptions/versions shortly after launch. No-op when warm.
+        if let brew = g.registryLookup(.homebrew) as? HomebrewManager {
+            Task.detached { await brew.warmSearchIndexes() }
+        }
     }
 
     struct ActivityEntry: Identifiable {

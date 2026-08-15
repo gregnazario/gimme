@@ -21,6 +21,10 @@ final class EndToEndSmokeTests: XCTestCase {
                         installed[args[1]] = "14.1.0"
                         return ProcessResult(exitCode: 0, stdout: "", stderr: "")
                     }
+                    if args.first == "search" {
+                        // `brew search ripgrep` → names only.
+                        return ProcessResult(exitCode: 0, stdout: "ripgrep\n", stderr: "")
+                    }
                     if args.first == "list" {
                         let items = installed.map { #"{"name":"\#($0.key)","versions":["\#($0.value)"]}"# }.joined(separator: ",")
                         return ProcessResult(exitCode: 0, stdout: "{\"formulae\":[\(items)],\"casks\":[]}", stderr: "")

@@ -45,10 +45,12 @@ public struct Config: Codable, Equatable {
     static func decode(from root: TOMLTable) -> Config? {
         var c = Config()
         if let p = root.array("priority") {
-            c.priority = p.compactMap { $0.asString }
+            // Dedupe: duplicate ids would crash SwiftUI ForEach in Preferences
+            // and double-walk the resolver's priority scan.
+            c.priority = Array(NSOrderedSet(array: p.compactMap { $0.asString })) as! [String]
         }
         if let d = root.array("disabled") {
-            c.disabled = d.compactMap { $0.asString }
+            c.disabled = Array(NSOrderedSet(array: d.compactMap { $0.asString })) as! [String]
         }
         if let list = root.integer("listCacheTTLSeconds") { c.listCacheTTLSeconds = list }
         if let info = root.integer("infoCacheTTLSeconds") { c.infoCacheTTLSeconds = info }

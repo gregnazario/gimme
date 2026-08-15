@@ -200,14 +200,32 @@ extension Gimme {
     /// By Manager view and `gimme doctor -v`.
     /// Per-manager availability + version, TTL-cached (each `--version` is a
     /// subprocess; ~7 spawns per call). Pass refresh=true to bypass.
+    /// Config-derived fields (enabled, ordering) are applied at read time from
+    /// the live config so Preferences changes show immediately — only the
+    /// environment truth (availability/version) is cached.
     public func statuses(refresh: Bool = false) async -> [ManagerStatus] {
-        let key = "meta:statuses"
+        let key = "meta:statuses:env"
+        var env: [ManagerStatus]
         if !refresh, let cached = cache.get(key, ttlSeconds: config.listCacheTTLSeconds, as: [ManagerStatus].self) {
-            return cached
+            env = cached
+        } else {
+            env = await computeStatuses()
+            cache.set(key, value: env)
         }
-        let fresh = await computeStatuses()
-        cache.set(key, value: fresh)
-        return fresh
+        // Re-derive config-dependent state with the *current* config.
+        return reapplyConfig(to: env)
+    }
+
+    /// Re-sort by current priority and re-compute `enabled` flags.
+    private func reapplyConfig(to env: [ManagerStatus]) -> [ManagerStatus] {
+        let known = config.priority.compactMap { ManagerID(rawValue: $0) }
+        let order = known + registry.managers.map(\.id).filter { !known.contains($0) }
+        let rank: [ManagerID: Int] = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($1, $0) })
+        return env.map { s in
+            let enabled = !config.disabled.contains(s.id.rawValue)
+            return s.enabled == enabled ? s
+                : ManagerStatus(id: s.id, displayName: s.displayName, available: s.available, version: s.version, enabled: enabled)
+        }.sorted { (rank[$0.id] ?? Int.max) < (rank[$1.id] ?? Int.max) }
     }
 
     private func computeStatuses() async -> [ManagerStatus] {
@@ -220,12 +238,11 @@ extension Gimme {
             for id in unique {
                 guard let m = registry.get(id) else { continue }
                 let available = m.isAvailable()
-                let enabled = !config.disabled.contains(id.rawValue)
                 let displayName = m.displayName
                 if available {
-                    group.addTask { ManagerStatus(id: id, displayName: displayName, available: true, version: await m.version(), enabled: enabled) }
+                    group.addTask { ManagerStatus(id: id, displayName: displayName, available: true, version: await m.version(), enabled: true) }
                 } else {
-                    group.addTask { ManagerStatus(id: id, displayName: displayName, available: false, version: nil, enabled: enabled) }
+                    group.addTask { ManagerStatus(id: id, displayName: displayName, available: false, version: nil, enabled: true) }
                 }
             }
             var out: [ManagerStatus] = []
@@ -326,7 +343,10 @@ extension Gimme {
     /// Wire the real adapters with production defaults.
     public static func defaultRegistry() -> Registry {
         Registry(managers: [
-            HomebrewManager(), GoManager(), UvManager(), CargoManager(),
+            // Homebrew gets the shared disk cache so its ~31 MB search indexes
+            // are downloaded once per 6 h instead of per query.
+            HomebrewManager(indexCache: Cache(directory: GimmePaths.defaultUser.cacheDir)),
+            GoManager(), UvManager(), CargoManager(),
             BunManager(), NpmManager(), PnpmManager(),
             YarnManager(), GemManager(), ComposerManager(),
             DenoManager(), PipxManager(), AquaManager(), UbiManager()

@@ -12,14 +12,6 @@ public final class HomebrewManager: PackageManager {
     private let process: any ProcessRunning
     private let brewBinaryOverride: String?   // nil = resolve via `which brew`
 
-    public init(http: HTTPClient = URLSessionHTTPClient(),
-                process: any ProcessRunning = ProcessRunner(),
-                brewBinary: String? = nil) {
-        self.http = http
-        self.process = process
-        self.brewBinaryOverride = brewBinary
-    }
-
     /// Resolve the real brew path (via `which brew`), or use the injected override.
     private var binaryPath: String {
         brewBinaryOverride ?? BinaryResolver.resolve("brew", fallback: "/opt/homebrew/bin/brew") ?? "/opt/homebrew/bin/brew"
@@ -44,6 +36,14 @@ public final class HomebrewManager: PackageManager {
         return res.stdout.split(separator: "\n").first.map(String.init)
     }
 
+    /// Download + cache the formula/cask indexes so subsequent searches can be
+    /// enriched with descriptions/versions. Fire-and-forget from the GUI on
+    /// launch; a no-op when the cache is already warm.
+    public func warmSearchIndexes() async {
+        _ = try? await formulaIndex()
+        _ = await caskIndex()
+    }
+
     // MARK: - Search / Info (API-backed)
 
     private struct FormulaAPIDoc: Decodable {
@@ -53,11 +53,117 @@ public final class HomebrewManager: PackageManager {
         struct Versions: Decodable { let stable: String? }
     }
 
+    private struct CaskAPIDoc: Decodable {
+        let token: String           // casks identify by token
+        let desc: String?
+        let version: String?
+    }
+
+    /// The formula/cask indexes are ~31 MB; downloading them per query made
+    /// every search take 4-5 s. Cache the raw bytes and filter locally.
+    private static let indexTTLSeconds = 6 * 3600  // 6 h
+    private static let searchResultLimit = 50
+
+    /// Optional: injected so tests stay hermetic (nil = no index caching).
+    private let indexCache: Cache?
+
+    public init(http: HTTPClient = URLSessionHTTPClient(),
+                process: any ProcessRunning = ProcessRunner(),
+                brewBinary: String? = nil,
+                indexCache: Cache? = nil) {
+        self.http = http
+        self.process = process
+        self.brewBinaryOverride = brewBinary
+        self.indexCache = indexCache
+    }
+
+    /// Fetch the formula index, cached as raw bytes (6 h TTL).
+    private func formulaIndex() async throws -> [FormulaAPIDoc] {
+        let key = "homebrew:index:formula"
+        if let cache = indexCache,
+           let data = cache.get(key, ttlSeconds: Self.indexTTLSeconds, as: Data.self),
+           let docs = try? JSONDecoder().decode([FormulaAPIDoc].self, from: data) {
+            return docs
+        }
+        let data = try await http.get("https://formulae.brew.sh/api/formula.json")
+        if let cache = indexCache { cache.set(key, value: data) }
+        guard let docs = try? JSONDecoder().decode([FormulaAPIDoc].self, from: data) else {
+            throw GimmeError.network("failed to decode formula index")
+        }
+        return docs
+    }
+
+    /// Fetch the cask index, cached the same way. Best-effort: cask failures
+    /// never break a formula search.
+    private func caskIndex() async -> [CaskAPIDoc] {
+        let key = "homebrew:index:cask"
+        if let cache = indexCache,
+           let data = cache.get(key, ttlSeconds: Self.indexTTLSeconds, as: Data.self),
+           let docs = try? JSONDecoder().decode([CaskAPIDoc].self, from: data) {
+            return docs
+        }
+        guard let data = try? await http.get("https://formulae.brew.sh/api/cask.json"),
+              let docs = try? JSONDecoder().decode([CaskAPIDoc].self, from: data) else {
+            return []
+        }
+        if let cache = indexCache { cache.set(key, value: data) }
+        return docs
+    }
+
     public func search(_ query: String) async throws -> [SearchHit] {
-        let docs: [FormulaAPIDoc] = try await http.getJSON("https://formulae.brew.sh/api/formula.json", as: [FormulaAPIDoc].self)
-        return docs.filter { $0.name.contains(query) }.map {
+        // Primary: `brew search` — local metadata, ~0.3 s, includes casks.
+        // No network. Falls back to the (cached) API index if the CLI fails.
+        if isAvailable() {
+            let res = try await process.run(binaryPath, args: ["search", query], env: nil, stream: nil)
+            if res.exitCode == 0 {
+                let names = res.stdout.split(separator: "\n")
+                    .map { String($0).trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty && !$0.hasPrefix("==>") }
+                    .prefix(Self.searchResultLimit)
+                return await enrich(Array(names))
+            }
+        }
+        return try await apiSearch(query)
+    }
+
+    /// Add description/version to bare names from a warm cached index, if any.
+    /// Never downloads — enrichment is best-effort.
+    private func enrich(_ names: [String]) async -> [SearchHit] {
+        guard let cache = indexCache else {
+            return names.map { SearchHit(name: $0, manager: .homebrew, summary: "", latestVersion: "") }
+        }
+        var meta: [String: (String, String)] = [:]
+        if let data = cache.get("homebrew:index:formula", ttlSeconds: Self.indexTTLSeconds, as: Data.self),
+           let docs = try? JSONDecoder().decode([FormulaAPIDoc].self, from: data) {
+            for d in docs { meta[d.name] = (d.desc ?? "", d.versions?.stable ?? "") }
+        }
+        if let data = cache.get("homebrew:index:cask", ttlSeconds: Self.indexTTLSeconds, as: Data.self),
+           let docs = try? JSONDecoder().decode([CaskAPIDoc].self, from: data) {
+            for c in docs { meta[c.token] = (c.desc ?? "GUI app (cask)", c.version ?? "") }
+        }
+        return names.map {
+            SearchHit(name: $0, manager: .homebrew,
+                      summary: meta[$0]?.0 ?? "",
+                      latestVersion: meta[$0]?.1 ?? "")
+        }
+    }
+
+    /// Fallback search over the formulae.brew.sh indexes (downloads + caches
+    /// them when cold). Formulae first, then casks.
+    private func apiSearch(_ query: String) async throws -> [SearchHit] {
+        let q = query.lowercased()
+        let formulas = try await formulaIndex()
+        var hits = formulas.filter { $0.name.lowercased().contains(q) }.map {
             SearchHit(name: $0.name, manager: .homebrew, summary: $0.desc ?? "", latestVersion: $0.versions?.stable ?? "")
         }
+        if hits.count < Self.searchResultLimit {
+            let casks = await caskIndex()
+            let caskHits = casks.filter { $0.token.lowercased().contains(q) }.map {
+                SearchHit(name: $0.token, manager: .homebrew, summary: $0.desc ?? "GUI app (cask)", latestVersion: $0.version ?? "")
+            }
+            hits.append(contentsOf: caskHits)
+        }
+        return Array(hits.prefix(Self.searchResultLimit))
     }
 
     public func info(_ package: PackageRef) async throws -> PackageInfo {
