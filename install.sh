@@ -1,5 +1,5 @@
 #!/bin/sh
-# gimmie — POSIX sh installer
+# gimme — POSIX sh installer
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/gregnazario/gimme/main/install.sh | sh
@@ -43,7 +43,7 @@ warn() { printf '%s\n' "$*" >&2; }
 fail() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
 # --- preflight ---
-[ "$(uname -s)" = "Darwin" ] || fail "gimmie is macOS-only. Your OS: $(uname -s)"
+[ "$(uname -s)" = "Darwin" ] || fail "gimme is macOS-only. Your OS: $(uname -s)"
 
 ARCH="$(uname -m)"
 case "$ARCH" in
@@ -52,7 +52,7 @@ case "$ARCH" in
     *)       fail "unsupported architecture: $ARCH" ;;
 esac
 
-echo "==> Installing gimmie ($ARCH)…"
+echo "==> Installing gimme ($ARCH)…"
 
 # --- try downloading a prebuilt binary ---
 BINARY_TARBALL="gimme-darwin-${ARCH_TAG}.tar.gz"

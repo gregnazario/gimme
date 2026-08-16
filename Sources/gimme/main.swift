@@ -11,7 +11,7 @@ struct GimmeCLI {
         // collide with `gimme install <name> --version <v>` (that --version
         // is not the first arg, so it falls through to parseArgs).
         if first == "--version" || first == "-v" {
-            print("gimmie \(GimmeVersion.current)")
+            print("gimme \(GimmeVersion.current)")
             exit(0)
         }
 
@@ -194,7 +194,7 @@ struct GimmeCLI {
                 // Runtime version managers (mise/asdf) — detect only.
                 let runtimeMgrs = await VersionManagerDetector.detect()
                 if !runtimeMgrs.isEmpty {
-                    print("\nRuntime version managers (coexist; not managed by gimmie):")
+                    print("\nRuntime version managers (coexist; not managed by gimme):")
                     for vm in runtimeMgrs {
                         let count = vm.runtimes.count
                         print("  \(vm.kind.rawValue.padding(toLength: 8, withPad: " ", startingAt: 0)) \(count) runtime\(count == 1 ? "" : "s")")
@@ -285,7 +285,7 @@ struct GimmeCLI {
 
     static func printHelp() {
         print("""
-        gimmie — unified package manager
+        gimme — unified package manager
 
         Usage:
           gimme install <name> [--from <manager>] [--version <v>]

@@ -30,7 +30,7 @@ public struct Duplicate: Identifiable, Equatable, Codable {
 }
 
 /// A single migration step the user should run (spec §4). Report + guide only —
-/// gimmie never executes these; it prints them for the user to run.
+/// gimme never executes these; it prints them for the user to run.
 public struct MigrationStep: Equatable, Codable {
     public let duplicate: Duplicate
     public let installCommand: String?        // nil if recommended already has it

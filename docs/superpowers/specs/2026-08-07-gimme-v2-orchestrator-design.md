@@ -1,4 +1,4 @@
-# gimmie v2 — Orchestrator Design
+# gimme v2 — Orchestrator Design
 
 **Status:** Approved (design interview complete)
 **Date:** 2026-08-07
@@ -8,9 +8,9 @@
 
 ## 1. Purpose
 
-gimmie is an all-in-one global package management system for macOS. It is a **pure orchestration layer**: it does not download, stage, build, or shelve anything itself. It drives real package managers (Homebrew, Go, uv, Cargo, bun) through a uniform interface, presenting them to the user as a single unified namespace.
+gimme is an all-in-one global package management system for macOS. It is a **pure orchestration layer**: it does not download, stage, build, or shelve anything itself. It drives real package managers (Homebrew, Go, uv, Cargo, bun) through a uniform interface, presenting them to the user as a single unified namespace.
 
-gimmie ships as native Swift with two faces:
+gimme ships as native Swift with two faces:
 
 - a **CLI** (`gimme`) — flat verbs plus per-manager passthrough;
 - a **SwiftUI macOS app** (`GimmeUI`) — rebuilt fresh around the orchestration layer.
@@ -290,7 +290,7 @@ esbuild = "bun"
 
 - **Per-operation TTLs.** `list`/`outdated` are short (5 min) since they change when you install things; `info`/`search` are longer (1 hour) since package metadata rarely shifts. Tunable in config.
 
-- **Invalidation on write.** After any `install`/`uninstall`/`upgrade`, the affected manager's `list` (and `outdated`) cache entries are invalidated immediately — gimmie won't show a stale list right after you changed it.
+- **Invalidation on write.** After any `install`/`uninstall`/`upgrade`, the affected manager's `list` (and `outdated`) cache entries are invalidated immediately — gimme won't show a stale list right after you changed it.
 
 - **Bypass flags.** `--refresh` (force re-query, ignore cache; still writes fresh results) and `--no-cache` (don't read *or* write). The GUI exposes a "Refresh" button on each list view.
 
@@ -555,5 +555,5 @@ This is the recommended implementation order; the implementation plan (next step
 - **GUI automated tests.**
 - **Third-party `brew tap` modeling** in the unified layer (passthrough only).
 - **Migration paths** from the v1 native pipeline (pre-1.0, break freely).
-- **Per-project / per-directory manager pinning** (gimmie is global package management).
+- **Per-project / per-directory manager pinning** (gimme is global package management).
 - **A TUI.**

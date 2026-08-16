@@ -32,7 +32,7 @@ struct ContentView: View {
                     Label(section.rawValue, systemImage: section.icon)
                 }
             }
-            .navigationTitle("gimmie")
+            .navigationTitle("gimme")
         } detail: {
             switch store.sidebarSelection {
             case .installed:     InstalledView()

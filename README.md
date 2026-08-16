@@ -1,6 +1,6 @@
-# gimmie
+# gimme
 
-An all-in-one package management layer for macOS. gimmie is a **pure
+An all-in-one package management layer for macOS. gimme is a **pure
 orchestration** tool: it doesn't download, build, or shelve anything itself —
 it drives real package managers (Homebrew, Go, uv, Cargo, bun) through one
 unified interface, so you can address packages by name across all of them
@@ -79,22 +79,22 @@ Ecosystems are fixed buckets (JS, Python, Rust, Go, Ruby, PHP, System). Preferen
 
 **Runtime version managers (mise, asdf)** are detected and shown in `doctor`,
 but deliberately *not* modeled as package managers — they manage runtimes
-(node@20, python@3.12), not CLI packages. gimmie coexists with them via PATH
+(node@20, python@3.12), not CLI packages. gimme coexists with them via PATH
 augmentation; that's the right relationship.
 
-Nix is designed for but deferred to v2. Missing a backend? gimmie offers to
+Nix is designed for but deferred to v2. Missing a backend? gimme offers to
 install it for you (`auto-bootstrap`).
 
 ## How it resolves packages
 
-When you run `gimme install <name>`, gimmie decides which manager to use:
+When you run `gimme install <name>`, gimme decides which manager to use:
 
 1. **`--from <manager>`** wins outright. On success, that choice is *remembered*
    for the package, so `gimme install ripgrep` later goes to the same place.
 2. Otherwise a **remembered preference** is used (if that backend is still
    installed).
 3. Otherwise the **priority list** (default `homebrew, go, uv, cargo, bun`):
-   gimmie checks which managers have the package (concurrently) and picks the
+   gimme checks which managers have the package (concurrently) and picks the
    highest-priority one.
 
 Use `gimme forget <name>` (or `--all`) to clear remembered preferences.
@@ -116,7 +116,7 @@ gimme config [set priority <a,b,c>]
 ```
 
 **Passthrough:** `gimme <manager> <args...>` forwards verbatim to the underlying
-tool — `gimme brew tap ...`, `gimme cargo build --release`, etc. gimmie doesn't
+tool — `gimme brew tap ...`, `gimme cargo build --release`, etc. gimme doesn't
 parse or model it.
 
 **Flags:** `--from <m>` · `--all` · `--refresh` (bypass cache read) · `--no-cache`
@@ -125,7 +125,7 @@ parse or model it.
 
 ## State
 
-- **Live query + TTL cache.** gimmie always asks the real managers for the truth
+- **Live query + TTL cache.** gimme always asks the real managers for the truth
   on `list`/`outdated`/`info`; the disk cache only avoids re-querying within its
   TTL window (5 min for list/outdated, 1 hour for info). `--refresh` bypasses it.
   Cache lives in `~/.cache/gimme/`.
@@ -149,9 +149,9 @@ The design is **thin engine, fat adapters**: the engine never knows *how* a
 manager installs things. Each adapter owns its I/O strategy (brew JSON API, Go
 proxy, PyPI, crates.io, npm registry; CLI where no machine API exists) behind
 the one `PackageManager` seam. See
-[`docs/superpowers/specs/2026-08-07-gimmie-v2-orchestrator-design.md`](docs/superpowers/specs/2026-08-07-gimmie-v2-orchestrator-design.md)
+[`docs/superpowers/specs/2026-08-07-gimme-v2-orchestrator-design.md`](docs/superpowers/specs/2026-08-07-gimme-v2-orchestrator-design.md)
 for the full design and
-[`docs/superpowers/plans/2026-08-07-gimmie-v2-orchestrator.md`](docs/superpowers/plans/2026-08-07-gimmie-v2-orchestrator.md)
+[`docs/superpowers/plans/2026-08-07-gimme-v2-orchestrator.md`](docs/superpowers/plans/2026-08-07-gimme-v2-orchestrator.md)
 for the implementation plan.
 
 ## Building

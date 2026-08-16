@@ -1,14 +1,14 @@
-# gimmie v2 Orchestrator Implementation Plan
+# gimme v2 Orchestrator Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rebuild gimmie from a native install pipeline into a pure orchestration layer over real package managers (Homebrew, Go, uv, Cargo, bun), with a unified namespace CLI and a rebuilt SwiftUI app.
+**Goal:** Rebuild gimme from a native install pipeline into a pure orchestration layer over real package managers (Homebrew, Go, uv, Cargo, bun), with a unified namespace CLI and a rebuilt SwiftUI app.
 
 **Architecture:** Thin engine + fat adapters. A `PackageManager` protocol is the single seam; the engine (Registry + Resolver + Preferences + Cache) drives adapters that each own their I/O. CLI and SwiftUI both link `GimmeCore` directly — no IPC boundary.
 
 **Tech Stack:** Swift 5.9 (SwiftPM), macOS 13 floor, SwiftUI, `Foundation.Process` for subprocess, `URLSession` for network. No external dependencies.
 
-**Reference spec:** `docs/superpowers/specs/2026-08-07-gimmie-v2-orchestrator-design.md`. Every task here traces to a section of that spec.
+**Reference spec:** `docs/superpowers/specs/2026-08-07-gimme-v2-orchestrator-design.md`. Every task here traces to a section of that spec.
 
 ## Global Constraints
 
@@ -180,7 +180,7 @@ git rm -r Sources/GimmeLua Sources/CGimmeLuaSupport
 ```bash
 git add -A && git commit -m "chore: drop Lua C targets from Package.swift
 
-gimmie v2 is pure orchestration; the embedded Lua engine is gone.
+gimme v2 is pure orchestration; the embedded Lua engine is gone.
 Native pipeline code still present will be removed next."
 ```
 
@@ -213,7 +213,7 @@ git add -A && git commit -m "chore: delete native pipeline source directories
 
 Removes agent, brew, cellar, downloader, installer, manifest, mise,
 resolver, semver, shim, stager, state, taps, and the bundled core tap.
-gimmie v2 orchestrates real package managers instead of installing natively."
+gimme v2 orchestrates real package managers instead of installing natively."
 ```
 
 ### Task 1.4: Replace `Gimme.swift`, `Config.swift`, `Paths.swift`, `SystemManagers.swift`, `Placeholder.swift` with trimmed stubs
@@ -440,7 +440,7 @@ import SwiftUI
 /// Placeholder. Full UI rebuilt in Phase 8.
 struct ContentView: View {
     var body: some View {
-        Text("gimmie v2 — UI under construction")
+        Text("gimme v2 — UI under construction")
             .padding()
     }
 }
@@ -4100,7 +4100,7 @@ struct GimmeCLI {
 
     static func printHelp() {
         print("""
-        gimmie — unified package manager
+        gimme — unified package manager
 
         Usage:
           gimme install <name> [--from <manager>] [--version <v>]
@@ -4444,7 +4444,7 @@ struct ContentView: View {
                     Label(section.rawValue, systemImage: section.icon)
                 }
             }
-            .navigationTitle("gimmie")
+            .navigationTitle("gimme")
         } detail: {
             switch selection {
             case .installed:     InstalledView()
@@ -4683,7 +4683,7 @@ git add -A && git commit -m "feat(UI): rebuild SwiftUI app — navigation, all v
 
 ## Phase 9 — Cross-cutting Polish
 
-**Goal:** Wire the loose ends that make gimmie feel complete: progress streaming to the GUI Activity view, auto-bootstrap prompts in the CLI, and a final green build + manual verification.
+**Goal:** Wire the loose ends that make gimme feel complete: progress streaming to the GUI Activity view, auto-bootstrap prompts in the CLI, and a final green build + manual verification.
 
 ### Task 9.1: Auto-bootstrap prompt in the CLI
 
@@ -4929,21 +4929,21 @@ Verify in the app: each sidebar section renders; Installed shows real packages; 
 
 - [ ] **Step 5: Update README (if it describes v1 behavior)**
 
-Read `README.md`. If it documents the deleted native pipeline (manifests, taps, cellar), rewrite the relevant sections to describe v2 orchestration: the unified namespace, supported managers, CLI verbs, and that gimmie orchestrates rather than installs natively. Keep it accurate to what now exists.
+Read `README.md`. If it documents the deleted native pipeline (manifests, taps, cellar), rewrite the relevant sections to describe v2 orchestration: the unified namespace, supported managers, CLI verbs, and that gimme orchestrates rather than installs natively. Keep it accurate to what now exists.
 
 Run: `git diff README.md | head -60` to review before committing.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add -A && git commit -m "docs: update README for gimmie v2 orchestration model"
+git add -A && git commit -m "docs: update README for gimme v2 orchestration model"
 ```
 
 ---
 
 ## Done
 
-When all tasks above are complete and Phase 9 step 1 shows a green `swift test`, gimmie v2 is built. The deliverable is a pure-orchestration tool with: a `PackageManager` protocol + 5 adapters (Homebrew, Go, uv, Cargo, bun), a Resolver with priority + remembered prefs, a TTL cache, a flat-verb CLI with passthrough, and a rebuilt SwiftUI app — all matching the spec at `docs/superpowers/specs/2026-08-07-gimmie-v2-orchestrator-design.md`.
+When all tasks above are complete and Phase 9 step 1 shows a green `swift test`, gimme v2 is built. The deliverable is a pure-orchestration tool with: a `PackageManager` protocol + 5 adapters (Homebrew, Go, uv, Cargo, bun), a Resolver with priority + remembered prefs, a TTL cache, a flat-verb CLI with passthrough, and a rebuilt SwiftUI app — all matching the spec at `docs/superpowers/specs/2026-08-07-gimme-v2-orchestrator-design.md`.
 
 ## Known gaps (deferred to follow-up; documented for honesty)
 

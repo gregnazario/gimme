@@ -4,7 +4,7 @@ import Foundation
 ///
 /// These are intentionally NOT modeled as `PackageManager`s — they manage
 /// *runtimes* (node@20, python@3.12), not CLI packages, and the conceptual fit
-/// is poor (no search, version-pinned names, per-directory pinning). gimmie
+/// is poor (no search, version-pinned names, per-directory pinning). gimme
 /// coexists with them via PATH augmentation; this detector makes them visible
 /// in `doctor` so users understand the relationship.
 public struct RuntimeManagerStatus: Equatable {

@@ -25,7 +25,7 @@ struct PackageManagersView: View {
                 }
             }
             if !store.runtimeManagers.isEmpty {
-                Section("Runtime version managers (coexist; not managed by gimmie)") {
+                Section("Runtime version managers (coexist; not managed by gimme)") {
                     ForEach(store.runtimeManagers, id: \.kind) { vm in
                         RuntimeManagerRow(vm: vm)
                     }

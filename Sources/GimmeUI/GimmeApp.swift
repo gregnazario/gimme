@@ -22,7 +22,7 @@ struct GimmeApp: App {
         }
         .commands {
             CommandGroup(after: .appInfo) {
-                AboutGimmie()
+                AboutGimme()
             }
             CommandGroup(replacing: .toolbar) {
                 Button("Refresh Current Section") { store.refreshCurrentSection() }
@@ -35,13 +35,13 @@ struct GimmeApp: App {
 }
 
 /// Standard macOS About view — icon, name, version, one-liner.
-struct AboutGimmie: View {
+struct AboutGimme: View {
     var body: some View {
         VStack(spacing: 12) {
             Image(nsImage: NSApplication.shared.applicationIconImage)
                 .resizable()
                 .frame(width: 128, height: 128)
-            Text("gimmie").font(.title).fontWeight(.bold)
+            Text("gimme").font(.title).fontWeight(.bold)
             Text("Version \(GimmeVersion.current)")
                 .foregroundStyle(.secondary)
             Text("One interface for every package manager on your Mac.")

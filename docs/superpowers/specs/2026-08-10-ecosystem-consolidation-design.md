@@ -2,13 +2,13 @@
 
 **Status:** Approved (design interview complete)
 **Date:** 2026-08-10
-**Builds on:** the v2 orchestrator (`docs/superpowers/specs/2026-08-07-gimmie-v2-orchestrator-design.md`)
+**Builds on:** the v2 orchestrator (`docs/superpowers/specs/2026-08-07-gimme-v2-orchestrator-design.md`)
 
 ---
 
 ## 1. Purpose
 
-gimmie now supports 11 package managers, with 3 more coming. A tool like `esbuild` can be installed via bun, npm, pnpm, yarn, *and* deno — and most users accumulate the same package across several of them without realizing. There is today no single view that says "you have `esbuild` in both bun and npm — pick one."
+gimme now supports 11 package managers, with 3 more coming. A tool like `esbuild` can be installed via bun, npm, pnpm, yarn, *and* deno — and most users accumulate the same package across several of them without realizing. There is today no single view that says "you have `esbuild` in both bun and npm — pick one."
 
 This feature adds:
 
@@ -16,7 +16,7 @@ This feature adds:
 2. **Consolidation** — detection of same-package-same-ecosystem duplicates and a report that guides the user toward one preferred provider per ecosystem.
 3. **Three new managers** — pipx (Python), aqua (System), ubi (System), bringing the total to 14.
 
-Consolidation is **report + guide only** — gimmie never moves packages automatically. It prints the exact `gimme install` / `gimme uninstall` commands to run.
+Consolidation is **report + guide only** — gimme never moves packages automatically. It prints the exact `gimme install` / `gimme uninstall` commands to run.
 
 ---
 
@@ -91,7 +91,7 @@ public extension ManagerID {
 
 **Notes:**
 
-- **`deno` is in JS** despite its own registry (JSR). For consolidation it competes with the npm family for the same CLI tools — putting it in JS means gimmie flags `file-server` installed via both deno and npm.
+- **`deno` is in JS** despite its own registry (JSR). For consolidation it competes with the npm family for the same CLI tools — putting it in JS means gimme flags `file-server` installed via both deno and npm.
 - **aqua + ubi are in System** alongside Homebrew. They install native binaries from GitHub releases with no language affinity, so they correctly flag duplicates against Homebrew (e.g. `bat` via both brew and aqua).
 - **`other` exists as a safety net** so any future manager without a clear home doesn't break the model — it just won't consolidate against anything.
 
@@ -310,7 +310,7 @@ Bootstrap: `brew install pipx` or `python3 -m pip install pipx`. Per-tool isolat
 
 Bootstrap: `brew install aquaproj/aqua/aqua`.
 
-**Quirk:** aqua's model is declarative (`aqua.yaml`). The adapter models the standard imperative `aqua install`/`aqua list`/`aqua rm` flow; the declarative yaml is aqua's internal concern, not gimmie's.
+**Quirk:** aqua's model is declarative (`aqua.yaml`). The adapter models the standard imperative `aqua install`/`aqua list`/`aqua rm` flow; the declarative yaml is aqua's internal concern, not gimme's.
 
 ### `UbiManager` — System ecosystem
 
@@ -385,8 +385,8 @@ The existing Preferences tab gains an "Ecosystems" section — one picker per ec
 
 - **Auto-migration** (`gimme consolidate --apply`). Report + guide only for v1.
 - **Cross-ecosystem duplicate detection.** `ripgrep` in Homebrew vs Cargo is not flagged.
-- **aqua's declarative yaml model** as a first-class gimmie concept. Adapter uses the imperative flow.
-- **ubi install tracking via gimmie state.** List is best-effort scan (v1); a tracked-install-state follow-up could make it exact.
+- **aqua's declarative yaml model** as a first-class gimme concept. Adapter uses the imperative flow.
+- **ubi install tracking via gimme state.** List is best-effort scan (v1); a tracked-install-state follow-up could make it exact.
 - **Per-package registry-tag-based ecosystems.** Fixed buckets only.
 
 ---

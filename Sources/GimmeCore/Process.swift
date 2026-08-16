@@ -125,7 +125,7 @@ public struct ProcessRunner: ProcessRunning {
 
     /// The current environment with PATH augmented to include common macOS
     /// package-manager bin dirs. Lets subprocesses (brew/cargo/bun/etc.) work
-    /// when gimmie was launched from Finder, which inherits a minimal PATH.
+    /// when gimme was launched from Finder, which inherits a minimal PATH.
     static func augmentedEnvironment() -> [String: String] {
         var env = ProcessInfo.processInfo.environment
         let existing = env["PATH"] ?? ""

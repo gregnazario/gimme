@@ -1,13 +1,13 @@
-# gimmie — project instructions
+# gimme — project instructions
 
-This file is the project-level instructions for the gimmie repository. It
+This file is the project-level instructions for the gimme repository. It
 overrides default behavior for any agent working in this workspace. The global
 user instructions at `~/.zcode/AGENTS.md` still apply (English only, no AI
 attribution in commits, etc.).
 
-## What gimmie is
+## What gimme is
 
-gimmie is a **pure-orchestration** package manager for macOS: it does not
+gimme is a **pure-orchestration** package manager for macOS: it does not
 download, build, or shelve anything itself. It drives real package managers
 (Homebrew, Go, uv, Cargo, bun) through one `PackageManager` protocol seam, and
 exposes them through a unified namespace via both a CLI (`gimme`) and a SwiftUI
@@ -18,8 +18,8 @@ macOS app (`GimmeUI`), sharing one Swift engine (`GimmeCore`).
   PyPI, crates.io, npm registry; CLI where no machine API exists).
 - **Build:** SwiftPM, `swift-tools-version: 5.9`, macOS 13 floor, no external
   dependencies. Three targets: `GimmeCore`, `gimme` (CLI), `GimmeUI` (SwiftUI).
-- **Spec & plan of record:** `docs/superpowers/specs/2026-08-07-gimmie-v2-orchestrator-design.md`
-  and `docs/superpowers/plans/2026-08-07-gimmie-v2-orchestrator.md`. Read these
+- **Spec & plan of record:** `docs/superpowers/specs/2026-08-07-gimme-v2-orchestrator-design.md`
+  and `docs/superpowers/plans/2026-08-07-gimme-v2-orchestrator.md`. Read these
   before making non-trivial changes.
 
 ## Language
