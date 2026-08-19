@@ -10,6 +10,12 @@ permissions:
 jobs:
   release:
     runs-on: macos-latest
+    env:
+      # Job-level so step `if` conditions can test for the secrets' presence:
+      # signing + notarization are skipped (and unsigned binaries shipped)
+      # when Apple credentials are not configured for the repo.
+      MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,17 +38,18 @@ jobs:
           .build/release/gimme --version
           test -s .build/release/gimme
 
-      # --- Code Signing ---
+      # --- Code Signing (skipped when Apple secrets are not configured) ---
 
       - name: Import signing certificate
+        if: env.MACOS_CERTIFICATE != ''
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
         run: |
           # Decode and import the Developer ID Application certificate into
           # a temporary keychain so codesign can use it.
-          CERT_FILE=$(mktemp /tmp/certificate.XXXXXX.p12)
-          KEYCHAIN_FILE=$(mktemp /tmp/keychain.XXXXXX.keychain-db)
+          CERT_FILE=$(mktemp).p12
+          KEYCHAIN_FILE="/tmp/$(uuidgen).keychain-db"
           KEYCHAIN_PWD=$(uuidgen)
 
           echo "$MACOS_CERTIFICATE" | base64 --decode > "$CERT_FILE"
@@ -63,6 +70,7 @@ jobs:
           rm "$CERT_FILE"
 
       - name: Sign CLI binary
+        if: env.MACOS_CERTIFICATE != ''
         env:
           APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
         run: |
@@ -70,21 +78,26 @@ jobs:
             --sign "$APPLE_DEVELOPER_ID" \
             .build/release/gimme
 
-      - name: Build + sign app bundle
-        env:
-          APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+      - name: Build app bundle
         run: |
           sed -i '' "s/0.1.0/${{ steps.version.outputs.version }}/" app/Info.plist
           sh app/build-app.sh
+
+      - name: Sign app bundle
+        if: env.MACOS_CERTIFICATE != ''
+        env:
+          APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+        run: |
           codesign --verbose --force --deep --options=runtime \
             --sign "$APPLE_DEVELOPER_ID" \
             app/Gimme.app
           # Verify the signature.
           codesign --verify --verbose=2 app/Gimme.app
 
-      # --- Notarization ---
+      # --- Notarization (skipped when Apple secrets are not configured) ---
 
       - name: Notarize CLI binary
+        if: env.MACOS_CERTIFICATE != '' && env.APPLE_ID != ''
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PWD: ${{ secrets.APPLE_ID_PWD }}
@@ -107,6 +120,7 @@ jobs:
           rm .build/release/gimme-notarize.zip
 
       - name: Notarize + staple app
+        if: env.MACOS_CERTIFICATE != '' && env.APPLE_ID != ''
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PWD: ${{ secrets.APPLE_ID_PWD }}
