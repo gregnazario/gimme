@@ -66,8 +66,8 @@ public final class YarnManager: PackageManager {
     }
 
     public func search(_ query: String) async throws -> [SearchHit] {
-        let url = "https://registry.npmjs.org/-/v1/search?size=25&q=\(query)"
-        guard let doc: NpmSearch = try? await http.getJSON(url, as: NpmSearch.self) else { return [] }
+        let url = NpmRegistry.searchURL(query: query)
+        guard let doc: NpmSearch = try? await http.getJSON(url.absoluteString, as: NpmSearch.self) else { return [] }
         return doc.objects.map { SearchHit(name: $0.package.name, manager: .yarn, summary: $0.package.description ?? "", latestVersion: $0.package.version ?? "") }
     }
 

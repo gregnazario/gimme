@@ -22,13 +22,23 @@ final class BunManagerTests: XCTestCase {
 
     func testSearchQueriesNpm() async throws {
         let http = StubHTTP()
-        http.byURL["https://registry.npmjs.org/-/v1/search?size=25&q=esbuild"] = Data(#"""
+        http.byURL["https://registry.npmjs.org/-/v1/search?text=esbuild&size=25"] = Data(#"""
         {"objects":[{"package":{"name":"esbuild","description":"Bundler","version":"0.21.0"}}]}
         """#.utf8)
         let m = bun(http, StubProcess())
         let hits = try await m.search("esbuild")
         XCTAssertEqual(hits.first?.name, "esbuild")
         XCTAssertEqual(hits.first?.latestVersion, "0.21.0")
+    }
+
+    func testSearchHandlesScopedName() async throws {
+        let http = StubHTTP()
+        http.byURL[NpmRegistry.searchURL(query: "@babel/core").absoluteString] = Data(#"""
+        {"objects":[{"package":{"name":"@babel/core","description":"Babel compiler core","version":"7.0.0"}}]}
+        """#.utf8)
+        let m = bun(http, StubProcess())
+        let hits = try await m.search("@babel/core")
+        XCTAssertEqual(hits.first?.name, "@babel/core")
     }
 
     func testInstallCallsBunInstallGlobal() async throws {

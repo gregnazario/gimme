@@ -30,7 +30,7 @@ final class NpmManagerTests: XCTestCase {
 
     func testSearchQueriesNpm() async throws {
         let http = StubHTTP()
-        http.byURL["https://registry.npmjs.org/-/v1/search?size=25&q=esbuild"] = Data(#"""
+        http.byURL["https://registry.npmjs.org/-/v1/search?text=esbuild&size=25"] = Data(#"""
         {"objects":[{"package":{"name":"esbuild","description":"Bundler","version":"0.21.0"}}]}
         """#.utf8)
         let m = npm(http, StubProcess())
