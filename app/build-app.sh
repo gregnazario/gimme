@@ -36,6 +36,14 @@ else
     echo "  (no AppIcon.icns; run the icon generation first)"
 fi
 
+# Ad-hoc sign the assembled bundle. Without this the bundle carries only the
+# executable's linker signature, which mismatches the Resources/ dir —
+# codesign --verify fails ("code has no resources but signature indicates
+# they must be present") and Gatekeeper reports the app as damaged. A proper
+# Developer ID signature (release CI) replaces this ad-hoc one.
+codesign --force --sign - "$APP_DIR"
+codesign --verify "$APP_DIR"
+
 echo "==> App bundle ready: $APP_DIR"
 echo ""
 echo "To open: open $APP_DIR"

@@ -123,7 +123,7 @@ echo "  ✓ Installed to $INSTALL_DIR/gimme"
 
 # --- install app (unless skipped) ---
 if [ "$SKIP_APP" != "1" ]; then
-    APP_TARBALL="Gimme-darwin-${ARCH_TAG}.tar.gz"
+    APP_TARBALL="GimmeUI-darwin-${ARCH_TAG}.tar.gz"
     APP_URL=""
     if command -v curl >/dev/null 2>&1; then
         APP_URL="$(curl -fsSL "$API_URL" 2>/dev/null | grep -o "https://[^\"]*${APP_TARBALL}" | head -1 || true)"
