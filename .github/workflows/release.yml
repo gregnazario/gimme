@@ -145,7 +145,10 @@ jobs:
           tar czf gimme-darwin-arm64.tar.gz -C .build/release gimme
 
       - name: Tarball app
-        run: tar czf Gimme-darwin-arm64.tar.gz -C app Gimme.app
+        # Named GimmeUI-, not Gimme-: GitHub treats release asset names as
+        # case-insensitively unique, so Gimme-darwin-arm64.tar.gz collided
+        # with gimme-darwin-arm64.tar.gz and the second upload always failed.
+        run: tar czf GimmeUI-darwin-arm64.tar.gz -C app Gimme.app
 
       - name: Clean up keychain
         if: always()
@@ -162,4 +165,4 @@ jobs:
             --title "gimme ${{ steps.version.outputs.version }}" \
             --generate-notes \
             gimme-darwin-arm64.tar.gz \
-            Gimme-darwin-arm64.tar.gz
+            GimmeUI-darwin-arm64.tar.gz
