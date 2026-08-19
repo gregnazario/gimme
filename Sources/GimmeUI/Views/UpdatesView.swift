@@ -128,8 +128,11 @@ struct UpdateRow: View {
             HStack(spacing: 4) {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
                 Text("Failed").font(.caption).foregroundStyle(.red)
+                Button("Try Again", action: onUpdate)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help(msg)
             }
-            .help(msg)
         }
     }
 }
