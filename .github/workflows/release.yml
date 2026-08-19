@@ -155,10 +155,11 @@ jobs:
           fi
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: gimme ${{ steps.version.outputs.version }}
-          generate_release_notes: true
-          files: |
-            gimme-darwin-arm64.tar.gz
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "gimme ${{ steps.version.outputs.version }}" \
+            --generate-notes \
+            gimme-darwin-arm64.tar.gz \
             Gimme-darwin-arm64.tar.gz
