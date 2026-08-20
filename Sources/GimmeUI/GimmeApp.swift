@@ -14,6 +14,9 @@ struct GimmeApp: App {
                 .environmentObject(store)
                 .tint(Self.accent)
                 .frame(minWidth: 760, minHeight: 500)
+                .sheet(isPresented: $store.showReportIssue) {
+                    ReportIssueView()
+                }
                 .alert("Error", isPresented: $store.showError) {
                     Button("OK", role: .cancel) {}
                 } message: {
@@ -22,7 +25,10 @@ struct GimmeApp: App {
         }
         .commands {
             CommandGroup(after: .appInfo) {
-                AboutGimme()
+                AboutGimme(reportIssue: { store.showReportIssue = true })
+            }
+            CommandGroup(after: .help) {
+                Button("Report an Issue…") { store.showReportIssue = true }
             }
             CommandGroup(replacing: .toolbar) {
                 Button("Refresh Current Section") { store.refreshCurrentSection() }
@@ -36,6 +42,8 @@ struct GimmeApp: App {
 
 /// Standard macOS About view — icon, name, version, one-liner.
 struct AboutGimme: View {
+    var reportIssue: (() -> Void)? = nil
+
     var body: some View {
         VStack(spacing: 12) {
             Image(nsImage: NSApplication.shared.applicationIconImage)
@@ -52,9 +60,13 @@ struct AboutGimme: View {
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
+            if let reportIssue {
+                Button("Report an Issue…", action: reportIssue)
+                    .padding(.top, 4)
+            }
         }
         .padding(24)
-        .frame(width: 360, height: 360)
+        .frame(width: 360, height: 400)
     }
 }
 
@@ -89,6 +101,7 @@ final class GimmeStore: ObservableObject {
     /// When set, navigating to Installed applies this manager filter first.
     @Published var pendingManagerFilter: ManagerID?
     @Published var showError = false
+    @Published var showReportIssue = false
     @Published var errorMessage = ""
 
     /// Per-package upgrade progress for the Updates view.
