@@ -45,6 +45,25 @@ final class UvManagerTests: XCTestCase {
 
     func testListParsesUvToolList() async throws {
         let p = StubProcess()
+        // Current `uv tool list` prints one block per tool: a "name vX.Y.Z"
+        // line followed by "- executable" bullets.
+        p.stubs["tool"] = """
+        pycowsay v0.0.0.2
+        - pycowsay
+        httpie v3.2.3
+        - http
+        - https
+        """
+        let m = uv(nil, p)
+        let pkgs = try await m.listInstalled()
+        XCTAssertEqual(pkgs.count, 2)
+        XCTAssertTrue(pkgs.contains { $0.name == "pycowsay" && $0.version == "0.0.0.2" })
+        XCTAssertTrue(pkgs.contains { $0.name == "httpie" && $0.version == "3.2.3" })
+    }
+
+    func testListStillUnderstandsLegacyFormat() async throws {
+        let p = StubProcess()
+        // Older uv printed "name (executable: bin)" without versions.
         p.stubs["tool"] = """
         httpie (executable: http)
         yt-dlp (executable: yt-dlp)
@@ -52,5 +71,29 @@ final class UvManagerTests: XCTestCase {
         let m = uv(nil, p)
         let pkgs = try await m.listInstalled()
         XCTAssertEqual(Set(pkgs.map { $0.name }), ["httpie", "yt-dlp"])
+    }
+
+    func testOutdatedComparesVersionsWithoutVPrefix() async throws {
+        let p = StubProcess()
+        p.stubs["tool"] = """
+        pycowsay v0.0.0.2
+        - pycowsay
+        httpie v3.2.3
+        """
+        let http = StubHTTP()
+        http.byURL["https://pypi.org/pypi/pycowsay/json"] = Data(#"""
+        {"info":{"name":"pycowsay","version":"0.0.0.2"}}
+        """#.utf8)
+        http.byURL["https://pypi.org/pypi/httpie/json"] = Data(#"""
+        {"info":{"name":"httpie","version":"3.3.0"}}
+        """#.utf8)
+        let m = uv(http, p)
+        let outdated = try await m.outdated()
+        // Current-on-PyPI tool (v0.0.0.2 == 0.0.0.2) must NOT be flagged;
+        // only the genuinely stale one appears.
+        XCTAssertEqual(outdated.count, 1)
+        XCTAssertEqual(outdated.first?.name, "httpie")
+        XCTAssertEqual(outdated.first?.installedVersion, "3.2.3")
+        XCTAssertEqual(outdated.first?.latestVersion, "3.3.0")
     }
 }

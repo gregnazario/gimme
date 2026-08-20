@@ -79,12 +79,31 @@ public final class UvManager: PackageManager {
     public func listInstalled() async throws -> [InstalledPackage] {
         let res = try await process.run(binaryPath, args: ["tool", "list"], env: nil, stream: nil)
         guard res.exitCode == 0 else { return [] }
-        // Lines like: "httpie (executable: http)"
+        // Current `uv tool list` prints one block per tool — a "name vX.Y.Z"
+        // line followed by "- executable" bullets. Older uv printed
+        // "name (executable: bin)" with no version.
         return res.stdout.split(separator: "\n").compactMap { line -> InstalledPackage? in
             let s = String(line).trimmingCharacters(in: .whitespaces)
-            guard let name = s.split(separator: " ").first, !name.isEmpty else { return nil }
-            return InstalledPackage(name: String(name), version: "unknown", manager: .uv, installedAt: nil)
+            guard !s.isEmpty, !s.hasPrefix("-") else { return nil }   // executable bullets
+            let name: String
+            var version = "unknown"
+            if let paren = s.firstIndex(of: "(") {
+                name = String(s[..<paren]).trimmingCharacters(in: .whitespaces)
+            } else {
+                let tokens = s.split(separator: " ")
+                guard let first = tokens.first else { return nil }
+                name = String(first)
+                if tokens.count > 1 { version = Self.normalize(String(tokens[1])) }
+            }
+            guard !name.isEmpty else { return nil }
+            return InstalledPackage(name: name, version: version, manager: .uv, installedAt: nil)
         }
+    }
+
+    /// uv versions carry a leading "v" ("v3.2.3"); PyPI's API doesn't.
+    /// Normalize before storing or comparing.
+    private static func normalize(_ version: String) -> String {
+        version.hasPrefix("v") ? String(version.dropFirst()) : version
     }
 
     public func outdated() async throws -> [OutdatedPackage] {
@@ -94,10 +113,9 @@ public final class UvManager: PackageManager {
                 group.addTask {
                     guard let doc: PyPIDoc = try? await self.http.getJSON("https://pypi.org/pypi/\(pkg.name)/json", as: PyPIDoc.self),
                           let latest = doc.info.version else { return nil }
-                    // We don't have installed version reliably from `uv tool list`;
-                    // mark outdated only if names differ (best-effort). Real version
-                    // comparison added when `uv tool list --json` is available.
-                    return pkg.version != latest ? OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .uv) : nil
+                    return Self.normalize(pkg.version) != Self.normalize(latest)
+                        ? OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .uv)
+                        : nil
                 }
             }
             var out: [OutdatedPackage] = []
