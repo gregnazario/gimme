@@ -80,6 +80,24 @@ final class GemManagerTests: XCTestCase {
         XCTAssertTrue(pkgs.contains { $0.name == "rails" && $0.version == "7.1.0" })
     }
 
+    func testListStripsPlatformSuffix() async throws {
+        let p = StubProcess()
+        // Platform-specific gems list the platform after the version
+        // ("1.17.4 arm64-darwin"); comparing against rubygems.org's plain
+        // version would flag them as outdated forever.
+        p.stubs["list"] = ProcessResult(exitCode: 0, stdout: """
+        ffi (1.17.4 arm64-darwin, 1.17.3 arm64-darwin)
+        google-protobuf (4.35.1 arm64-darwin, 4.33.2)
+        rdoc (8.0.0, 7.0.4)
+        """, stderr: "")
+        let m = gem(nil, p)
+        let pkgs = try await m.listInstalled()
+        XCTAssertEqual(pkgs.count, 3)
+        XCTAssertTrue(pkgs.contains { $0.name == "ffi" && $0.version == "1.17.4" })
+        XCTAssertTrue(pkgs.contains { $0.name == "google-protobuf" && $0.version == "4.35.1" })
+        XCTAssertTrue(pkgs.contains { $0.name == "rdoc" && $0.version == "8.0.0" })
+    }
+
     func testVersion() async throws {
         let p = StubProcess()
         p.stubs["--version"] = ProcessResult(exitCode: 0, stdout: "4.0.16\n", stderr: "")

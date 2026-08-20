@@ -104,7 +104,12 @@ public final class GemManager: PackageManager {
             let name = String(s[..<paren]).trimmingCharacters(in: .whitespaces)
             guard !name.isEmpty, name != "***" else { return nil }
             let versionsBlob = String(s[s.index(after: paren)..<close])
-            let firstVersion = versionsBlob.split(separator: ",").first.map { String($0).trimmingCharacters(in: .whitespaces) }
+            // Platform-specific gems append the platform to each version
+            // ("1.17.4 arm64-darwin"); keep just the version so comparisons
+            // against rubygems.org's plain versions match.
+            let firstVersion = versionsBlob.split(separator: ",").first?
+                .split(whereSeparator: \.isWhitespace).first
+                .map(String.init)
             guard let version = firstVersion, !version.isEmpty else { return nil }
             return InstalledPackage(name: name, version: version, manager: .gem, installedAt: nil)
         }
