@@ -121,9 +121,12 @@ unbounded, fine for tens of apps.
    match the display name. Re-scan receipts to get the bundle ID, then the
    cached lookup for the `trackId`. Unresolvable → `GimmeError.notFoundInManagers`.
 2. **Act.** If `BinaryResolver.resolve("mas")` is non-nil: run
-   `mas upgrade <trackId>` and surface mas's stderr on non-zero exit (e.g. the
-   "not signed in" error). Otherwise: `open macappstore://apps.apple.com/app/id<trackId>`
-   to land the App Store on the app's page, where the user clicks Update.
+   `mas upgrade <trackId>`. mas 7 requires root and prompts through sudo,
+   which cannot work where there is no TTY (the GUI app) — so a mas failure
+   falls through to the fallback rather than erroring; its stderr is kept for
+   the case where the fallback itself fails. Fallback:
+   `open macappstore://apps.apple.com/app/id<trackId>` to land the App Store
+   on the app's page, where the user clicks Update.
 3. **Coalesce.** `updateAll` calls `upgrade()` once per outdated package, and
    N fallback opens would be obnoxious. The adapter keeps a timestamp guard:
    if it already opened an App Store URL in the last 10 seconds, further opens

@@ -197,15 +197,17 @@ public final class AppStoreManager: PackageManager {
 
         // Preferred path: mas drives the real upgrade. masBinaryOverride == ""
         // means "force absent" so tests are hermetic on machines that have mas.
+        // mas 7 requires root and prompts via sudo — which fails with no TTY
+        // (the GUI app), so a mas failure falls through to the page fallback
+        // instead of erroring.
         let masPath: String?
         if masBinaryOverride == "" { masPath = nil }
         else { masPath = masBinaryOverride ?? BinaryResolver.resolve("mas") }
+        var masError: String? = nil
         if let masPath {
             let res = try await process.run(masPath, args: ["upgrade", String(store.trackId)], env: nil, stream: nil)
-            guard res.exitCode == 0 else {
-                throw GimmeError.operationFailed(manager: .appstore, op: "upgrade", underlying: res.stderr)
-            }
-            return
+            if res.exitCode == 0 { return }
+            masError = res.stderr
         }
 
         // Fallback: land the App Store on the app's page; the user clicks
@@ -217,7 +219,8 @@ public final class AppStoreManager: PackageManager {
         let res = try await process.run("/usr/bin/open",
             args: ["macappstore://apps.apple.com/app/id\(store.trackId)"], env: nil, stream: nil)
         guard res.exitCode == 0 else {
-            throw GimmeError.operationFailed(manager: .appstore, op: "upgrade", underlying: res.stderr)
+            let detail = masError.map { "mas: \($0)" } ?? res.stderr
+            throw GimmeError.operationFailed(manager: .appstore, op: "upgrade", underlying: detail)
         }
     }
 }

@@ -10,7 +10,7 @@ final class AppStoreManagerTests: XCTestCase {
             return byURL[url.absoluteString] ?? Data()
         }
     }
-    final class StubProcess: ProcessRunning {
+    class StubProcess: ProcessRunning {
         var calls: [(String, [String])] = []
         func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
             calls.append((e, args))
@@ -266,5 +266,32 @@ final class AppStoreManagerTests: XCTestCase {
                           preferencesFile: home.appendingPathComponent("prefs.json"))
         try await gimme.upgrade(name: "Slack", from: .appstore)
         XCTAssertTrue(p.calls.contains { $0.0 == "/usr/bin/open" && $0.1 == ["macappstore://apps.apple.com/app/id803453959"] })
+    }
+
+    /// mas 7 "Requires root privileges to update apps" — in the GUI there is
+    /// no TTY, so `sudo` inside mas fails ("a terminal is required"). A mas
+    /// failure must fall back to opening the app's App Store page rather than
+    /// surfacing an error the user can't act on.
+    func testUpgradeFallsBackToAppStorePageWhenMasFails() async throws {
+        try makeApp(tmp, "Slack.app", bundleID: "com.tinyspeck.slackmacgap", version: "4.51.180")
+        let http = StubHTTP()
+        stubLookup(http, "com.tinyspeck.slackmacgap", version: "4.51.191", trackId: 803453959)
+        final class FailingMasProcess: StubProcess {
+            override func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+                let r = try await super.run(e, args: args, env: env, stream: stream)
+                if e == "/tmp/mas-stub" {
+                    return ProcessResult(exitCode: 1, stdout: "",
+                        stderr: "sudo: a terminal is required to read the password")
+                }
+                return r
+            }
+        }
+        let p = FailingMasProcess()
+        let m = AppStoreManager(http: http, process: p, applicationDirs: [tmp], masBinary: "/tmp/mas-stub")
+        try await m.upgrade(PackageRef(name: "Slack"))
+        XCTAssertTrue(p.calls.contains { $0.0 == "/tmp/mas-stub" && $0.1 == ["upgrade", "803453959"] },
+                      "mas must be attempted first")
+        XCTAssertTrue(p.calls.contains { $0.0 == "/usr/bin/open" && $0.1 == ["macappstore://apps.apple.com/app/id803453959"] },
+                      "fallback must open the app's App Store page")
     }
 }
