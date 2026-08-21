@@ -27,6 +27,7 @@ final class EcosystemTests: XCTestCase {
         XCTAssertEqual(ManagerID.homebrew.ecosystem, .system)
         XCTAssertEqual(ManagerID.aqua.ecosystem, .system)
         XCTAssertEqual(ManagerID.ubi.ecosystem, .system)
+        XCTAssertEqual(ManagerID.appstore.ecosystem, .system)
     }
 
     func testSingletonEcosystems() {

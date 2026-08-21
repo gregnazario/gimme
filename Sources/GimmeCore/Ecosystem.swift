@@ -35,7 +35,7 @@ public extension ManagerID {
         case .go:                             return .go
         case .gem:                            return .ruby
         case .composer:                       return .php
-        case .homebrew, .aqua, .ubi:          return .system
+        case .homebrew, .aqua, .ubi, .appstore: return .system
         }
     }
 }

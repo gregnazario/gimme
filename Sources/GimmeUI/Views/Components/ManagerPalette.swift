@@ -28,6 +28,7 @@ enum ManagerPalette {
         case .gem:      return "#7C3AED"  // purple
         case .bun:      return "#DB2777"  // pink
         case .ubi:      return "#78716C"  // stone
+        case .appstore: return "#007AFF"  // App Store blue
         }
     }
 }
