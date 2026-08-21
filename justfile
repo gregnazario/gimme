@@ -141,3 +141,10 @@ install-app: app
 # Remove all build artifacts.
 clean:
     rm -rf .build site docs-site/.venv app/Gimme.app
+
+# Build, sign (Developer ID), notarize, and package release artifacts into dist/.
+# package 2.2.0                — full pipeline (requires `xcrun notarytool
+#                               store-credentials gimme-notary` once)
+# package 2.2.0 -- --skip-notarize — sign only
+package version *args:
+    sh scripts/package-mac.sh {{version}} {{args}}

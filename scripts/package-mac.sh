@@ -1,0 +1,122 @@
+#!/bin/sh
+# gimme — Developer ID signing + notarization + DMG packaging (macOS).
+#
+# Usage: scripts/package-mac.sh <version> [--skip-notarize]
+#
+# Produces in dist/:
+#   gimme-darwin-arm64.tar.gz   signed + notarized CLI binary
+#   gimme-<version>-arm64.dmg   signed + notarized drag-to-Applications DMG
+#
+# Environment:
+#   DEVELOPER_ID   codesign identity (default: Greg's Developer ID Application cert)
+#   NOTARY_PROFILE stored notarytool credentials profile (default: gimme-notary;
+#                  create once with: xcrun notarytool store-credentials gimme-notary
+#                  --apple-id <id> --team-id 4SRDAWJ9G7 --password <app-specific-pw>)
+#
+# The one-time setup for notarization is interactive (your Apple ID), which is
+# why it lives in the keychain rather than this script.
+
+set -eu
+
+VERSION="${1:?usage: scripts/package-mac.sh <version> [--skip-notarize]}"
+case "${2:-}" in
+    --skip-notarize) NOTARIZE=0 ;;
+    "") NOTARIZE=1 ;;
+    *) echo "unknown option: $2" >&2; exit 1 ;;
+esac
+
+DEVELOPER_ID="${DEVELOPER_ID:-Developer ID Application: Gregory Nazario (4SRDAWJ9G7)}"
+NOTARY_PROFILE="${NOTARY_PROFILE:-gimme-notary}"
+DIST="dist"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$REPO_ROOT"
+
+# --- build ------------------------------------------------------------------
+
+echo "==> Building release (CLI + app), version ${VERSION}…"
+sed -i '' "s/2.0.0-dev/$VERSION/" Sources/GimmeCore/Version.swift
+sed -i '' "s/0.1.0/$VERSION/" app/Info.plist
+restore_dev_files() {
+    git checkout -- Sources/GimmeCore/Version.swift app/Info.plist 2>/dev/null || true
+}
+trap restore_dev_files EXIT
+
+swift build -c release
+sh app/build-app.sh   # assembles + ad-hoc signs; replaced by Developer ID below
+
+mkdir -p "$DIST"
+rm -rf "$DIST/Gimme.app" "$DIST"/*.dmg "$DIST"/*.tar.gz "$DIST"/*-notarize.zip
+
+# --- sign -------------------------------------------------------------------
+
+echo "==> Signing with Developer ID…"
+# Strip must happen before signing (it would invalidate the signature).
+strip .build/release/gimme
+
+codesign --force --options runtime --timestamp \
+    --sign "$DEVELOPER_ID" .build/release/gimme
+codesign --force --options runtime --timestamp \
+    --sign "$DEVELOPER_ID" app/Gimme.app
+
+codesign --verify --strict .build/release/gimme
+codesign --verify --strict app/Gimme.app
+echo "  ✓ signed: CLI + Gimme.app (hardened runtime, secure timestamp)"
+
+# --- notarize ---------------------------------------------------------------
+
+notarize() {  # notarize <file>  — submits and waits
+    xcrun notarytool submit "$1" --keychain-profile "$NOTARY_PROFILE" --wait
+}
+
+if [ "$NOTARIZE" = "1" ]; then
+    echo "==> Notarizing CLI…"
+    ditto -c -k --keepParent .build/release/gimme "$DIST/cli-notarize.zip"
+    notarize "$DIST/cli-notarize.zip"
+    rm "$DIST/cli-notarize.zip"
+
+    echo "==> Notarizing Gimme.app…"
+    ditto -c -k --keepParent app/Gimme.app "$DIST/app-notarize.zip"
+    notarize "$DIST/app-notarize.zip"
+    xcrun stapler staple app/Gimme.app
+    codesign --verify --strict app/Gimme.app
+    rm "$DIST/app-notarize.zip"
+    echo "  ✓ notarized + stapled"
+else
+    echo "==> Skipping notarization (--skip-notarize)"
+fi
+
+# --- package ----------------------------------------------------------------
+
+echo "==> Packaging…"
+tar czf "$DIST/gimme-darwin-arm64.tar.gz" -C .build/release gimme
+
+DMG="$DIST/gimme-$VERSION-arm64.dmg"
+STAGE="$(mktemp -d)"
+cp -R app/Gimme.app "$STAGE/"
+ln -s /Applications "$STAGE/Applications"
+hdiutil create -volname "gimme $VERSION" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
+rm -rf "$STAGE"
+
+if [ "$NOTARIZE" = "1" ]; then
+    codesign --force --sign "$DEVELOPER_ID" --timestamp "$DMG"
+    notarize "$DMG"
+    xcrun stapler staple "$DMG"
+fi
+
+restore_dev_files
+trap - EXIT
+
+# --- verify -----------------------------------------------------------------
+
+echo "==> Verification…"
+# -v: without it spctl sometimes prints nothing for accepted assessments.
+# A notarized bare CLI tool is "rejected (the code is valid but does not
+# seem to be an app)" — that's the expected outcome for a command-line
+# binary; Gatekeeper's first-launch ticket check is what matters for it.
+echo "CLI:   $(spctl -a -t execute -v .build/release/gimme 2>&1)"
+echo "App:   $(spctl -a -t exec -v app/Gimme.app 2>&1)"
+if [ "$NOTARIZE" = "1" ]; then
+    echo "DMG:   $(spctl -a -t open --context context:primary-signature -v "$DMG" 2>&1)"
+    xcrun stapler validate "$DMG"
+fi
+echo "  ✓ $DIST/: $(cd "$DIST" && ls | tr '\n' ' ')"

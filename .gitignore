@@ -8,3 +8,6 @@ docs-site/.venv/
 Gimme.app/
 icon.iconset/
 icon-1024.png
+
+# Release packaging output (just package / scripts/package-mac.sh)
+dist/
