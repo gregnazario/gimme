@@ -96,8 +96,72 @@ public final class AppStoreManager: PackageManager {
         }
     }
 
-    // outdated() and upgrade() are implemented in later plan tasks.
-    public func outdated() async throws -> [OutdatedPackage] { [] }
+    // MARK: - Update detection (iTunes Lookup API)
+
+    /// iTunes Lookup response. Codable so the decoded struct itself is what the
+    /// disk cache stores (key `appstore:lookup:<bundleID>`).
+    struct LookupResponse: Codable {
+        let resultCount: Int
+        let results: [Result]
+        struct Result: Codable {
+            let trackId: Int
+            let trackName: String?
+            let version: String?
+        }
+    }
+
+    private static let lookupTTL = 6 * 3600
+
+    /// True when `installed` is strictly older than `latest`: dot-segment
+    /// numeric comparison with zero-padding ("1.0" == "1.0.0"); non-numeric
+    /// segments fall back to lexical ordering. Never true for equal values.
+    static func isOlder(_ installed: String, than latest: String) -> Bool {
+        guard installed != latest else { return false }
+        let a = installed.split(separator: ".").map(String.init)
+        let b = latest.split(separator: ".").map(String.init)
+        for i in 0..<max(a.count, b.count) {
+            let sa = i < a.count ? a[i] : "0"
+            let sb = i < b.count ? b[i] : "0"
+            if let na = Int(sa), let nb = Int(sb) {
+                if na != nb { return na < nb }
+            } else if sa != sb {
+                return sa < sb
+            }
+        }
+        return false
+    }
+
+    /// Fetch (or serve from cache) the store record for a bundle ID. Returns
+    /// nil on any failure — callers skip the app rather than flag it.
+    func lookup(bundleID: String) async -> LookupResponse? {
+        let key = "appstore:lookup:\(bundleID)"
+        if let indexCache, let cached = indexCache.get(key, ttlSeconds: Self.lookupTTL, as: LookupResponse.self) {
+            return cached
+        }
+        let url = "https://itunes.apple.com/lookup?bundleId=\(bundleID)&country=us"
+        guard let resp: LookupResponse = try? await http.getJSON(url, as: LookupResponse.self) else { return nil }
+        indexCache?.set(key, value: resp)
+        return resp
+    }
+
+    public func outdated() async throws -> [OutdatedPackage] {
+        await withTaskGroup(of: OutdatedPackage?.self) { group in
+            for app in scanInstalledApps() {
+                group.addTask {
+                    guard let store = await self.lookup(bundleID: app.bundleID)?.results.first,
+                          let latest = store.version, !latest.isEmpty,
+                          Self.isOlder(app.version, than: latest) else { return nil }
+                    return OutdatedPackage(name: app.name, installedVersion: app.version,
+                                           latestVersion: latest, manager: .appstore)
+                }
+            }
+            var out: [OutdatedPackage] = []
+            for await r in group { if let r { out.append(r) } }
+            return out
+        }
+    }
+
+    // upgrade() is implemented in a later plan task.
     public func upgrade(_ package: PackageRef) async throws {
         throw GimmeError.notFoundInManagers(name: package.name, searched: [.appstore])
     }

@@ -109,4 +109,66 @@ final class AppStoreManagerTests: XCTestCase {
         let pkgs = try await m.listInstalled()
         XCTAssertEqual(pkgs, [])
     }
+
+    // MARK: - version comparison
+
+    func testIsOlderNumericSegments() {
+        XCTAssertTrue(AppStoreManager.isOlder("4.51.180", than: "4.51.191"))
+        XCTAssertFalse(AppStoreManager.isOlder("4.51.191", than: "4.51.180"))
+        XCTAssertTrue(AppStoreManager.isOlder("16.4", than: "16.10"))   // numeric, not lexical
+        XCTAssertFalse(AppStoreManager.isOlder("1.0", than: "1.0.0"))   // padded equal
+        XCTAssertFalse(AppStoreManager.isOlder("2.0", than: "2.0"))
+        XCTAssertTrue(AppStoreManager.isOlder("1.2b3", than: "1.2b4"))  // non-numeric falls back to lexical
+    }
+
+    // MARK: - outdated
+
+    private func stubLookup(_ http: StubHTTP, _ bundleID: String, version: String?, trackId: Int = 123) {
+        let json: String
+        if let version {
+            json = #"{"resultCount":1,"results":[{"trackId":\#(trackId),"trackName":"T","version":"\#(version)"}]}"#
+        } else {
+            json = #"{"resultCount":0,"results":[]}"#
+        }
+        http.byURL["https://itunes.apple.com/lookup?bundleId=\(bundleID)&country=us"] = Data(json.utf8)
+    }
+
+    func testOutdatedFlagsOnlyOlderApps() async throws {
+        try makeApp(tmp, "Old.app", bundleID: "com.old.app", version: "1.0.0")
+        try makeApp(tmp, "New.app", bundleID: "com.new.app", version: "2.0.0")
+        try makeApp(tmp, "Gone.app", bundleID: "com.gone.app", version: "1.0.0")
+        let http = StubHTTP()
+        stubLookup(http, "com.old.app", version: "1.5.0")
+        stubLookup(http, "com.new.app", version: "2.0.0")
+        stubLookup(http, "com.gone.app", version: nil)  // resultCount 0: pulled from store
+        let out = try await manager(http).outdated()
+        XCTAssertEqual(out.count, 1)
+        XCTAssertEqual(out.first?.name, "Old")
+        XCTAssertEqual(out.first?.installedVersion, "1.0.0")
+        XCTAssertEqual(out.first?.latestVersion, "1.5.0")
+        XCTAssertEqual(out.first?.manager, .appstore)
+    }
+
+    func testOutdatedSkipsUnresolvableLookups() async throws {
+        // Empty stub body → decode failure → skipped, never flagged.
+        try makeApp(tmp, "Flaky.app", bundleID: "com.flaky.app", version: "1.0.0")
+        let out = try await manager(StubHTTP()).outdated()
+        XCTAssertEqual(out, [])
+    }
+
+    func testOutdatedServedFromCacheWithinTTL() async throws {
+        try makeApp(tmp, "Cached.app", bundleID: "com.cached.app", version: "1.0.0")
+        let http = StubHTTP()
+        stubLookup(http, "com.cached.app", version: "2.0.0")
+        let cache = Cache(directory: tmp.appendingPathComponent("cache"))
+        let m = AppStoreManager(http: http, process: StubProcess(), applicationDirs: [tmp],
+                                indexCache: cache, masBinary: "")
+        _ = try await m.outdated()
+        let http2 = StubHTTP()  // no stubs: a network read would decode Data() → skip → empty
+        let m2 = AppStoreManager(http: http2, process: StubProcess(), applicationDirs: [tmp],
+                                 indexCache: cache, masBinary: "")
+        let out = try await m2.outdated()
+        XCTAssertEqual(out.count, 1)
+        XCTAssertEqual(http2.requests, [])
+    }
 }
