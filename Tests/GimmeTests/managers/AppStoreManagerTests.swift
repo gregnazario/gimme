@@ -226,4 +226,45 @@ final class AppStoreManagerTests: XCTestCase {
             XCTFail("expected notFoundInManagers")
         } catch { }
     }
+
+    // MARK: - search (resolver existence probe)
+
+    /// The GUI Update button routes through Gimme.upgrade(name:from:) →
+    /// Resolver, which validates the hint via search(). Without an
+    /// installed-list search, every App Store upgrade failed with
+    /// "appstore has no package …" before reaching the adapter.
+    func testSearchMatchesInstalledAppsExactly() async throws {
+        try makeApp(tmp, "Slack.app", bundleID: "com.tinyspeck.slackmacgap", version: "4.51.180")
+        try makeApp(tmp, "Chrome.app", bundleID: "com.google.Chrome", version: "138.0.0", mas: false)
+        let m = manager()
+        let byName = try await m.search("Slack")
+        XCTAssertEqual(byName.count, 1)
+        XCTAssertEqual(byName.first?.manager, .appstore)
+        XCTAssertEqual(byName.first?.latestVersion, "")  // AquaManager contract: existence probe only
+        let byBundleID = try await m.search("com.tinyspeck.slackmacgap")
+        XCTAssertEqual(byBundleID.count, 1)
+        let miss = try await m.search("Nope")
+        XCTAssertEqual(miss, [])
+        let nonMAS = try await m.search("Chrome")   // installed but not from the store
+        XCTAssertEqual(nonMAS, [])
+    }
+
+    /// The exact GUI path: Gimme.upgrade(name: "Slack", from: .appstore) must
+    /// reach the adapter and open the App Store page (mas absent).
+    func testEngineUpgradeWithHintReachesAdapter() async throws {
+        try makeApp(tmp, "Slack.app", bundleID: "com.tinyspeck.slackmacgap", version: "4.51.180")
+        let http = StubHTTP()
+        stubLookup(http, "com.tinyspeck.slackmacgap", version: "4.51.191", trackId: 803453959)
+        let p = StubProcess()
+        let m = AppStoreManager(http: http, process: p, applicationDirs: [tmp],
+                                indexCache: nil, masBinary: "")
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let gimme = Gimme(registry: Registry(managers: [m]),
+                          preferences: Preferences(),
+                          config: .defaults,
+                          cache: Cache(directory: home.appendingPathComponent("cache")),
+                          preferencesFile: home.appendingPathComponent("prefs.json"))
+        try await gimme.upgrade(name: "Slack", from: .appstore)
+        XCTAssertTrue(p.calls.contains { $0.0 == "/usr/bin/open" && $0.1 == ["macappstore://apps.apple.com/app/id803453959"] })
+    }
 }

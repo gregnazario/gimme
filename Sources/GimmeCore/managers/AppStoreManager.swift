@@ -49,7 +49,16 @@ public final class AppStoreManager: PackageManager {
         throw GimmeError.operationFailed(manager: .appstore, op: "uninstall",
             underlying: "App Store uninstalls are not supported — drag the app to the Trash")
     }
-    public func search(_ query: String) async throws -> [SearchHit] { [] }
+
+    /// Exact-existence only (the AquaManager pattern): the resolver validates
+    /// manager hints via search(), and the GUI's Update button routes through
+    /// it — without this, installed App Store apps never resolved. We don't
+    /// advertise .search, so this never surfaces in Browse.
+    public func search(_ query: String) async throws -> [SearchHit] {
+        guard scanInstalledApps().contains(where: { $0.name == query || $0.bundleID == query }) else { return [] }
+        return [SearchHit(name: query, manager: .appstore, summary: "Mac App Store app", latestVersion: "")]
+    }
+
     public func info(_ package: PackageRef) async throws -> PackageInfo {
         throw GimmeError.notFoundInManagers(name: package.name, searched: [.appstore])
     }
