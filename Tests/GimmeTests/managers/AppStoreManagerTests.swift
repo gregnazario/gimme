@@ -171,4 +171,59 @@ final class AppStoreManagerTests: XCTestCase {
         XCTAssertEqual(out.count, 1)
         XCTAssertEqual(http2.requests, [])
     }
+
+    // MARK: - upgrade
+
+    func testUpgradeRunsMasWhenPresent() async throws {
+        try makeApp(tmp, "Slack.app", bundleID: "com.tinyspeck.slackmacgap", version: "4.51.180")
+        let http = StubHTTP()
+        stubLookup(http, "com.tinyspeck.slackmacgap", version: "4.51.191", trackId: 803453959)
+        let p = StubProcess()
+        let m = AppStoreManager(http: http, process: p, applicationDirs: [tmp], masBinary: "/tmp/mas-stub")
+        try await m.upgrade(PackageRef(name: "Slack"))
+        XCTAssertTrue(p.calls.contains { $0.0 == "/tmp/mas-stub" && $0.1 == ["upgrade", "803453959"] })
+    }
+
+    func testUpgradeAcceptsBundleID() async throws {
+        try makeApp(tmp, "Slack.app", bundleID: "com.tinyspeck.slackmacgap", version: "4.51.180")
+        let http = StubHTTP()
+        stubLookup(http, "com.tinyspeck.slackmacgap", version: "4.51.191", trackId: 803453959)
+        let p = StubProcess()
+        let m = AppStoreManager(http: http, process: p, applicationDirs: [tmp], masBinary: "/tmp/mas-stub")
+        try await m.upgrade(PackageRef(name: "com.tinyspeck.slackmacgap"))
+        XCTAssertTrue(p.calls.contains { $0.0 == "/tmp/mas-stub" && $0.1 == ["upgrade", "803453959"] })
+    }
+
+    func testUpgradeOpensAppStorePageWhenMasAbsent() async throws {
+        try makeApp(tmp, "Slack.app", bundleID: "com.tinyspeck.slackmacgap", version: "4.51.180")
+        let http = StubHTTP()
+        stubLookup(http, "com.tinyspeck.slackmacgap", version: "4.51.191", trackId: 803453959)
+        let p = StubProcess()
+        let m = manager(http, p)  // masBinary "" forces the fallback path
+        try await m.upgrade(PackageRef(name: "Slack"))
+        XCTAssertTrue(p.calls.contains { $0.0 == "/usr/bin/open" && $0.1 == ["macappstore://apps.apple.com/app/id803453959"] })
+    }
+
+    func testUpgradeCoalescesRepeatedOpens() async throws {
+        try makeApp(tmp, "One.app", bundleID: "com.one.app", version: "1.0.0")
+        try makeApp(tmp, "Two.app", bundleID: "com.two.app", version: "1.0.0")
+        let http = StubHTTP()
+        stubLookup(http, "com.one.app", version: "2.0.0", trackId: 111)
+        stubLookup(http, "com.two.app", version: "2.0.0", trackId: 222)
+        let p = StubProcess()
+        let m = manager(http, p)
+        try await m.upgrade(PackageRef(name: "One"))
+        try await m.upgrade(PackageRef(name: "Two"))  // within the 10 s window → skipped
+        let opens = p.calls.filter { $0.0 == "/usr/bin/open" }
+        XCTAssertEqual(opens.count, 1)
+        XCTAssertEqual(opens.first?.1.first, "macappstore://apps.apple.com/app/id111")
+    }
+
+    func testUpgradeThrowsForUnknownApp() async {
+        let m = manager()
+        do {
+            try await m.upgrade(PackageRef(name: "Nope"))
+            XCTFail("expected notFoundInManagers")
+        } catch { }
+    }
 }

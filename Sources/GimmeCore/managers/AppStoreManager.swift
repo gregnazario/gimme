@@ -161,8 +161,54 @@ public final class AppStoreManager: PackageManager {
         }
     }
 
-    // upgrade() is implemented in a later plan task.
+    // MARK: - Upgrade (hybrid mas / App Store page)
+
+    /// updateAll calls upgrade() once per outdated app; without mas that would
+    /// open the App Store N times. Skip further opens within this window —
+    /// the store (or its updates pane) is already up.
+    private static let openCoalesceInterval: TimeInterval = 10
+    private let stateLock = NSLock()
+    nonisolated(unsafe) private var lastOpenedAppStoreAt: Date?
+
+    /// A bundle ID is dotted with no spaces ("com.tinyspeck.slackmacgap");
+    /// display names never look like that ("Amazon Kindle").
+    private func looksLikeBundleID(_ s: String) -> Bool {
+        s.contains(".") && !s.contains(" ")
+    }
+
     public func upgrade(_ package: PackageRef) async throws {
-        throw GimmeError.notFoundInManagers(name: package.name, searched: [.appstore])
+        let apps = scanInstalledApps()
+        let app = looksLikeBundleID(package.name)
+            ? apps.first { $0.bundleID == package.name }
+            : apps.first { $0.name == package.name }
+        guard let app else { throw GimmeError.notFoundInManagers(name: package.name, searched: [.appstore]) }
+        guard let store = await lookup(bundleID: app.bundleID)?.results.first, store.trackId > 0 else {
+            throw GimmeError.notFoundInManagers(name: package.name, searched: [.appstore])
+        }
+
+        // Preferred path: mas drives the real upgrade. masBinaryOverride == ""
+        // means "force absent" so tests are hermetic on machines that have mas.
+        let masPath: String?
+        if masBinaryOverride == "" { masPath = nil }
+        else { masPath = masBinaryOverride ?? BinaryResolver.resolve("mas") }
+        if let masPath {
+            let res = try await process.run(masPath, args: ["upgrade", String(store.trackId)], env: nil, stream: nil)
+            guard res.exitCode == 0 else {
+                throw GimmeError.operationFailed(manager: .appstore, op: "upgrade", underlying: res.stderr)
+            }
+            return
+        }
+
+        // Fallback: land the App Store on the app's page; the user clicks
+        // Update. Coalesced so Update-All opens the store at most once.
+        let now = Date()
+        stateLock.lock(); let last = lastOpenedAppStoreAt; stateLock.unlock()
+        if let last, now.timeIntervalSince(last) < Self.openCoalesceInterval { return }
+        stateLock.lock(); lastOpenedAppStoreAt = now; stateLock.unlock()
+        let res = try await process.run("/usr/bin/open",
+            args: ["macappstore://apps.apple.com/app/id\(store.trackId)"], env: nil, stream: nil)
+        guard res.exitCode == 0 else {
+            throw GimmeError.operationFailed(manager: .appstore, op: "upgrade", underlying: res.stderr)
+        }
     }
 }
