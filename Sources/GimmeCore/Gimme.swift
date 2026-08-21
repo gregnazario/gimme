@@ -349,7 +349,10 @@ extension Gimme {
             GoManager(), UvManager(), CargoManager(),
             BunManager(), NpmManager(), PnpmManager(),
             YarnManager(), GemManager(), ComposerManager(),
-            DenoManager(), PipxManager(), AquaManager(), UbiManager()
+            DenoManager(), PipxManager(), AquaManager(), UbiManager(),
+            // App Store lookups share the same disk cache pattern as brew's
+            // search indexes: one lookup per app per 6 h.
+            AppStoreManager(indexCache: Cache(directory: GimmePaths.defaultUser.cacheDir))
         ])
     }
 }
