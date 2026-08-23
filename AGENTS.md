@@ -41,6 +41,18 @@ macOS app (`GimmeUI`), sharing one Swift engine (`GimmeCore`).
 - **TDD by default.** Write the failing test, implement, verify green, commit.
 - Run `swift test` before claiming work is complete; report real output, not
   intentions. The suite is in-process (no real network/installs in CI).
+- **Test isolation is enforced, not assumed.** `TestIsolationTests` scans the
+  suite's sources and fails on `defaultRegistry`, `URLSessionHTTPClient`
+  (beyond the one construct-only allowlist entry), or zero-arg real-adapter
+  constructions — tests always inject stub `http:`/`process:` seams.
+- **Never run mutating verification against the real machine.** Binary-level
+  checks on this machine use read-only verbs only (`--version`, `list`,
+  `outdated`, `doctor`). `install`/`update`/`update --self`/`upgrade`/
+  `uninstall`/bootstrap run only when the user explicitly asks for that
+  action. On 2026-08-22 a flag test against a stale `.build/release` binary
+  silently ran a real `update all` (`.build/debug` vs `.build/release`
+  drift). If a change flow must be exercised for real, copy the binary to a
+  temp location first and say what is about to run.
 - GUI has no automated tests (v1 decision, see spec §10). Verify GUI changes by
   building the app and launching it.
 
