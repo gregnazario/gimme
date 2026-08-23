@@ -354,4 +354,104 @@ final class AppStoreManagerTests: XCTestCase {
         XCTAssertEqual(p.calls.filter { $0.0 == "/tmp/mas-stub" }.count, 1, "no askpass retry")
         XCTAssertTrue(p.calls.contains { $0.0 == "/usr/bin/open" }, "page fallback used")
     }
+
+    // MARK: - upgradeAll (one sudo prompt per run, not per app)
+
+    /// Update All must batch every App Store app into ONE mas invocation —
+    /// sudo's timestamp is per-process without a TTY, so N invocations means
+    /// N password dialogs.
+    func testUpgradeAllBatchesMasIntoOneInvocation() async throws {
+        try makeApp(tmp, "One.app", bundleID: "com.one.app", version: "1.0.0")
+        try makeApp(tmp, "Two.app", bundleID: "com.two.app", version: "1.0.0")
+        try makeApp(tmp, "Three.app", bundleID: "com.three.app", version: "1.0.0")
+        let http = StubHTTP()
+        stubLookup(http, "com.one.app", version: "2.0.0", trackId: 111)
+        stubLookup(http, "com.two.app", version: "2.0.0", trackId: 222)
+        stubLookup(http, "com.three.app", version: "2.0.0", trackId: 333)
+        let p = StubProcess()
+        let m = AppStoreManager(http: http, process: p, applicationDirs: [tmp], masBinary: "/tmp/mas-stub")
+        let refs = ["One", "Two", "Three"].map { PackageRef(name: $0) }
+        let results = await m.upgradeAll(refs)
+        XCTAssertEqual(results.count, 3)
+        XCTAssertTrue(results.allSatisfy { $0.1 == nil })
+        let masCalls = p.calls.filter { $0.0 == "/tmp/mas-stub" }
+        XCTAssertEqual(masCalls.count, 1, "one mas invocation for the whole batch")
+        XCTAssertEqual(masCalls.first?.1, ["upgrade", "111", "222", "333"])
+        XCTAssertFalse(p.calls.contains { $0.0 == "/usr/bin/open" })
+    }
+
+    /// The batch's askpass retry also happens once — one password dialog for
+    /// the whole run even after the no-TTY first attempt fails.
+    func testUpgradeAllAskpassRetriesOnce() async throws {
+        try makeApp(tmp, "One.app", bundleID: "com.one.app", version: "1.0.0")
+        try makeApp(tmp, "Two.app", bundleID: "com.two.app", version: "1.0.0")
+        let http = StubHTTP()
+        stubLookup(http, "com.one.app", version: "2.0.0", trackId: 111)
+        stubLookup(http, "com.two.app", version: "2.0.0", trackId: 222)
+        final class AskpassAwareMas: StubProcess {
+            override func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+                let r = try await super.run(e, args: args, env: env, stream: stream)
+                if e == "/tmp/mas-stub" {
+                    if env?["SUDO_ASKPASS"] != nil { return ProcessResult(exitCode: 0, stdout: "", stderr: "") }
+                    return ProcessResult(exitCode: 1, stdout: "",
+                        stderr: "sudo: a terminal is required to read the password")
+                }
+                return r
+            }
+        }
+        let p = AskpassAwareMas()
+        let m = AppStoreManager(http: http, process: p, applicationDirs: [tmp], masBinary: "/tmp/mas-stub")
+        let results = await m.upgradeAll(["One", "Two"].map { PackageRef(name: $0) })
+        XCTAssertTrue(results.allSatisfy { $0.1 == nil })
+        XCTAssertEqual(p.calls.filter { $0.0 == "/tmp/mas-stub" }.count, 2, "plain attempt, then one askpass retry for the batch")
+        XCTAssertFalse(p.calls.contains { $0.0 == "/usr/bin/open" })
+    }
+
+    /// Without mas, the batch opens the App Store updates PANE once (not a
+    /// page per app) and reports the packages as handed off.
+    func testUpgradeAllOpensUpdatesPaneWhenMasAbsent() async throws {
+        try makeApp(tmp, "One.app", bundleID: "com.one.app", version: "1.0.0")
+        try makeApp(tmp, "Two.app", bundleID: "com.two.app", version: "1.0.0")
+        let http = StubHTTP()
+        stubLookup(http, "com.one.app", version: "2.0.0", trackId: 111)
+        stubLookup(http, "com.two.app", version: "2.0.0", trackId: 222)
+        let p = StubProcess()
+        let m = manager(http, p)
+        let results = await m.upgradeAll(["One", "Two"].map { PackageRef(name: $0) })
+        XCTAssertTrue(results.allSatisfy { $0.1 == nil })
+        XCTAssertEqual(p.calls.filter { $0.0 == "/usr/bin/open" }.count, 1)
+        XCTAssertEqual(p.calls.first { $0.0 == "/usr/bin/open" }?.1, ["macappstore://showUpdates"])
+    }
+
+    /// Unresolvable names in the batch surface per-package errors without
+    /// sinking the rest.
+    func testUpgradeAllReportsUnknownNames() async {
+        let m = manager()
+        let results = await m.upgradeAll(["Nope", "Also Nope"].map { PackageRef(name: $0) })
+        XCTAssertEqual(results.count, 2)
+        XCTAssertTrue(results.allSatisfy { $0.1 != nil })
+    }
+
+    /// The full Update All path: engine → adapter → ONE mas invocation for
+    /// every outdated App Store app → one sudo password dialog.
+    func testEngineUpdateAllBatchesAppStoreIntoOneMasCall() async throws {
+        try makeApp(tmp, "One.app", bundleID: "com.one.app", version: "1.0.0")
+        try makeApp(tmp, "Two.app", bundleID: "com.two.app", version: "1.0.0")
+        let http = StubHTTP()
+        stubLookup(http, "com.one.app", version: "2.0.0", trackId: 111)
+        stubLookup(http, "com.two.app", version: "2.0.0", trackId: 222)
+        let p = StubProcess()
+        let m = AppStoreManager(http: http, process: p, applicationDirs: [tmp], masBinary: "/tmp/mas-stub")
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let gimme = Gimme(registry: Registry(managers: [m]),
+                          preferences: Preferences(),
+                          config: .defaults,
+                          cache: Cache(directory: home.appendingPathComponent("cache")),
+                          preferencesFile: home.appendingPathComponent("prefs.json"))
+        let summary = try await gimme.updateAll()
+        XCTAssertEqual(summary.succeeded.sorted(), ["appstore:One", "appstore:Two"])
+        let masCalls = p.calls.filter { $0.0 == "/tmp/mas-stub" }
+        XCTAssertEqual(masCalls.count, 1)
+        XCTAssertEqual(masCalls.first?.1, ["upgrade", "111", "222"])
+    }
 }

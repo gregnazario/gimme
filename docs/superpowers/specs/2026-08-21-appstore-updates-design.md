@@ -137,6 +137,17 @@ unbounded, fine for tens of apps.
    are skipped (the pane is already up). In-memory only — runs are short-lived.
    When `mas` is present every ID passes through serially, no guard applies.
 
+   **Batching (added 2026-08-22).** sudo caches its authentication
+   **per process** when there is no TTY, so one mas invocation per app meant
+   one password dialog per app during Update All. The protocol gained
+   `upgradeAll` (requirement + per-package default in the extension — the
+   requirement must be on the protocol so overrides dispatch through
+   `any PackageManager`); `Gimme.updateAll` routes each manager's outdated
+   set through it, and `AppStoreManager` overrides it to run **one**
+   `mas upgrade <id…>` for the whole batch — plain attempt, one askpass
+   retry, and on total failure one `open macappstore://showUpdates`
+   (the updates pane) with the packages reported as handed off.
+
 Install/uninstall are not implemented (capabilities don't advertise them);
 removing a MAS app is a drag-to-trash, not a package-manager op.
 

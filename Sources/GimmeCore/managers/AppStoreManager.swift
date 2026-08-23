@@ -226,15 +226,24 @@ public final class AppStoreManager: PackageManager {
         s.contains(".") && !s.contains(" ")
     }
 
-    public func upgrade(_ package: PackageRef) async throws {
+    /// Resolve a package name (display name or bundle ID) to the app and its
+    /// store track ID, or nil when it can't be found.
+    private func resolveApp(_ name: String) async -> (app: MASApp, trackId: Int)? {
         let apps = scanInstalledApps()
-        let app = looksLikeBundleID(package.name)
-            ? apps.first { $0.bundleID == package.name }
-            : apps.first { $0.name == package.name }
-        guard let app else { throw GimmeError.notFoundInManagers(name: package.name, searched: [.appstore]) }
-        guard let store = await lookup(bundleID: app.bundleID)?.results.first, store.trackId > 0 else {
+        let app = looksLikeBundleID(name)
+            ? apps.first { $0.bundleID == name }
+            : apps.first { $0.name == name }
+        guard let app,
+              let store = await lookup(bundleID: app.bundleID)?.results.first,
+              store.trackId > 0 else { return nil }
+        return (app, store.trackId)
+    }
+
+    public func upgrade(_ package: PackageRef) async throws {
+        guard let resolved = await resolveApp(package.name) else {
             throw GimmeError.notFoundInManagers(name: package.name, searched: [.appstore])
         }
+        let trackId = resolved.trackId
 
         // Preferred path: mas drives the real upgrade. masBinaryOverride == ""
         // means "force absent" so tests are hermetic on machines that have mas.
@@ -246,7 +255,7 @@ public final class AppStoreManager: PackageManager {
         else { masPath = masBinaryOverride ?? BinaryResolver.resolve("mas") }
         var masError: String? = nil
         if let masPath {
-            let res = try await process.run(masPath, args: ["upgrade", String(store.trackId)], env: nil, stream: nil)
+            let res = try await process.run(masPath, args: ["upgrade", String(trackId)], env: nil, stream: nil)
             if res.exitCode == 0 { return }
             // mas 7 needs root; from a GUI launch sudo has no terminal to
             // prompt on. Retry with an askpass helper → native password
@@ -256,7 +265,7 @@ public final class AppStoreManager: PackageManager {
             if res.stderr.contains(Self.sudoNoTTYSignature), let askpass = installAskpassHelper() {
                 var env = ProcessRunner.augmentedEnvironment()
                 env["SUDO_ASKPASS"] = askpass.path
-                let retry = try await process.run(masPath, args: ["upgrade", String(store.trackId)], env: env, stream: nil)
+                let retry = try await process.run(masPath, args: ["upgrade", String(trackId)], env: env, stream: nil)
                 if retry.exitCode == 0 { return }
                 masError = retry.stderr
             } else {
@@ -271,10 +280,53 @@ public final class AppStoreManager: PackageManager {
         if let last, now.timeIntervalSince(last) < Self.openCoalesceInterval { return }
         stateLock.lock(); lastOpenedAppStoreAt = now; stateLock.unlock()
         let res = try await process.run("/usr/bin/open",
-            args: ["macappstore://apps.apple.com/app/id\(store.trackId)"], env: nil, stream: nil)
+            args: ["macappstore://apps.apple.com/app/id\(trackId)"], env: nil, stream: nil)
         guard res.exitCode == 0 else {
             let detail = masError.map { "mas: \($0)" } ?? res.stderr
             throw GimmeError.operationFailed(manager: .appstore, op: "upgrade", underlying: detail)
         }
+    }
+
+    /// Update All: batch every app into ONE mas invocation. sudo's timestamp
+    /// is per-process without a TTY, so one invocation per app would show the
+    /// password dialog once per app. On mas failure (after the single askpass
+    /// retry) the batch falls back to opening the App Store updates pane once
+    /// and reports the packages as handed off.
+    public func upgradeAll(_ packages: [PackageRef],
+                           onPackageStart: ((PackageRef) -> Void)? = nil) async -> [(PackageRef, Error?)] {
+        for package in packages { onPackageStart?(package) }
+        var resolved: [(PackageRef, Int)] = []
+        var results: [(PackageRef, Error?)] = []
+        for package in packages {
+            if let r = await resolveApp(package.name) {
+                resolved.append((package, r.trackId))
+            } else {
+                results.append((package,
+                    GimmeError.notFoundInManagers(name: package.name, searched: [.appstore])))
+            }
+        }
+        guard !resolved.isEmpty else { return results }
+
+        let masPath: String?
+        if masBinaryOverride == "" { masPath = nil }
+        else { masPath = masBinaryOverride ?? BinaryResolver.resolve("mas") }
+        if let masPath {
+            let args = ["upgrade"] + resolved.map { String($0.1) }
+            var res = try? await process.run(masPath, args: args, env: nil, stream: nil)
+            if res?.exitCode != 0, res?.stderr.contains(Self.sudoNoTTYSignature) == true,
+               let askpass = installAskpassHelper() {
+                // One askpass retry for the whole batch — one dialog.
+                var env = ProcessRunner.augmentedEnvironment()
+                env["SUDO_ASKPASS"] = askpass.path
+                res = try? await process.run(masPath, args: args, env: env, stream: nil)
+            }
+            if res?.exitCode == 0 {
+                return results + resolved.map { ($0.0, nil) }
+            }
+        }
+
+        // Fallback: the updates pane once; the user clicks Update All there.
+        _ = try? await process.run("/usr/bin/open", args: ["macappstore://showUpdates"], env: nil, stream: nil)
+        return results + resolved.map { ($0.0, nil) }
     }
 }

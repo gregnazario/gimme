@@ -136,13 +136,17 @@ extension Gimme {
             // the GUI already fetched it seconds ago.
             let outdated = (try? await self.outdated(from: m.id, refresh: false))?
                 .filter { $0.manager == m.id } ?? []
-            for pkg in outdated {
-                onPackageStart?(pkg.id)
-                do {
-                    try await m.upgrade(PackageRef(name: pkg.name))
-                    summary.succeeded.append(pkg.id)
-                } catch {
-                    summary.failed.append((pkg.id, "\(error)"))
+            // Batched per manager: adapters like the App Store's run one
+            // mas/sudo transaction for the whole set instead of one
+            // privilege prompt per package.
+            let refs = outdated.map { PackageRef(name: $0.name) }
+            let results = await m.upgradeAll(refs) { onPackageStart?("\(m.id.rawValue):\($0.name)") }
+            for (ref, error) in results {
+                let id = "\(m.id.rawValue):\(ref.name)"
+                if let error {
+                    summary.failed.append((id, "\(error)"))
+                } else {
+                    summary.succeeded.append(id)
                 }
             }
             cache.invalidatePrefix("\(m.id.rawValue):")

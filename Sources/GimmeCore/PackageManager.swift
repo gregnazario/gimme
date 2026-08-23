@@ -177,6 +177,11 @@ public protocol PackageManager {
     func install(_ package: PackageRef, options: InstallOptions) async throws -> InstallResult
     func uninstall(_ package: PackageRef) async throws
     func upgrade(_ package: PackageRef) async throws
+    /// Batch upgrade; the extension provides the per-package default, but the
+    /// requirement itself must be on the protocol so overrides dispatch
+    /// dynamically through `any PackageManager`.
+    func upgradeAll(_ packages: [PackageRef],
+                    onPackageStart: ((PackageRef) -> Void)?) async -> [(PackageRef, Error?)]
     func listInstalled() async throws -> [InstalledPackage]
     func outdated() async throws -> [OutdatedPackage]
     func search(_ query: String) async throws -> [SearchHit]
@@ -185,6 +190,25 @@ public protocol PackageManager {
 }
 
 public extension PackageManager {
+    /// Default upgradeAll: loop upgrade() per package. Backends whose tool
+    /// needs a single privilege prompt or transaction for many packages
+    /// (e.g. mas → sudo askpass, one password dialog) override this to batch.
+    /// Returns per-package outcome in order.
+    func upgradeAll(_ packages: [PackageRef],
+                    onPackageStart: ((PackageRef) -> Void)? = nil) async -> [(PackageRef, Error?)] {
+        var results: [(PackageRef, Error?)] = []
+        for package in packages {
+            onPackageStart?(package)
+            do {
+                try await upgrade(package)
+                results.append((package, nil))
+            } catch {
+                results.append((package, error))
+            }
+        }
+        return results
+    }
+
     /// Default streaming install: announce start, then delegate to install().
     /// Adapters that pipe live subprocess output override this (spec §6.6).
     func installStreaming(_ package: PackageRef, options: InstallOptions, onProgress: ((String) -> Void)?) async throws -> InstallResult {
