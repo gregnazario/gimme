@@ -12,6 +12,9 @@ public struct Config: Codable, Equatable {
     public var listCacheTTLSeconds: Int
     /// Cache TTL in seconds for info/search operations.
     public var infoCacheTTLSeconds: Int
+    /// Post a macOS notification when an update run finishes and the app is in
+    /// the background (GUI only; see UpdateNotifier). Default on.
+    public var notifyUpdates: Bool
     /// Per-ecosystem recommended provider for consolidation (spec §5). Separate
     /// from priority (install routing). Persisted under [ecosystems].
     public var ecosystems: EcosystemPreferences
@@ -21,12 +24,14 @@ public struct Config: Codable, Equatable {
         disabled: [String] = [],
         listCacheTTLSeconds: Int = 300,
         infoCacheTTLSeconds: Int = 3600,
+        notifyUpdates: Bool = true,
         ecosystems: EcosystemPreferences = EcosystemPreferences()
     ) {
         self.priority = priority
         self.disabled = disabled
         self.listCacheTTLSeconds = listCacheTTLSeconds
         self.infoCacheTTLSeconds = infoCacheTTLSeconds
+        self.notifyUpdates = notifyUpdates
         self.ecosystems = ecosystems
     }
 
@@ -54,6 +59,7 @@ public struct Config: Codable, Equatable {
         }
         if let list = root.integer("listCacheTTLSeconds") { c.listCacheTTLSeconds = list }
         if let info = root.integer("infoCacheTTLSeconds") { c.infoCacheTTLSeconds = info }
+        if let notify = root.bool("notifyUpdates") { c.notifyUpdates = notify }
         // [ecosystems] table: { js = "bun", python = "uv", ... }
         if let ecoTable = root.table("ecosystems") {
             var prefs: [Ecosystem: ManagerID] = [:]
@@ -74,6 +80,7 @@ public struct Config: Codable, Equatable {
         lines.append("disabled = [\(disabled.map { "\"\($0)\"" }.joined(separator: ", "))]")
         lines.append("listCacheTTLSeconds = \(listCacheTTLSeconds)")
         lines.append("infoCacheTTLSeconds = \(infoCacheTTLSeconds)")
+        lines.append("notifyUpdates = \(notifyUpdates)")
         if !ecosystems.preferences.isEmpty {
             lines.append("")
             lines.append("[ecosystems]")

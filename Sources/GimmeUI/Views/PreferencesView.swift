@@ -11,6 +11,7 @@ struct PreferencesView: View {
             ecosystemSection
             disabledSection
             overridesSection
+            notificationsSection
             cacheSection
         }
         .navigationTitle("Preferences")
@@ -136,6 +137,19 @@ struct PreferencesView: View {
         }
     }
 
+    // MARK: - Notifications
+
+    private var notificationsSection: some View {
+        Section {
+            Toggle("Update notifications", isOn: notifyBinding)
+                .toggleStyle(.switch)
+        } header: {
+            Text("Notifications")
+        } footer: {
+            Text("Show a macOS notification when an update run finishes and Gimme is in the background. Turning this off also skips the permission prompt.")
+        }
+    }
+
     // MARK: - Cache TTLs
 
     private var cacheSection: some View {
@@ -203,6 +217,13 @@ struct PreferencesView: View {
                 }
                 store.persistConfig()
             }
+        )
+    }
+
+    private var notifyBinding: Binding<Bool> {
+        Binding(
+            get: { store.config.notifyUpdates },
+            set: { store.config.notifyUpdates = $0; store.persistConfig() }
         )
     }
 

@@ -140,3 +140,31 @@ final class ConfigEcosystemsTests: XCTestCase {
         XCTAssertEqual(loaded.ecosystems.recommended(for: .js), Ecosystem.js.managers.first)
     }
 }
+
+// MARK: - Config notifyUpdates TOML round-trip
+
+final class ConfigNotifyTests: XCTestCase {
+    func testNotifyUpdatesDefaultsTrueWhenKeyAbsent() throws {
+        // A config file written before the key existed must keep notifications on.
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let file = dir.appendingPathComponent("config.toml")
+        try "priority = [\"homebrew\"]\n".write(to: file, atomically: true, encoding: .utf8)
+
+        let loaded = Config.loadOrCreate(at: file)
+        XCTAssertTrue(loaded.notifyUpdates)
+    }
+
+    func testNotifyUpdatesRoundTrip() throws {
+        var cfg = Config.defaults
+        cfg.notifyUpdates = false
+
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let file = dir.appendingPathComponent("config.toml")
+        try cfg.toTOML().write(to: file, atomically: true, encoding: .utf8)
+
+        let loaded = Config.loadOrCreate(at: file)
+        XCTAssertFalse(loaded.notifyUpdates)
+    }
+}

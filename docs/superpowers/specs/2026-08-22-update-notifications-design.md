@@ -21,6 +21,7 @@ Decisions locked in the design interview (2026-08-22):
 |---|---|---|
 | 1 | When to notify | **Background only** — posted only when Gimme is not the active app. |
 | 2 | Granularity | **One summary per run.** Single update → its own notification; Update All → one "finished" summary, never per-package banners. |
+| 3 | Off switch (added 2026-08-22) | **`Config.notifyUpdates`** (`config.toml`, default `true`) with a Preferences toggle. Off skips both the permission prompt and every post. |
 
 ## 2. Mechanism
 
@@ -86,9 +87,16 @@ targets, launch the app, trigger an update with Gimme unfocused and confirm
 the banner + click-to-focus. The non-bundle guard keeps `swift run GimmeUI`
 crash-free.
 
-## 6. Out of scope (v1)
+## 6. Configuration
+
+`Config.notifyUpdates` (Bool, default `true`, key `notifyUpdates` in
+`config.toml`). A missing key in pre-existing config files keeps notifications
+on. Preferences gains a Notifications section with a switch bound through
+`store.persistConfig()` like every other setting. When off, `GimmeStore`
+neither requests authorization nor posts — the notifier itself is unchanged.
+
+## 7. Out of scope (v1)
 
 - CLI notifications (terminal output already exists).
 - Sounds, badge counts, notification actions beyond click-to-focus.
 - Per-package progress banners during Update All.
-- A Preferences toggle (revisit if the background-only default annoys).
