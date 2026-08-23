@@ -183,8 +183,10 @@ public final class AppStoreManager: PackageManager {
 
     /// Writes the sudo askpass helper (the Homebrew pattern): a tiny script
     /// that shows the native password dialog via osascript and prints the
-    /// password to sudo only — it is never stored or logged. User-executable
-    /// only (0700). Returns nil if the script can't be written.
+    /// password to sudo only — it is never stored or logged. Created with
+    /// 0700 from the first byte (no default-perms window), user-only; the
+    /// write is skipped when the content is already current. Returns nil if
+    /// the script can't be written.
     private func installAskpassHelper() -> URL? {
         guard let url = askpassURL else { return nil }
         let script = """
@@ -194,10 +196,19 @@ public final class AppStoreManager: PackageManager {
         /usr/bin/osascript -e 'display dialog "gimme needs your Mac password to update App Store apps:" default answer "" with hidden answer' -e 'text returned of result' 2>/dev/null
 
         """
+        let fm = FileManager.default
         do {
-            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try script.write(to: url, atomically: true, encoding: .utf8)
-            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
+            try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let data = Data(script.utf8)
+            if (try? String(contentsOf: url, encoding: .utf8)) != script {
+                // createFile applies 0700 at creation; setAttributes pins it
+                // again in case the file pre-existed with looser modes.
+                if !fm.createFile(atPath: url.path, contents: data,
+                                  attributes: [.posixPermissions: 0o700]) {
+                    return nil
+                }
+                try fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
+            }
             return url
         } catch { return nil }
     }
