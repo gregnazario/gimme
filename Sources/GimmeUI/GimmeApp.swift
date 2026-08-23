@@ -4,6 +4,7 @@ import GimmeCore
 @main
 struct GimmeApp: App {
     @StateObject private var store = GimmeStore()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     /// Brand accent — matches the icon gradient's indigo.
     static let accent = Color("#4F46E5")
@@ -113,6 +114,7 @@ final class GimmeStore: ObservableObject {
     }
 
     private let gimme: Gimme
+    private let notifier = UpdateNotifier()
 
     init() {
         let paths = GimmePaths.defaultUser
@@ -298,15 +300,18 @@ final class GimmeStore: ObservableObject {
     }
 
     func upgrade(_ pkg: OutdatedPackage) async {
+        await notifier.requestAuthorizationIfNeeded()
         upgradeStatus[pkg.id] = .upgrading
         do {
             try await gimme.upgrade(name: pkg.name, from: pkg.manager)
             upgradeStatus[pkg.id] = .done
             log("upgraded \(pkg.name)")
+            notifier.runFinished(updated: [(pkg.name, pkg.latestVersion)], failed: [])
             await loadAll(refresh: false)
         } catch {
             upgradeStatus[pkg.id] = .failed("\(error)")
             showError(error)
+            notifier.runFinished(updated: [], failed: [(pkg.name, "\(error)")])
         }
     }
 
@@ -314,6 +319,7 @@ final class GimmeStore: ObservableObject {
         guard !isUpdating else { return }
         isUpdating = true
         defer { isUpdating = false }
+        await notifier.requestAuthorizationIfNeeded()
         log("updating all outdated packages")
         // Mark every outdated package as pending so the UI shows the full queue.
         for pkg in outdated { upgradeStatus[pkg.id] = .pending }
@@ -331,6 +337,9 @@ final class GimmeStore: ObservableObject {
                 upgradeStatus[failure.id] = .failed(failure.error)
                 log("FAILED \(failure.id): \(failure.error)")
             }
+            notifier.runFinished(
+                updated: summary.succeeded.map { id in (id, nil) },
+                failed: summary.failed.map { ($0.id, $0.error) })
             await loadAll(refresh: false)
         } catch { showError(error) }
     }
