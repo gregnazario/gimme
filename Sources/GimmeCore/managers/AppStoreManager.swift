@@ -126,23 +126,10 @@ public final class AppStoreManager: PackageManager {
 
     private static let lookupTTL = 6 * 3600
 
-    /// True when `installed` is strictly older than `latest`: dot-segment
-    /// numeric comparison with zero-padding ("1.0" == "1.0.0"); non-numeric
-    /// segments fall back to lexical ordering. Never true for equal values.
+    /// True when `installed` is strictly older than `latest`. See
+    /// `DottedVersion.isOlder` — the shared dot-segment comparison.
     static func isOlder(_ installed: String, than latest: String) -> Bool {
-        guard installed != latest else { return false }
-        let a = installed.split(separator: ".").map(String.init)
-        let b = latest.split(separator: ".").map(String.init)
-        for i in 0..<max(a.count, b.count) {
-            let sa = i < a.count ? a[i] : "0"
-            let sb = i < b.count ? b[i] : "0"
-            if let na = Int(sa), let nb = Int(sb) {
-                if na != nb { return na < nb }
-            } else if sa != sb {
-                return sa < sb
-            }
-        }
-        return false
+        DottedVersion.isOlder(installed, than: latest)
     }
 
     /// Fetch (or serve from cache) the store record for a bundle ID. Returns

@@ -24,6 +24,23 @@ struct GimmeApp: App {
                         store.showReportIssue = true
                     })
                 }
+                .alert("Update gimme?", isPresented: Binding(
+                    get: { store.pendingUpdate != nil },
+                    set: { if !$0 { store.pendingUpdate = nil } }
+                )) {
+                    Button("Update Now") {
+                        if let release = store.pendingUpdate {
+                            Task { await store.updateSelf(release) }
+                        }
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text(store.pendingUpdate.map { "gimme \($0.version) is available (you have \(GimmeVersion.current)). The app downloads, verifies, and relaunches itself." } ?? "")
+                }
+                .alert(item: $store.updateInfo) { info in
+                    Alert(title: Text("gimme"), message: Text(info.text),
+                          dismissButton: .default(Text("OK")))
+                }
                 .alert("Error", isPresented: $store.showError) {
                     Button("OK", role: .cancel) {}
                 } message: {
@@ -33,6 +50,8 @@ struct GimmeApp: App {
         .commands {
             CommandGroup(replacing: .appInfo) {
                 Button("About gimme") { store.showAbout = true }
+                Button("Check for Updates…") { Task { await store.checkForUpdates(manual: true) } }
+                    .disabled(store.isSelfUpdating)
             }
             CommandGroup(after: .help) {
                 Button("Report an Issue…") { store.showReportIssue = true }
@@ -130,6 +149,76 @@ final class GimmeStore: ObservableObject {
     @Published var showError = false
     @Published var showReportIssue = false
     @Published var showAbout = false
+
+    // MARK: - Self-update (spec: 2026-08-22-self-update-design.md)
+
+    struct InfoAlert: Identifiable {
+        let id = UUID()
+        let text: String
+    }
+    /// Set when a newer release exists and the user should confirm updating.
+    @Published var pendingUpdate: SelfUpdate.Release?
+    /// One-shot informational alert (up-to-date, check failed).
+    @Published var updateInfo: InfoAlert?
+    @Published var isSelfUpdating = false
+    private let selfUpdater = SelfUpdate()
+
+    /// Latest-release check. `manual` (menu item) bypasses the 12 h cache and
+    /// reports the result; the background launch check only posts a
+    /// notification (when notifications are on).
+    func checkForUpdates(manual: Bool) async {
+        let key = "meta:selfupdate:latest"
+        var release: SelfUpdate.Release?
+        if !manual, let cached = gimme.cache.get(key, ttlSeconds: 12 * 3600, as: SelfUpdate.Release.self) {
+            release = cached
+        } else {
+            release = await selfUpdater.latestRelease()
+            if let release { gimme.cache.set(key, value: release) }
+        }
+        guard let release else {
+            if manual { updateInfo = InfoAlert(text: "Could not check for updates. See github.com/gregnazario/gimme/releases.") }
+            return
+        }
+        guard SelfUpdate.isNewer(release.version, than: GimmeVersion.current) else {
+            if manual { updateInfo = InfoAlert(text: "gimme \(GimmeVersion.current) is up to date.") }
+            return
+        }
+        if manual {
+            pendingUpdate = release
+        } else if config.notifyUpdates {
+            notifier.post(title: "gimme",
+                body: "gimme \(release.version) available — gimme menu → Check for Updates…")
+        }
+    }
+
+    /// Fully automatic in-app update: download + verify the release app,
+    /// then a detached swap script replaces the running bundle and relaunches
+    /// (pkill first — a running app can't be replaced on APFS cleanly).
+    func updateSelf(_ release: SelfUpdate.Release) async {
+        guard !isSelfUpdating else { return }
+        isSelfUpdating = true
+        defer { isSelfUpdating = false }
+        log("updating gimme to \(release.version)…")
+        do {
+            guard let assetURL = release.assets[selfUpdater.appAssetName] else {
+                throw GimmeError.install("release \(release.tag) has no \(selfUpdater.appAssetName) asset")
+            }
+            let stage = FileManager.default.temporaryDirectory
+                .appendingPathComponent("gimme-appupdate-\(UUID().uuidString)")
+            let staged = try await selfUpdater.downloadApp(to: stage, expectVersion: release.version,
+                                                           assetURL: assetURL)
+            let target = Bundle.main.bundleURL
+            let script = "pkill -x GimmeUI; sleep 1; rm -rf '\(target.path)'; cp -R '\(staged.path)' '\(target.path)'; open '\(target.path)'"
+            Task.detached {
+                _ = try? await ProcessRunner().run("/bin/sh", args: ["-c", script], env: nil, stream: nil)
+            }
+            // Let the detached script spawn before this process exits.
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            NSApp.terminate(nil)
+        } catch {
+            showError(error)
+        }
+    }
     @Published var errorMessage = ""
 
     /// Per-package upgrade progress for the Updates view.
@@ -182,6 +271,9 @@ final class GimmeStore: ObservableObject {
         } catch { showError(error) }
         managerStatuses = await statusesResult
         runtimeManagers = await runtimesResult
+        // Fire-and-forget: post a notification when a newer release exists
+        // (12 h-cached; silent when up to date or notifications are off).
+        Task { await checkForUpdates(manual: false) }
     }
 
     /// Refresh just the per-manager status (availability + version).

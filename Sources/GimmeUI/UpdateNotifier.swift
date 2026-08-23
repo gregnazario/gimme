@@ -23,12 +23,21 @@ final class UpdateNotifier {
                       failed: [(name: String, error: String)]) {
         // Frontmost → the on-screen badges are the feedback; no banner.
         guard isBundled, NSApp.isActive == false else { return }
+        post(title: "gimme", body: Self.body(updated: updated, failed: failed))
+    }
+
+    /// Informational post (e.g. a newer gimme release is available). Unlike
+    /// run-finished summaries this is NOT background-only: there is no in-app
+    /// surface announcing it, so hiding it while frontmost would hide it
+    /// entirely. Settings/permission checks still apply; silent when denied.
+    func post(title: String, body: String) {
+        guard isBundled else { return }
         Task {
             let settings = await center.notificationSettings()
             guard settings.authorizationStatus == .authorized else { return }
             let content = UNMutableNotificationContent()
-            content.title = "gimme"
-            content.body = Self.body(updated: updated, failed: failed)
+            content.title = title
+            content.body = body
             let request = UNNotificationRequest(
                 identifier: "gimme-update-\(UUID().uuidString)",
                 content: content, trigger: nil)

@@ -89,7 +89,7 @@ struct GimmeCLI {
 
     struct Parsed {
         var verb: String
-        var positional: [String]
+        var positional: [String] = []
         var from: ManagerID?
         var all: Bool
         var refresh: Bool
@@ -97,6 +97,7 @@ struct GimmeCLI {
         var json: Bool
         var version: String?
         var yes: Bool
+        var selfUpdate: Bool = false
     }
 
     static func parseArgs(_ args: [String]) -> Parsed {
@@ -115,6 +116,7 @@ struct GimmeCLI {
             case "--version":
                 if i + 1 < args.count { p.version = args[i+1]; i += 1 }
             case "-y", "--yes": p.yes = true
+            case "--self": p.selfUpdate = true
             default: p.positional.append(a)
             }
             i += 1
@@ -152,9 +154,13 @@ struct GimmeCLI {
             try await gimme.upgrade(name: name, from: p.from)
             print("upgraded \(name)")
         case "update":
-            let summary = try await gimme.updateAll()
-            for id in summary.succeeded { print("updated \(id)") }
-            for f in summary.failed { print("FAILED \(f.id): \(f.error)") }
+            if p.selfUpdate {
+                try await runSelfUpdate()
+            } else {
+                let summary = try await gimme.updateAll()
+                for id in summary.succeeded { print("updated \(id)") }
+                for f in summary.failed { print("FAILED \(f.id): \(f.error)") }
+            }
         case "list":
             let list = try await gimme.list(from: p.from, refresh: p.refresh)
             if p.json { print((try? JSONEncoder().encode(list)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]") }
@@ -285,6 +291,25 @@ struct GimmeCLI {
         }
     }
 
+    /// `gimme update --self`: check the latest GitHub release and replace the
+    /// running binary (spec: 2026-08-22-self-update-design.md).
+    static func runSelfUpdate() async throws {
+        let current = GimmeVersion.current
+        print("gimme \(current)")
+        let updater = SelfUpdate()
+        guard let release = await updater.latestRelease() else {
+            throw GimmeError.network("could not check https://github.com/gregnazario/gimme/releases/latest")
+        }
+        guard SelfUpdate.isNewer(release.version, than: current) else {
+            print("up to date (latest release: \(release.version))")
+            return
+        }
+        print("updating to \(release.version)…")
+        let executable = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
+        let version = try await updater.updateCLI(at: executable, to: release) { line in print(line) }
+        print("updated to \(version)")
+    }
+
     static func printHelp() {
         print("""
         gimme — unified package manager
@@ -293,7 +318,7 @@ struct GimmeCLI {
           gimme install <name> [--from <manager>] [--version <v>]
           gimme uninstall <name>
           gimme upgrade <name>
-          gimme update                       (upgrade all outdated)
+          gimme update [--self]              (upgrade all outdated; --self updates gimme)
           gimme list [--from <manager>]
           gimme outdated [--from <manager>]
           gimme search <query> [--all]
