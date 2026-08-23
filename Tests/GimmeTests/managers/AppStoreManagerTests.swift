@@ -12,8 +12,10 @@ final class AppStoreManagerTests: XCTestCase {
     }
     class StubProcess: ProcessRunning {
         var calls: [(String, [String])] = []
+        var envs: [[String: String]?] = []
         func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
             calls.append((e, args))
+            envs.append(env)
             return ProcessResult(exitCode: 0, stdout: "", stderr: "")
         }
     }
@@ -293,5 +295,63 @@ final class AppStoreManagerTests: XCTestCase {
                       "mas must be attempted first")
         XCTAssertTrue(p.calls.contains { $0.0 == "/usr/bin/open" && $0.1 == ["macappstore://apps.apple.com/app/id803453959"] },
                       "fallback must open the app's App Store page")
+    }
+
+    /// When mas fails only because sudo has no terminal (GUI launch), gimme
+    /// retries with a SUDO_ASKPASS helper (the Homebrew pattern) so the user
+    /// gets a native password dialog and the update runs automatically.
+    func testUpgradeRetriesMasWithAskpassOnNoTtySudo() async throws {
+        try makeApp(tmp, "Slack.app", bundleID: "com.tinyspeck.slackmacgap", version: "4.51.180")
+        let http = StubHTTP()
+        stubLookup(http, "com.tinyspeck.slackmacgap", version: "4.51.191", trackId: 803453959)
+        final class AskpassAwareMas: StubProcess {
+            override func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+                let r = try await super.run(e, args: args, env: env, stream: stream)
+                if e == "/tmp/mas-stub" {
+                    if env?["SUDO_ASKPASS"] != nil { return ProcessResult(exitCode: 0, stdout: "", stderr: "") }
+                    return ProcessResult(exitCode: 1, stdout: "",
+                        stderr: "sudo: a terminal is required to read the password\nsudo: a password is required")
+                }
+                return r
+            }
+        }
+        let p = AskpassAwareMas()
+        let askpass = tmp.appendingPathComponent("askpass/sudo-askpass.sh")
+        let m = AppStoreManager(http: http, process: p, applicationDirs: [tmp],
+                                masBinary: "/tmp/mas-stub", askpassURL: askpass)
+        try await m.upgrade(PackageRef(name: "Slack"))
+        let masCalls = p.calls.filter { $0.0 == "/tmp/mas-stub" }
+        XCTAssertEqual(masCalls.count, 2, "plain attempt, then askpass retry")
+        XCTAssertEqual(p.envs.last??["SUDO_ASKPASS"], askpass.path)
+        XCTAssertFalse(p.calls.contains { $0.0 == "/usr/bin/open" }, "no page fallback — fully automatic")
+        // The helper shows the native password dialog via osascript and is
+        // private to the user.
+        let script = try String(contentsOf: askpass, encoding: .utf8)
+        XCTAssertTrue(script.contains("osascript"))
+        XCTAssertTrue(script.contains("with hidden answer"))
+        let perms = try FileManager.default.attributesOfItem(atPath: askpass.path)[.posixPermissions] as? Int
+        XCTAssertEqual(perms, 0o700)
+    }
+
+    /// Failures that aren't the sudo/no-TTY signature (e.g. "not signed in")
+    /// must not trigger a password dialog — straight to the page fallback.
+    func testUpgradeDoesNotAskpassOnOtherMasFailures() async throws {
+        try makeApp(tmp, "Slack.app", bundleID: "com.tinyspeck.slackmacgap", version: "4.51.180")
+        let http = StubHTTP()
+        stubLookup(http, "com.tinyspeck.slackmacgap", version: "4.51.191", trackId: 803453959)
+        final class NotSignedInMas: StubProcess {
+            override func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+                let r = try await super.run(e, args: args, env: env, stream: stream)
+                if e == "/tmp/mas-stub" {
+                    return ProcessResult(exitCode: 1, stdout: "", stderr: "Error: Not signed in")
+                }
+                return r
+            }
+        }
+        let p = NotSignedInMas()
+        let m = AppStoreManager(http: http, process: p, applicationDirs: [tmp], masBinary: "/tmp/mas-stub")
+        try await m.upgrade(PackageRef(name: "Slack"))
+        XCTAssertEqual(p.calls.filter { $0.0 == "/tmp/mas-stub" }.count, 1, "no askpass retry")
+        XCTAssertTrue(p.calls.contains { $0.0 == "/usr/bin/open" }, "page fallback used")
     }
 }

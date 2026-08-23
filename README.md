@@ -67,7 +67,7 @@ gimme brew services start postgres   # passthrough to the real tool
 | **pipx** | `pipx install` | PyPI; per-tool isolated venvs (Python ecosystem alongside uv) |
 | **aqua** | `aqua install` | owner/repo packages; declarative config. No outdated (pinned) |
 | **ubi** | `ubi --project owner/repo` | GitHub releases. No registry/search; best-effort list scan |
-| **App Store** | receipt scan + iTunes Lookup API | updates only (list/outdated/upgrade); `mas` upgrades when installed, else opens the App Store page |
+| **App Store** | receipt scan + iTunes Lookup API | updates only (list/outdated/upgrade); `mas` upgrades when installed (password dialog when needed), else opens the App Store page |
 
 Cargo installs prefer `cargo-binstall` (prebuilt binaries) when available, falling back to compiling from source.
 

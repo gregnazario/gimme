@@ -18,12 +18,16 @@ public final class AppStoreManager: PackageManager {
     private let indexCache: Cache?
     /// nil = resolve `mas` via PATH at use time; "" = force absent (tests).
     private let masBinaryOverride: String?
+    /// Where the sudo askpass helper lives (injectable for tests; defaults to
+    /// the gimme cache dir).
+    private let askpassURL: URL?
 
     public init(http: HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
                 applicationDirs: [URL]? = nil,
                 indexCache: Cache? = nil,
-                masBinary: String? = nil) {
+                masBinary: String? = nil,
+                askpassURL: URL? = nil) {
         self.http = http
         self.process = process
         self.applicationDirs = applicationDirs ?? [
@@ -32,6 +36,7 @@ public final class AppStoreManager: PackageManager {
         ]
         self.indexCache = indexCache
         self.masBinaryOverride = masBinary
+        self.askpassURL = askpassURL ?? GimmePaths.defaultUser.cacheDir.appendingPathComponent("sudo-askpass.sh")
     }
 
     /// Requires only /Applications, which exists on every Mac — the adapter is
@@ -172,6 +177,31 @@ public final class AppStoreManager: PackageManager {
 
     // MARK: - Upgrade (hybrid mas / App Store page)
 
+    /// sudo's stderr when it cannot prompt because there is no terminal — the
+    /// mas failure signature that warrants an askpass retry.
+    private static let sudoNoTTYSignature = "a terminal is required"
+
+    /// Writes the sudo askpass helper (the Homebrew pattern): a tiny script
+    /// that shows the native password dialog via osascript and prints the
+    /// password to sudo only — it is never stored or logged. User-executable
+    /// only (0700). Returns nil if the script can't be written.
+    private func installAskpassHelper() -> URL? {
+        guard let url = askpassURL else { return nil }
+        let script = """
+        #!/bin/sh
+        # Written by gimme. sudo calls this when it needs a password but has no
+        # terminal (GUI launches); the password goes to sudo and nowhere else.
+        /usr/bin/osascript -e 'display dialog "gimme needs your Mac password to update App Store apps:" default answer "" with hidden answer' -e 'text returned of result' 2>/dev/null
+
+        """
+        do {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try script.write(to: url, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
+            return url
+        } catch { return nil }
+    }
+
     /// updateAll calls upgrade() once per outdated app; without mas that would
     /// open the App Store N times. Skip further opens within this window —
     /// the store (or its updates pane) is already up.
@@ -207,7 +237,20 @@ public final class AppStoreManager: PackageManager {
         if let masPath {
             let res = try await process.run(masPath, args: ["upgrade", String(store.trackId)], env: nil, stream: nil)
             if res.exitCode == 0 { return }
-            masError = res.stderr
+            // mas 7 needs root; from a GUI launch sudo has no terminal to
+            // prompt on. Retry with an askpass helper → native password
+            // dialog → the update completes automatically (Homebrew's
+            // pattern). Only for that failure signature — a "not signed in"
+            // mas error goes straight to the page fallback instead.
+            if res.stderr.contains(Self.sudoNoTTYSignature), let askpass = installAskpassHelper() {
+                var env = ProcessRunner.augmentedEnvironment()
+                env["SUDO_ASKPASS"] = askpass.path
+                let retry = try await process.run(masPath, args: ["upgrade", String(store.trackId)], env: env, stream: nil)
+                if retry.exitCode == 0 { return }
+                masError = retry.stderr
+            } else {
+                masError = res.stderr
+            }
         }
 
         // Fallback: land the App Store on the app's page; the user clicks

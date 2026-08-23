@@ -122,9 +122,13 @@ unbounded, fine for tens of apps.
    cached lookup for the `trackId`. Unresolvable → `GimmeError.notFoundInManagers`.
 2. **Act.** If `BinaryResolver.resolve("mas")` is non-nil: run
    `mas upgrade <trackId>`. mas 7 requires root and prompts through sudo,
-   which cannot work where there is no TTY (the GUI app) — so a mas failure
-   falls through to the fallback rather than erroring; its stderr is kept for
-   the case where the fallback itself fails. Fallback:
+   which cannot work where there is no TTY (the GUI app) — when mas fails
+   with sudo's "a terminal is required" signature, gimme retries once with
+   `SUDO_ASKPASS` pointed at a generated helper (`~/.cache/gimme/
+   sudo-askpass.sh`, 0700) that shows the native password dialog via
+   osascript — the Homebrew pattern; the password goes to sudo only and is
+   never stored. A retry failure or any other mas error (e.g. "not signed
+   in") falls through to the fallback rather than erroring. Fallback:
    `open macappstore://apps.apple.com/app/id<trackId>` to land the App Store
    on the app's page, where the user clicks Update.
 3. **Coalesce.** `updateAll` calls `upgrade()` once per outdated package, and
