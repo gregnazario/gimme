@@ -18,6 +18,12 @@ struct GimmeApp: App {
                 .sheet(isPresented: $store.showReportIssue) {
                     ReportIssueView()
                 }
+                .sheet(isPresented: $store.showAbout) {
+                    AboutGimme(reportIssue: {
+                        store.showAbout = false
+                        store.showReportIssue = true
+                    })
+                }
                 .alert("Error", isPresented: $store.showError) {
                     Button("OK", role: .cancel) {}
                 } message: {
@@ -25,8 +31,8 @@ struct GimmeApp: App {
                 }
         }
         .commands {
-            CommandGroup(after: .appInfo) {
-                AboutGimme(reportIssue: { store.showReportIssue = true })
+            CommandGroup(replacing: .appInfo) {
+                Button("About gimme") { store.showAbout = true }
             }
             CommandGroup(after: .help) {
                 Button("Report an Issue…") { store.showReportIssue = true }
@@ -41,33 +47,53 @@ struct GimmeApp: App {
     }
 }
 
-/// Standard macOS About view — icon, name, version, one-liner.
+/// About modal (app menu → About gimme). Presented as a sheet with the
+/// standard close affordance (navigation policy §1).
 struct AboutGimme: View {
+    @Environment(\.dismiss) private var dismiss
     var reportIssue: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 12) {
-            Image(nsImage: NSApplication.shared.applicationIconImage)
-                .resizable()
-                .frame(width: 128, height: 128)
-            Text("gimme").font(.title).fontWeight(.bold)
-            Text("Version \(GimmeVersion.current)")
-                .foregroundStyle(.secondary)
-            Text("One interface for every package manager on your Mac.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text("Homebrew · Go · uv · Cargo · bun · npm · pnpm · Yarn · RubyGems · Composer · Deno · pipx · aqua · ubi")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-            if let reportIssue {
-                Button("Report an Issue…", action: reportIssue)
-                    .padding(.top, 4)
+        VStack(spacing: 0) {
+            HStack {
+                Text("About gimme").font(.title2).fontWeight(.semibold)
+                Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.cancelAction)
+                .help("Close")
             }
+            .padding()
+            Divider()
+            VStack(spacing: 12) {
+                Image(nsImage: NSApplication.shared.applicationIconImage)
+                    .resizable()
+                    .frame(width: 128, height: 128)
+                Text("gimme").font(.title).fontWeight(.bold)
+                Text("Version \(GimmeVersion.current)")
+                    .foregroundStyle(.secondary)
+                Text("One interface for every package manager on your Mac.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("Homebrew · Go · uv · Cargo · bun · npm · pnpm · Yarn · RubyGems · Composer · Deno · pipx · aqua · ubi · App Store")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                if let reportIssue {
+                    Button("Report an Issue…", action: reportIssue)
+                        .padding(.top, 4)
+                }
+            }
+            .padding(24)
         }
-        .padding(24)
-        .frame(width: 360, height: 400)
+        .frame(width: 360, height: 460)
     }
 }
 
@@ -103,6 +129,7 @@ final class GimmeStore: ObservableObject {
     @Published var pendingManagerFilter: ManagerID?
     @Published var showError = false
     @Published var showReportIssue = false
+    @Published var showAbout = false
     @Published var errorMessage = ""
 
     /// Per-package upgrade progress for the Updates view.

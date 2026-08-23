@@ -452,6 +452,9 @@ final class AppStoreManagerTests: XCTestCase {
         XCTAssertEqual(summary.succeeded.sorted(), ["appstore:One", "appstore:Two"])
         let masCalls = p.calls.filter { $0.0 == "/tmp/mas-stub" }
         XCTAssertEqual(masCalls.count, 1)
-        XCTAssertEqual(masCalls.first?.1, ["upgrade", "111", "222"])
+        // outdated() returns TaskGroup completion order — assert the set, not sequence.
+        let args = masCalls.first?.1 ?? []
+        XCTAssertEqual(args.first, "upgrade")
+        XCTAssertEqual(Set(args.dropFirst()), ["111", "222"])
     }
 }
