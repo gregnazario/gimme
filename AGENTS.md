@@ -49,10 +49,14 @@ macOS app (`GimmeUI`), sharing one Swift engine (`GimmeCore`).
   checks on this machine use read-only verbs only (`--version`, `list`,
   `outdated`, `doctor`). `install`/`update`/`update --self`/`upgrade`/
   `uninstall`/bootstrap run only when the user explicitly asks for that
-  action. On 2026-08-22 a flag test against a stale `.build/release` binary
-  silently ran a real `update all` (`.build/debug` vs `.build/release`
-  drift). If a change flow must be exercised for real, copy the binary to a
-  temp location first and say what is about to run.
+  action. **Copying the binary to /tmp does NOT sandbox it** — mutating verbs
+  act on the machine (brew, mas, the App Store), not on the binary's
+  location; both 2026-08-22 and 2026-08-23 incidents ran real `update all`s
+  this way, the second because a pre-`--self` binary silently absorbed the
+  unknown flag. Unknown `--flags` now hard-error (CLIArgs), but older
+  released binaries still degrade — the only safe live check for a flow is
+  its read-only path (e.g. `update --self` on the newest binary reports
+  "up to date" and replaces nothing).
 - GUI has no automated tests (v1 decision, see spec §10). Verify GUI changes by
   building the app and launching it.
 

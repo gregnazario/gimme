@@ -30,8 +30,8 @@ struct GimmeCLI {
         }
 
         // Verb dispatch.
-        let parsed = parseArgs(args)
         do {
+            let parsed = try CLIArgs.parse(args)
             try await runCommand(parsed)
         } catch let e as GimmeError {
             FileHandle.standardError.write(Data("\(e.message)\n".utf8))
@@ -87,44 +87,7 @@ struct GimmeCLI {
         }
     }
 
-    struct Parsed {
-        var verb: String
-        var positional: [String] = []
-        var from: ManagerID?
-        var all: Bool
-        var refresh: Bool
-        var noCache: Bool
-        var json: Bool
-        var version: String?
-        var yes: Bool
-        var selfUpdate: Bool = false
-    }
-
-    static func parseArgs(_ args: [String]) -> Parsed {
-        var p = Parsed(verb: args.first ?? "help", positional: [], from: nil,
-                       all: false, refresh: false, noCache: false, json: false, version: nil, yes: false)
-        var i = 1  // skip verb
-        while i < args.count {
-            let a = args[i]
-            switch a {
-            case "--from":
-                if i + 1 < args.count, let id = ManagerID(rawValue: args[i+1]) { p.from = id; i += 1 }
-            case "--all": p.all = true
-            case "--refresh": p.refresh = true
-            case "--no-cache": p.noCache = true
-            case "--json": p.json = true
-            case "--version":
-                if i + 1 < args.count { p.version = args[i+1]; i += 1 }
-            case "-y", "--yes": p.yes = true
-            case "--self": p.selfUpdate = true
-            default: p.positional.append(a)
-            }
-            i += 1
-        }
-        return p
-    }
-
-    static func runCommand(_ p: Parsed) async throws {
+    static func runCommand(_ p: CLIArgs) async throws {
         let paths = GimmePaths.defaultUser
         try paths.ensureDirectories()
         let gimme = Gimme(
