@@ -1,4 +1,5 @@
 import XCTest
+import CryptoKit
 @testable import GimmeCore
 
 final class DottedVersionTests: XCTestCase {
@@ -72,6 +73,67 @@ final class SelfUpdateTests: XCTestCase {
         XCTAssertTrue(SelfUpdate.isNewer("2.3.0", than: "2.1.0"))
         XCTAssertFalse(SelfUpdate.isNewer("2.1.0", than: "2.1.0"))
         XCTAssertFalse(SelfUpdate.isNewer("2.0.5", than: "2.1.0"))
+    }
+
+    // MARK: - checksum verification
+
+    /// Releases publish SHA256SUMS; when present, downloaded assets must
+    /// match it (audit 2026-08-24 — version strings are not integrity).
+    func testUpdateCLIVerifiesChecksumWhenSumExists() async throws {
+        let fixture = try await makeCLIFixture(version: "2.3.0")
+        let tarData = try Data(contentsOf: fixture)
+        let digest = SHA256.hash(data: tarData).map { String(format: "%02x", $0) }.joined()
+        http.byURL["https://example.com/gimme-darwin-arm64.tar.gz"] = tarData
+        http.byURL["https://example.com/SHA256SUMS"] = Data("\(digest)  gimme-darwin-arm64.tar.gz\n".utf8)
+
+        let binDir = tmp.appendingPathComponent("bin")
+        try FileManager.default.createDirectory(at: binDir, withIntermediateDirectories: true)
+        let target = binDir.appendingPathComponent("gimme")
+        try Data("old".utf8).write(to: target)
+        process.defaultVersionOutput = "gimme 2.3.0\n"
+
+        let release = SelfUpdate.Release(tag: "v2.3.0", version: "2.3.0", assets: [
+            "gimme-darwin-arm64.tar.gz": "https://example.com/gimme-darwin-arm64.tar.gz",
+            "SHA256SUMS": "https://example.com/SHA256SUMS",
+        ])
+        _ = try await sut().updateCLI(at: target, to: release)
+        XCTAssertNotEqual(try String(contentsOf: target, encoding: .utf8), "old")
+    }
+
+    func testUpdateCLIMismatchedChecksumAbortsAndKeepsBinary() async throws {
+        let fixture = try await makeCLIFixture(version: "2.3.0")
+        http.byURL["https://example.com/gimme-darwin-arm64.tar.gz"] = try Data(contentsOf: fixture)
+        http.byURL["https://example.com/SHA256SUMS"] = Data("0000000000000000000000000000000000000000000000000000000000000000  gimme-darwin-arm64.tar.gz\n".utf8)
+
+        let target = tmp.appendingPathComponent("bin/gimme")
+        try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("old".utf8).write(to: target)
+
+        let release = SelfUpdate.Release(tag: "v2.3.0", version: "2.3.0", assets: [
+            "gimme-darwin-arm64.tar.gz": "https://example.com/gimme-darwin-arm64.tar.gz",
+            "SHA256SUMS": "https://example.com/SHA256SUMS",
+        ])
+        do {
+            _ = try await sut().updateCLI(at: target, to: release)
+            XCTFail("expected checksum mismatch")
+        } catch { }
+        XCTAssertEqual(try String(contentsOf: target, encoding: .utf8), "old", "target untouched")
+        XCTAssertTrue(process.calls.allSatisfy { $0.0 != target.path }, "replaced binary never executed")
+    }
+
+    /// Pre-checksum releases (before v2.3.2) have no SHA256SUMS asset —
+    /// verification is skipped rather than blocking updates.
+    func testChecksumAbsentProceeds() async throws {
+        let fixture = try await makeCLIFixture(version: "2.3.0")
+        http.byURL["https://example.com/gimme-darwin-arm64.tar.gz"] = try Data(contentsOf: fixture)
+        let target = tmp.appendingPathComponent("bin/gimme")
+        try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("old".utf8).write(to: target)
+        process.defaultVersionOutput = "gimme 2.3.0\n"
+        let release = SelfUpdate.Release(tag: "v2.3.0", version: "2.3.0",
+            assets: ["gimme-darwin-arm64.tar.gz": "https://example.com/gimme-darwin-arm64.tar.gz"])
+        _ = try await sut().updateCLI(at: target, to: release)
+        XCTAssertNotEqual(try String(contentsOf: target, encoding: .utf8), "old")
     }
 
     // MARK: - CLI update

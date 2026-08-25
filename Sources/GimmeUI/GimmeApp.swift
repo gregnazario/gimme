@@ -206,11 +206,17 @@ final class GimmeStore: ObservableObject {
             let stage = FileManager.default.temporaryDirectory
                 .appendingPathComponent("gimme-appupdate-\(UUID().uuidString)")
             let staged = try await selfUpdater.downloadApp(to: stage, expectVersion: release.version,
-                                                           assetURL: assetURL)
+                                                           assetURL: assetURL,
+                                                           sumsURL: release.assets["SHA256SUMS"])
             let target = Bundle.main.bundleURL
-            let script = "pkill -x GimmeUI; sleep 1; rm -rf '\(target.path)'; cp -R '\(staged.path)' '\(target.path)'; open '\(target.path)'"
+            // Paths pass as positional parameters ($1/$2) — never interpolated
+            // into the script string, so a path containing quotes can't inject
+            // shell commands (audit 2026-08-24).
+            let script = #"pkill -x GimmeUI; sleep 1; rm -rf "$1"; cp -R "$2" "$1"; open "$1""#
             Task.detached {
-                _ = try? await ProcessRunner().run("/bin/sh", args: ["-c", script], env: nil, stream: nil)
+                _ = try? await ProcessRunner().run("/bin/sh",
+                    args: ["-c", script, "gimme-update", target.path, staged.path],
+                    env: nil, stream: nil)
             }
             // Let the detached script spawn before this process exits.
             try? await Task.sleep(nanoseconds: 500_000_000)

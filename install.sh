@@ -69,11 +69,26 @@ elif command -v wget >/dev/null 2>&1; then
     DOWNLOAD_URL="$(wget -qO- "$API_URL" 2>/dev/null | grep -o "https://[^\"]*${BINARY_TARBALL}" | head -1 || true)"
 fi
 
+# Verify a downloaded artifact against the release's SHA256SUMS when the
+# release publishes one (fail-open only for older releases without it).
+verify_sums() {  # verify_sums <tarball-name>
+    SUMS_URL=""
+    if command -v curl >/dev/null 2>&1; then
+        SUMS_URL="$(curl -fsSL "$API_URL" 2>/dev/null | grep -o "https://[^\"]*SHA256SUMS" | head -1 || true)"
+    fi
+    [ -z "$SUMS_URL" ] && return 0
+    curl -fsSL -o "$TMPDIR/SHA256SUMS" "$SUMS_URL" 2>/dev/null || return 0
+    grep "  $1" "$TMPDIR/SHA256SUMS" > "$TMPDIR/one.sum" 2>/dev/null || fail "SHA256SUMS has no entry for $1"
+    (cd "$TMPDIR" && shasum -a 256 -c one.sum --status) || fail "checksum mismatch for $1"
+    rm -f "$TMPDIR/one.sum"
+}
+
 if [ -n "$DOWNLOAD_URL" ]; then
     echo "==> Downloading prebuilt binary…"
     if curl -fsSL -o "$TMPDIR/$BINARY_TARBALL" "$DOWNLOAD_URL" 2>/dev/null || \
        wget -qO "$TMPDIR/$BINARY_TARBALL" "$DOWNLOAD_URL" 2>/dev/null; then
 
+        verify_sums "$BINARY_TARBALL"
         tar xzf "$TMPDIR/$BINARY_TARBALL" -C "$TMPDIR"
         BINARY="$TMPDIR/gimme"
         chmod 755 "$BINARY"
@@ -132,6 +147,7 @@ if [ "$SKIP_APP" != "1" ]; then
     if [ -n "$APP_URL" ]; then
         echo "==> Downloading Gimme.app…"
         if curl -fsSL -o "$TMPDIR/$APP_TARBALL" "$APP_URL" 2>/dev/null; then
+            verify_sums "$APP_TARBALL"
             tar xzf "$TMPDIR/$APP_TARBALL" -C "$TMPDIR"
             # Strip quarantine so Gatekeeper doesn't block the unsigned app.
             xattr -cr "$TMPDIR/Gimme.app" 2>/dev/null || true

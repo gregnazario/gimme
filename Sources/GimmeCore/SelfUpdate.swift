@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 /// Self-update against gimme's tag-driven GitHub releases (spec:
 /// 2026-08-22-self-update-design.md). Shared by `gimme update --self` and the
@@ -74,6 +75,39 @@ public final class SelfUpdate {
         DottedVersion.isOlder(current, than: candidate)
     }
 
+    // MARK: - Checksums
+
+    /// When the release publishes a SHA256SUMS asset (CI does since v2.3.2),
+    /// downloaded data must match its entry. Releases without one (older)
+    /// proceed unverified — fail-open only for those. Throws
+    /// `.checksumMismatch` on mismatch, before anything is executed or
+    /// replaced (audit 2026-08-24: matching a version string is not
+    /// integrity).
+    private func verifyChecksum(sumsURL: String?, assetName: String, data: Data) async throws {
+        guard let sumsURL else { return }
+        let sumsData: Data
+        do { sumsData = try await http.get(sumsURL) }
+        catch { throw GimmeError.install("could not fetch SHA256SUMS for verification") }
+        guard let text = String(data: sumsData, encoding: .utf8) else {
+            throw GimmeError.install("SHA256SUMS is not text")
+        }
+        // Format: "<64 hex>  <asset name>" per line (shasum output).
+        let expected = text.components(separatedBy: .newlines)
+            .compactMap { line -> String? in
+                guard line.hasSuffix("  \(assetName)") else { return nil }
+                let hex = line.prefix(64)
+                return hex.count == 64 ? String(hex) : nil
+            }
+            .first
+        guard let expected else {
+            throw GimmeError.install("SHA256SUMS has no entry for \(assetName)")
+        }
+        let actual = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        guard actual == expected.lowercased() else {
+            throw GimmeError.checksumMismatch(expected: expected, actual: actual)
+        }
+    }
+
     // MARK: - CLI update
 
     /// Download the CLI tarball for `release`, verify the extracted binary
@@ -94,6 +128,7 @@ public final class SelfUpdate {
 
         progress?("downloading \(assetName)…")
         let data = try await http.get(assetURL)
+        try await verifyChecksum(sumsURL: release.assets["SHA256SUMS"], assetName: assetName, data: data)
 
         let work = FileManager.default.temporaryDirectory
             .appendingPathComponent("gimme-selfupdate-\(UUID().uuidString)")
@@ -136,10 +171,13 @@ public final class SelfUpdate {
 
     /// Download the GimmeUI tarball, extract it into `dir`, and verify the
     /// bundled app reports `expectVersion`. Returns the extracted .app URL.
+    /// `sumsURL` (the release's SHA256SUMS asset, when published) is verified
+    /// against the downloaded bytes.
     public func downloadApp(to dir: URL, expectVersion: String,
-                            assetURL: String) async throws -> URL {
+                            assetURL: String, sumsURL: String? = nil) async throws -> URL {
         let assetName = appAssetName
         let data = try await http.get(assetURL)
+        try await verifyChecksum(sumsURL: sumsURL, assetName: assetName, data: data)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let tarPath = dir.appendingPathComponent(assetName)
         try data.write(to: tarPath)

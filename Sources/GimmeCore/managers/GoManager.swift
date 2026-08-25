@@ -30,9 +30,20 @@ public final class GoManager: PackageManager {
     }
 
     public func bootstrap() async throws {
-        _ = try await process.run("/bin/bash",
-            args: ["-c", "curl -fsSL https://go.dev/dl/go1.23.0.darwin-arm64.pkg -o /tmp/go.pkg && sudo installer -pkg /tmp/go.pkg -target /"],
-            env: nil, stream: nil)
+        // Security (audit 2026-08-24): download into a private mktemp dir —
+        // never a predictable /tmp name, which a local user could pre-place
+        // or swap before `sudo installer` reads it as root — and verify the
+        // pinned SHA256 before installing. Bump both URL and hash together.
+        let script = """
+        set -e
+        d="$(mktemp -d)"
+        trap 'rm -rf "$d"' EXIT
+        curl -fsSL https://go.dev/dl/go1.23.0.darwin-arm64.pkg -o "$d/go.pkg"
+        echo 'd73ae741ed449ea842238f76f4b02935277eb867689f84ace0640965b2caf700  go.pkg' > "$d/SHA256"
+        (cd "$d" && shasum -a 256 -c SHA256 --status)
+        sudo installer -pkg "$d/go.pkg" -target /
+        """
+        _ = try await process.run("/bin/bash", args: ["-c", script], env: nil, stream: nil)
     }
 
     public func version() async -> String? {

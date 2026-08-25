@@ -150,6 +150,12 @@ jobs:
         # with gimme-darwin-arm64.tar.gz and the second upload always failed.
         run: tar czf GimmeUI-darwin-arm64.tar.gz -C app Gimme.app
 
+      - name: Generate SHA256SUMS
+        # Consumed by `gimme update --self` / GUI self-update and install.sh —
+        # downloaded artifacts are verified against these digests before
+        # anything is executed or replaced.
+        run: shasum -a 256 gimme-darwin-arm64.tar.gz GimmeUI-darwin-arm64.tar.gz > SHA256SUMS
+
       - name: Clean up keychain
         if: always()
         run: |
@@ -165,4 +171,5 @@ jobs:
             --title "gimme ${{ steps.version.outputs.version }}" \
             --generate-notes \
             gimme-darwin-arm64.tar.gz \
-            GimmeUI-darwin-arm64.tar.gz
+            GimmeUI-darwin-arm64.tar.gz \
+            SHA256SUMS

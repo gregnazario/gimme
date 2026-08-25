@@ -31,9 +31,18 @@ public final class NpmManager: PackageManager {
 
     public func bootstrap() async throws {
         // npm ships with Node; install via the official Node installer.
-        _ = try await process.run("/bin/bash",
-            args: ["-c", "curl -fsSL https://nodejs.org/dist/v22.0.0/node-v22.0.0.pkg -o /tmp/node.pkg && sudo installer -pkg /tmp/node.pkg -target /"],
-            env: nil, stream: nil)
+        // Security (audit 2026-08-24): private mktemp dir + pinned SHA256
+        // verified before `sudo installer`. Bump URL and hash together.
+        let script = """
+        set -e
+        d="$(mktemp -d)"
+        trap 'rm -rf "$d"' EXIT
+        curl -fsSL https://nodejs.org/dist/v22.0.0/node-v22.0.0.pkg -o "$d/node.pkg"
+        echo '2a7aa14f78d7b764d1552898bf1181da34d3ce40696742c137b8c3ab4079d078  node.pkg' > "$d/SHA256"
+        (cd "$d" && shasum -a 256 -c SHA256 --status)
+        sudo installer -pkg "$d/node.pkg" -target /
+        """
+        _ = try await process.run("/bin/bash", args: ["-c", script], env: nil, stream: nil)
     }
 
     public func version() async -> String? {
