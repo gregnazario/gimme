@@ -11,13 +11,16 @@ public final class GoManager: PackageManager {
     private let http: HTTPClient
     private let process: any ProcessRunning
     private let goBinaryOverride: String?   // nil = resolve via `which go`
+    private let askpassURL: URL?
 
     public init(http: HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
-                goBinary: String? = nil) {
+                goBinary: String? = nil,
+                askpassURL: URL? = nil) {
         self.http = http
         self.process = process
         self.goBinaryOverride = goBinary
+        self.askpassURL = askpassURL
     }
 
     /// Resolve the real go path (via `which go`), or use the injected override.
@@ -43,7 +46,10 @@ public final class GoManager: PackageManager {
         (cd "$d" && shasum -a 256 -c SHA256 --status)
         sudo installer -pkg "$d/go.pkg" -target /
         """
-        _ = try await process.run("/bin/bash", args: ["-c", script], env: nil, stream: nil)
+        // SUDO_ASKPASS lets the GUI show the native password dialog (sudo
+        // still prefers the terminal when one exists).
+        _ = try await process.run("/bin/bash", args: ["-c", script],
+                                  env: SudoAskpass.environment(helperURL: askpassURL), stream: nil)
     }
 
     public func version() async -> String? {

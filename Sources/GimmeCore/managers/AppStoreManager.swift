@@ -168,38 +168,6 @@ public final class AppStoreManager: PackageManager {
     /// mas failure signature that warrants an askpass retry.
     private static let sudoNoTTYSignature = "a terminal is required"
 
-    /// Writes the sudo askpass helper (the Homebrew pattern): a tiny script
-    /// that shows the native password dialog via osascript and prints the
-    /// password to sudo only — it is never stored or logged. Created with
-    /// 0700 from the first byte (no default-perms window), user-only; the
-    /// write is skipped when the content is already current. Returns nil if
-    /// the script can't be written.
-    private func installAskpassHelper() -> URL? {
-        guard let url = askpassURL else { return nil }
-        let script = """
-        #!/bin/sh
-        # Written by gimme. sudo calls this when it needs a password but has no
-        # terminal (GUI launches); the password goes to sudo and nowhere else.
-        /usr/bin/osascript -e 'display dialog "gimme needs your Mac password to update App Store apps:" default answer "" with hidden answer' -e 'text returned of result' 2>/dev/null
-
-        """
-        let fm = FileManager.default
-        do {
-            try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let data = Data(script.utf8)
-            if (try? String(contentsOf: url, encoding: .utf8)) != script {
-                // createFile applies 0700 at creation; setAttributes pins it
-                // again in case the file pre-existed with looser modes.
-                if !fm.createFile(atPath: url.path, contents: data,
-                                  attributes: [.posixPermissions: 0o700]) {
-                    return nil
-                }
-                try fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
-            }
-            return url
-        } catch { return nil }
-    }
-
     /// updateAll calls upgrade() once per outdated app; without mas that would
     /// open the App Store N times. Skip further opens within this window —
     /// the store (or its updates pane) is already up.
@@ -249,7 +217,7 @@ public final class AppStoreManager: PackageManager {
             // dialog → the update completes automatically (Homebrew's
             // pattern). Only for that failure signature — a "not signed in"
             // mas error goes straight to the page fallback instead.
-            if res.stderr.contains(Self.sudoNoTTYSignature), let askpass = installAskpassHelper() {
+            if res.stderr.contains(Self.sudoNoTTYSignature), let askpass = SudoAskpass.installHelper(at: askpassURL) {
                 var env = ProcessRunner.augmentedEnvironment()
                 env["SUDO_ASKPASS"] = askpass.path
                 let retry = try await process.run(masPath, args: ["upgrade", String(trackId)], env: env, stream: nil)
@@ -301,7 +269,7 @@ public final class AppStoreManager: PackageManager {
             let args = ["upgrade"] + resolved.map { String($0.1) }
             var res = try? await process.run(masPath, args: args, env: nil, stream: nil)
             if res?.exitCode != 0, res?.stderr.contains(Self.sudoNoTTYSignature) == true,
-               let askpass = installAskpassHelper() {
+               let askpass = SudoAskpass.installHelper(at: askpassURL) {
                 // One askpass retry for the whole batch — one dialog.
                 var env = ProcessRunner.augmentedEnvironment()
                 env["SUDO_ASKPASS"] = askpass.path

@@ -11,13 +11,16 @@ public final class NpmManager: PackageManager {
     private let http: HTTPClient
     private let process: any ProcessRunning
     private let binaryOverride: String?   // nil = resolve via `which npm`
+    private let askpassURL: URL?
 
     public init(http: HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
-                binary: String? = nil) {
+                binary: String? = nil,
+                askpassURL: URL? = nil) {
         self.http = http
         self.process = process
         self.binaryOverride = binary
+        self.askpassURL = askpassURL
     }
 
     /// Resolve the real npm path (via `which npm`), or use the injected override.
@@ -42,7 +45,10 @@ public final class NpmManager: PackageManager {
         (cd "$d" && shasum -a 256 -c SHA256 --status)
         sudo installer -pkg "$d/node.pkg" -target /
         """
-        _ = try await process.run("/bin/bash", args: ["-c", script], env: nil, stream: nil)
+        // SUDO_ASKPASS lets the GUI show the native password dialog (sudo
+        // still prefers the terminal when one exists).
+        _ = try await process.run("/bin/bash", args: ["-c", script],
+                                  env: SudoAskpass.environment(helperURL: askpassURL), stream: nil)
     }
 
     public func version() async -> String? {
