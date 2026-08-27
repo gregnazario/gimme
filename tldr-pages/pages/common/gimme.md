@@ -1,37 +1,40 @@
 # gimme
 
-> A Swift-based package manager for macOS.
-> Install tools via typed formulae, with mise/asdf interop and an AI-agent contract.
+> Unified package manager for macOS: orchestrates Homebrew, Go, uv, Cargo, npm, and more through one CLI.
 > More information: <https://github.com/gregnazario/gimme>.
 
-- Install a tool (the signature shortcut: install if missing, update if stale, no-op if current):
+- Install a package (asks each manager in priority order; `--from <manager>` pins one and remembers it):
 
-`gimme {{tool}}`
+`gimme install {{package}}`
 
-- Install a specific version:
+- Search for a package (add `--all` to query every manager):
 
-`gimme {{tool}}@{{version}}`
+`gimme search {{query}}`
 
-- Explicitly install a tool (or, with no args + a `.tool-versions`/`mise.toml` present, install the batch):
+- List packages installed across all managers:
 
-`gimme install {{tool}}`
+`gimme list`
 
-- List installed tools (or all known formulae):
+- Check for outdated packages (add `--force` to bypass every cache, incl. registry lookups):
 
-`gimme list --all`
+`gimme outdated`
 
-- Upgrade all tools that aren't pinned:
+- Upgrade one package, or every outdated package:
 
-`gimme upgrade`
+`gimme upgrade {{package}}`
 
-- Switch the active version of an installed tool (no download):
+- Update gimme itself:
 
-`gimme use {{tool}} {{version}}`
+`gimme update --self`
 
-- Show health check (PATH, permissions, receipts, mise detection):
+- Find packages installed through more than one manager:
+
+`gimme consolidate`
+
+- Show which package managers are installed and available:
 
 `gimme doctor`
 
-- Emit structured JSON for scripting/agents (works with every command):
+- Forward any command verbatim to a backend manager:
 
-`gimme install {{tool}} --dry-run --json`
+`gimme brew {{args}}`

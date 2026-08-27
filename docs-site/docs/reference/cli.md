@@ -1,118 +1,120 @@
 # CLI commands
 
-The full command surface. Generated from `gimme introspect --json` — run that
-for the live, machine-readable spec.
+gimme is a pure orchestrator: it drives real package managers (Homebrew, Go,
+uv, Cargo, bun, npm, pnpm, Yarn, RubyGems, Composer, Deno, pipx, aqua, ubi,
+and the Mac App Store) through one unified namespace.
 
-## Signature shortcut
-
-```
-gimme <tool>[@version]
-```
-Install if missing, update if stale, no-op if current or pinned. The primary UX.
+Run `gimme --help` for the built-in usage text.
 
 ## Commands
 
 ### `install`
 ```
-gimme install <tool>[@version]
+gimme install <name> [--from <manager>] [--version <v>]
 ```
-Install a tool. With no positional arg, auto-detects `.tool-versions`/`mise.toml`.
-
-| Flag | Type | Description |
-|---|---|---|
-| `--dry-run` | bool | Plan without executing |
-| `--insecure` | bool | Skip checksum verification |
-| `--from-mise` | bool | Read mise/asdf config and install batch |
-| `--no-mise` | bool | Disable auto-detection of mise config |
+Install a package, asking each available manager in priority order.
+`--from` forces a specific manager and remembers the choice per package.
+Missing backends are bootstrapped on demand (prompted unless `-y`).
 
 ### `uninstall`
 ```
-gimme uninstall <tool>[@version]
+gimme uninstall <name> [--from <manager>]
 ```
-Remove a tool (active or specific version). `--force` overrides dependents.
 
 ### `upgrade`
 ```
-gimme upgrade [<tool>]
+gimme upgrade [<name>]
 ```
-Upgrade one tool, or every outdated tool when run with no arguments.
+Upgrade one package, or every outdated package across all managers when run
+with no arguments. Partial failures are reported per package.
 
 ### `update`
 ```
 gimme update [--self]
 ```
-Alias of bare `upgrade`; `--self` updates gimme itself.
-
-### `use`
-```
-gimme use <tool> <version>
-```
-Switch the active version (no download).
-
-### `pin` / `unpin`
-```
-gimme pin <tool>[@version]
-gimme unpin <tool>
-```
-Hold/release a version. Pinned tools are skipped by `update --all`.
+Alias of bare `upgrade`; `--self` updates gimme itself
+(SHA256SUMS-verified download from the latest GitHub release).
 
 ### `list`
 ```
-gimme list [--all] [--limit N] [--fields a,b] [--query <expr>]
+gimme list [--from <manager>]
 ```
-List installed tools (`--all` includes not-installed formulae).
-
-### `search`
-```
-gimme search <term>
-```
-
-### `info`
-```
-gimme info <tool>
-```
+List packages installed across all managers (or one) as
+`[manager] name version` lines.
 
 ### `outdated`
 ```
-gimme outdated
+gimme outdated [--from <manager>] [--refresh] [--force]
+```
+Show packages with a newer version available. Per-package registry lookups
+are cached for 1 h; `--force` re-asks every registry.
+
+### `search`
+```
+gimme search <query> [--all]
+```
+Search the highest-priority manager that has the package; `--all` queries
+every manager.
+
+### `info`
+```
+gimme info <name> [--from <manager>]
 ```
 
-### `tap`
+### `forget`
 ```
-gimme tap <add|remove|list> [name] [url]
+gimme forget <name> | --all
 ```
+Drop remembered per-package manager preferences.
+
+### `consolidate`
+```
+gimme consolidate
+```
+Report packages installed through more than one manager in the same
+ecosystem, with recommended install/uninstall commands. Makes no changes.
 
 ### `doctor`
 ```
 gimme doctor
 ```
-Health check: PATH, permissions, receipts, mise detection.
+Per-manager availability and version, plus detected runtime version managers
+(mise/asdf), which gimme coexists with but does not manage.
 
 ### `config`
 ```
-gimme config <get|set> [key] [value]
+gimme config                       (print current config)
+gimme config set priority brew,cargo,go,uv,bun
+gimme config set ecosystem.js bun
+gimme config show ecosystems
 ```
 
-### `introspect`
-```
-gimme introspect [--command <name>] [--json]
-```
-Machine-readable CLI spec (for agents).
+## Passthrough
 
-### `man`
 ```
-gimme man
+gimme <manager> <args...>
 ```
-Emit groff man-page source to stdout (pipe to a file under `man1/`).
+Forward arguments verbatim to the underlying tool — `gimme brew tap ...`,
+`gimme cargo build --release`. gimme doesn't parse or model passthrough
+commands. Managers: `homebrew go uv cargo bun npm pnpm yarn gem composer
+deno pipx aqua ubi appstore`.
 
 ## Global flags
 
 | Flag | Description |
 |---|---|
-| `--json` | Structured JSON output |
-| `--dry-run` | Plan mutations without executing |
-| `--yes` | Non-interactive confirm |
-| `--prefix <path>` | Override `~/.gimme` |
-| `--tap <name>` | _(not yet implemented; fails loud)_ |
-| `--verbose` | Debug logging |
-| `--no-color` | Disable color |
+| `--from <m>` | Restrict a command to one manager |
+| `--all` | search: query every manager · forget: drop all preferences |
+| `--refresh` | Bypass the list/outdated result cache for this run |
+| `--force` | Bypass every cache layer, incl. per-package registry lookups (implies `--refresh`; `--no-cache` is an alias) |
+| `--json` | Machine-readable JSON output (list/outdated/search/info/install/doctor/consolidate) |
+| `--version <v>` | install: pin to a version |
+| `-y`, `--yes` | Non-interactive; auto-confirm bootstrap prompts |
+
+## Caching
+
+Results are live-queried and cached in `~/.cache/gimme/` with per-type TTLs
+(5 min for list/outdated results, 1 h for per-package registry version
+lookups, 6 h for App Store lookups). Mutating operations invalidate the
+affected entries. `--refresh` bypasses the result cache; `--force` re-asks
+everything.
