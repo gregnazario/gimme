@@ -262,13 +262,15 @@ extension Gimme {
 extension Gimme {
     /// All installed packages across managers (or one if `from` is set).
     /// Queries managers concurrently. Uses cache unless `refresh`.
-    public func list(from managerID: ManagerID?, refresh: Bool) async throws -> [InstalledPackage] {
+    /// `preferStale` (stale-while-revalidate callers, i.e. the GUI) reads
+    /// expired cache entries instead of blocking on a live fetch.
+    public func list(from managerID: ManagerID?, refresh: Bool, preferStale: Bool = false) async throws -> [InstalledPackage] {
         let managers = managerID.flatMap { id in registry.get(id).map { [$0] } } ?? registry.enabled(config: config)
         return await withTaskGroup(of: [InstalledPackage].self) { group in
             for m in managers {
                 group.addTask {
                     let key = "\(m.id.rawValue):list"
-                    if !refresh, let cached = self.cache.get(key, ttlSeconds: self.config.listCacheTTLSeconds, as: [InstalledPackage].self) {
+                    if !refresh, let cached = self.cache.get(key, ttlSeconds: self.config.listCacheTTLSeconds, as: [InstalledPackage].self, allowStale: preferStale) {
                         return cached
                     }
                     if let pkgs = try? await m.listInstalled() {
@@ -284,18 +286,34 @@ extension Gimme {
         }
     }
 
+    /// True when any enabled manager's list/outdated cache entry exists but
+    /// predates the TTL — i.e. a preferStale read would serve data worth
+    /// revalidating in the background. Absent entries (cold cache) return
+    /// false: the live fetch already blocks in that case.
+    public func hasExpiredListOrOutdatedCache() -> Bool {
+        let ttl = Double(config.listCacheTTLSeconds)
+        return registry.enabled(config: config).contains { m in
+            ["\(m.id.rawValue):list", "\(m.id.rawValue):outdated"].contains { key in
+                guard let age = cache.age(of: key) else { return false }
+                return age > ttl
+            }
+        }
+    }
+
     /// All outdated packages across managers. Queries managers concurrently.
-    public func outdated(from managerID: ManagerID?, refresh: Bool) async throws -> [OutdatedPackage] {
+    /// Uses cache unless `refresh`; `force` additionally bypasses the
+    /// adapters' response caches (registry lookups, iTunes) and re-asks them.
+    public func outdated(from managerID: ManagerID?, refresh: Bool, force: Bool = false, preferStale: Bool = false) async throws -> [OutdatedPackage] {
         let managers = managerID.flatMap { id in registry.get(id).map { [$0] } }
             ?? registry.enabled(config: config).filter { $0.capabilities.contains(.outdated) }
         return await withTaskGroup(of: [OutdatedPackage].self) { group in
             for m in managers {
                 group.addTask {
                     let key = "\(m.id.rawValue):outdated"
-                    if !refresh, let cached = self.cache.get(key, ttlSeconds: self.config.listCacheTTLSeconds, as: [OutdatedPackage].self) {
+                    if !refresh && !force, let cached = self.cache.get(key, ttlSeconds: self.config.listCacheTTLSeconds, as: [OutdatedPackage].self, allowStale: preferStale) {
                         return cached
                     }
-                    if let pkgs = try? await m.outdated() {
+                    if let pkgs = try? await m.outdated(forceRefresh: force) {
                         self.cache.set(key, value: pkgs)
                         return pkgs
                     }
@@ -346,17 +364,27 @@ extension Gimme {
 extension Gimme {
     /// Wire the real adapters with production defaults.
     public static func defaultRegistry() -> Registry {
-        Registry(managers: [
-            // Homebrew gets the shared disk cache so its ~31 MB search indexes
-            // are downloaded once per 6 h instead of per query.
-            HomebrewManager(indexCache: Cache(directory: GimmePaths.defaultUser.cacheDir)),
-            GoManager(), UvManager(), CargoManager(),
-            BunManager(), NpmManager(), PnpmManager(),
-            YarnManager(), GemManager(), ComposerManager(),
-            DenoManager(), PipxManager(), AquaManager(), UbiManager(),
-            // App Store lookups share the same disk cache pattern as brew's
-            // search indexes: one lookup per app per 6 h.
-            AppStoreManager(indexCache: Cache(directory: GimmePaths.defaultUser.cacheDir))
+        // One shared disk cache for every adapter-level cache: brew's ~31 MB
+        // search indexes and App Store lookups (6 h TTL each), and the
+        // registry adapters' per-package latest-version lookups (1 h TTL) —
+        // one network hit per package per window instead of per run.
+        let diskCache = Cache(directory: GimmePaths.defaultUser.cacheDir)
+        return Registry(managers: [
+            HomebrewManager(indexCache: diskCache),
+            GoManager(),
+            UvManager(indexCache: diskCache),
+            CargoManager(indexCache: diskCache),
+            BunManager(indexCache: diskCache),
+            NpmManager(indexCache: diskCache),
+            PnpmManager(indexCache: diskCache),
+            YarnManager(indexCache: diskCache),
+            GemManager(indexCache: diskCache),
+            ComposerManager(),
+            DenoManager(),
+            PipxManager(indexCache: diskCache),
+            AquaManager(),
+            UbiManager(),
+            AppStoreManager(indexCache: diskCache)
         ])
     }
 }

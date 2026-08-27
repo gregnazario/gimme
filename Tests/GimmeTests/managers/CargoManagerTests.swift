@@ -96,4 +96,23 @@ final class CargoManagerTests: XCTestCase {
         XCTAssertEqual(pkgs.first?.name, "ripgrep")
         XCTAssertEqual(pkgs.first?.version, "14.1.0")
     }
+
+    // MARK: - outdated
+
+    func testOutdatedServedFromCacheWithinTTL() async throws {
+        let p = StubProcess()
+        p.listOutput = "ripgrep v14.1.0:\n    rg\n"
+        let http = StubHTTP()
+        http.byURL["https://crates.io/api/v1/crates/ripgrep"] = Data(#"{"crate":{"name":"ripgrep","max_version":"14.1.1"}}"#.utf8)
+        let cache = Cache(directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        let m = CargoManager(http: http, process: p, cargoBinary: "/Users/x/.cargo/bin/cargo", indexCache: cache)
+        _ = try await m.outdated()
+        // Second run with a stub-less client: the cached latest version must
+        // still be served with zero network requests.
+        let m2 = CargoManager(http: StubHTTP(), process: p, cargoBinary: "/Users/x/.cargo/bin/cargo", indexCache: cache)
+        let out = try await m2.outdated()
+        XCTAssertEqual(out.count, 1)
+        XCTAssertEqual(out.first?.name, "ripgrep")
+        XCTAssertEqual(out.first?.latestVersion, "14.1.1")
+    }
 }

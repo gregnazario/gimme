@@ -53,4 +53,18 @@ final class CLIArgsTests: XCTestCase {
         XCTAssertNil(p.from)
         XCTAssertEqual(p.positional, ["rg"])
     }
+
+    func testForceFlagParsesAndImpliesRefresh() throws {
+        let p = try CLIArgs.parse(["outdated", "--force"])
+        XCTAssertTrue(p.force)
+        XCTAssertTrue(p.refresh)
+    }
+
+    func testNoCacheIsAliasForForce() throws {
+        // --no-cache was historically parsed but did nothing; it now means a
+        // true force refresh (bypass engine AND response caches).
+        let p = try CLIArgs.parse(["outdated", "--no-cache"])
+        XCTAssertTrue(p.force)
+        XCTAssertTrue(p.refresh)
+    }
 }

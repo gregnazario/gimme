@@ -89,4 +89,75 @@ final class NpmManagerTests: XCTestCase {
         let v = await m.version()
         XCTAssertEqual(v, "11.17.0")
     }
+
+    // MARK: - outdated
+
+    private func lsOnePackage() -> StubProcess {
+        let p = StubProcess()
+        p.stubs["ls"] = ProcessResult(exitCode: 0, stdout: #"{"dependencies":{"typescript":{"version":"5.4.0"}}}"#, stderr: "")
+        return p
+    }
+
+    func testOutdatedUsesDistTagsEndpoint() async throws {
+        let http = StubHTTP()
+        // Only the dist-tags URL is stubbed: the old full-packument request
+        // (megabytes per package) is deliberately absent — against it this
+        // stub decodes nothing and outdated() reports [].
+        http.byURL["https://registry.npmjs.org/-/package/typescript/dist-tags"] = Data(#"{"latest":"5.5.4"}"#.utf8)
+        let m = npm(http, lsOnePackage())
+        let out = try await m.outdated()
+        XCTAssertEqual(out.count, 1)
+        XCTAssertEqual(out.first?.name, "typescript")
+        XCTAssertEqual(out.first?.installedVersion, "5.4.0")
+        XCTAssertEqual(out.first?.latestVersion, "5.5.4")
+    }
+
+    func testOutdatedServedFromCacheWithinTTL() async throws {
+        let http = StubHTTP()
+        http.byURL["https://registry.npmjs.org/-/package/typescript/dist-tags"] = Data(#"{"latest":"5.5.4"}"#.utf8)
+        let cache = Cache(directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        let m = NpmManager(http: http, process: lsOnePackage(), binary: "/tmp/npm-stub", indexCache: cache)
+        _ = try await m.outdated()
+        // Second run with a stub-less client (any request decodes Data() →
+        // nil → skipped): the cached latest version must still be served.
+        let m2 = NpmManager(http: StubHTTP(), process: lsOnePackage(), binary: "/tmp/npm-stub", indexCache: cache)
+        let out = try await m2.outdated()
+        XCTAssertEqual(out.count, 1)
+        XCTAssertEqual(out.first?.latestVersion, "5.5.4")
+    }
+
+    func testOutdatedForceRefreshBypassesResponseCache() async throws {
+        let http = StubHTTP()
+        http.byURL["https://registry.npmjs.org/-/package/typescript/dist-tags"] = Data(#"{"latest":"5.5.4"}"#.utf8)
+        let cache = Cache(directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        let m = NpmManager(http: http, process: lsOnePackage(), binary: "/tmp/npm-stub", indexCache: cache)
+        _ = try await m.outdated()  // caches 5.5.4
+        http.byURL["https://registry.npmjs.org/-/package/typescript/dist-tags"] = Data(#"{"latest":"5.6.0"}"#.utf8)
+        // Normal pass: still the cached value.
+        let cached = try await m.outdated()
+        XCTAssertEqual(cached.first?.latestVersion, "5.5.4")
+        // Force pass: re-asks the registry and overwrites the cache.
+        let forced = try await m.outdated(forceRefresh: true)
+        XCTAssertEqual(forced.first?.latestVersion, "5.6.0")
+    }
+
+    func testListInstalledSpawnedOnceWithinMemoWindow() async throws {
+        // The GUI runs `list` and `outdated` concurrently; the subprocess
+        // behind listInstalled should spawn once, not twice.
+        let p = lsOnePackage()
+        let m = npm(nil, p)
+        _ = try await m.listInstalled()
+        _ = try await m.listInstalled()
+        XCTAssertEqual(p.calls.filter { $0.1.first == "ls" }.count, 1)
+    }
+
+    func testMutatingOpsInvalidateListMemo() async throws {
+        let p = lsOnePackage()
+        let m = npm(nil, p)
+        _ = try await m.listInstalled()  // memoized
+        p.stubs["ls"] = ProcessResult(exitCode: 0, stdout: #"{"dependencies":{"typescript":{"version":"5.5.0"},"esbuild":{"version":"0.21.0"}}}"#, stderr: "")
+        _ = try? await m.upgrade(PackageRef(name: "typescript"))  // clears memo
+        let pkgs = try await m.listInstalled()
+        XCTAssertEqual(pkgs.count, 2)
+    }
 }

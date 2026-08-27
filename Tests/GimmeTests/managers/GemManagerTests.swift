@@ -105,4 +105,23 @@ final class GemManagerTests: XCTestCase {
         let v = await m.version()
         XCTAssertEqual(v, "4.0.16")
     }
+
+    // MARK: - outdated
+
+    func testOutdatedServedFromCacheWithinTTL() async throws {
+        let p = StubProcess()
+        p.stubs["list"] = ProcessResult(exitCode: 0, stdout: "rails (7.1.0)\n", stderr: "")
+        let http = StubHTTP()
+        http.byURL["https://rubygems.org/api/v1/gems/rails.json"] = Data(#"{"name":"rails","version":"7.2.0"}"#.utf8)
+        let cache = Cache(directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        let m = GemManager(http: http, process: p, binary: "/tmp/gem-stub", indexCache: cache)
+        _ = try await m.outdated()
+        // Second run with a stub-less client: the cached latest version must
+        // still be served with zero network requests.
+        let m2 = GemManager(http: StubHTTP(), process: p, binary: "/tmp/gem-stub", indexCache: cache)
+        let out = try await m2.outdated()
+        XCTAssertEqual(out.count, 1)
+        XCTAssertEqual(out.first?.name, "rails")
+        XCTAssertEqual(out.first?.latestVersion, "7.2.0")
+    }
 }

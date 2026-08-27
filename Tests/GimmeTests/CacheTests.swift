@@ -66,4 +66,24 @@ final class CacheTests: XCTestCase {
         let b = Cache(directory: dir)
         XCTAssertEqual(b.get("k", ttlSeconds: 60, as: String.self), "v")
     }
+
+    func testGetAllowStaleReturnsExpiredValue() throws {
+        let cache = makeCache()
+        cache.set("k", value: "v")
+        // Backdate the file's mtime by 100s, TTL 1s → expired.
+        guard let file = cache.fileForTesting("k") else { return XCTFail("no file") }
+        let old = Date().addingTimeInterval(-100)
+        try FileManager.default.setAttributes([.modificationDate: old], ofItemAtPath: file.path)
+        XCTAssertNil(cache.get("k", ttlSeconds: 1, as: String.self))
+        // Stale-while-revalidate reads want the expired value back.
+        XCTAssertEqual(cache.get("k", ttlSeconds: 1, as: String.self, allowStale: true), "v")
+    }
+
+    func testAgeOfKey() throws {
+        let cache = makeCache()
+        XCTAssertNil(cache.age(of: "missing"))
+        cache.set("k", value: "v")
+        let age = try XCTUnwrap(cache.age(of: "k"))
+        XCTAssertLessThan(age, 5)
+    }
 }

@@ -88,4 +88,23 @@ final class PipxManagerTests: XCTestCase {
         let v = await m.version()
         XCTAssertEqual(v, "1.16.0")
     }
+
+    // MARK: - outdated
+
+    func testOutdatedServedFromCacheWithinTTL() async throws {
+        let p = StubProcess()
+        p.stubs["list"] = ProcessResult(exitCode: 0, stdout: #"{"venvs":{"httpie":{"metadata":{"main_package":{"package_version":"3.2.0"}}}}}"#, stderr: "")
+        let http = StubHTTP()
+        http.byURL["https://pypi.org/pypi/httpie/json"] = Data(#"{"info":{"name":"httpie","version":"3.3.0"}}"#.utf8)
+        let cache = Cache(directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        let m = PipxManager(http: http, process: p, binary: "/tmp/pipx-stub", indexCache: cache)
+        _ = try await m.outdated()
+        // Second run with a stub-less client: the cached latest version must
+        // still be served with zero network requests.
+        let m2 = PipxManager(http: StubHTTP(), process: p, binary: "/tmp/pipx-stub", indexCache: cache)
+        let out = try await m2.outdated()
+        XCTAssertEqual(out.count, 1)
+        XCTAssertEqual(out.first?.name, "httpie")
+        XCTAssertEqual(out.first?.latestVersion, "3.3.0")
+    }
 }

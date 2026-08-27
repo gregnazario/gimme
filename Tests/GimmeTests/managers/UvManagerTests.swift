@@ -96,4 +96,21 @@ final class UvManagerTests: XCTestCase {
         XCTAssertEqual(outdated.first?.installedVersion, "3.2.3")
         XCTAssertEqual(outdated.first?.latestVersion, "3.3.0")
     }
+
+    func testOutdatedServedFromCacheWithinTTL() async throws {
+        let p = StubProcess()
+        p.stubs["tool"] = "httpie v3.2.3\n- http\n"
+        let http = StubHTTP()
+        http.byURL["https://pypi.org/pypi/httpie/json"] = Data(#"{"info":{"name":"httpie","version":"3.3.0"}}"#.utf8)
+        let cache = Cache(directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        let m = UvManager(http: http, process: p, uvBinary: "/opt/uv/bin/uv", indexCache: cache)
+        _ = try await m.outdated()
+        // Second run with a stub-less client: the cached latest version must
+        // still be served with zero network requests.
+        let m2 = UvManager(http: StubHTTP(), process: p, uvBinary: "/opt/uv/bin/uv", indexCache: cache)
+        let out = try await m2.outdated()
+        XCTAssertEqual(out.count, 1)
+        XCTAssertEqual(out.first?.name, "httpie")
+        XCTAssertEqual(out.first?.latestVersion, "3.3.0")
+    }
 }

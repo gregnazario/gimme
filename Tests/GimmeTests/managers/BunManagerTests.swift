@@ -77,4 +77,35 @@ final class BunManagerTests: XCTestCase {
         XCTAssertTrue(pkgs.contains { $0.name == "@babel/core" && $0.version == "7.0.0" })
         XCTAssertTrue(pkgs.contains { $0.name == "typescript" && $0.version == "5.4.0" })
     }
+
+    // MARK: - outdated
+
+    func testOutdatedUsesDistTagsEndpoint() async throws {
+        let p = StubProcess()
+        p.lsOutput = "└── typescript@5.4.0\n"
+        let http = StubHTTP()
+        // Only the dist-tags URL is stubbed — the old full-packument request
+        // is deliberately absent.
+        http.byURL["https://registry.npmjs.org/-/package/typescript/dist-tags"] = Data(#"{"latest":"5.5.4"}"#.utf8)
+        let m = bun(http, p)
+        let out = try await m.outdated()
+        XCTAssertEqual(out.count, 1)
+        XCTAssertEqual(out.first?.name, "typescript")
+        XCTAssertEqual(out.first?.installedVersion, "5.4.0")
+        XCTAssertEqual(out.first?.latestVersion, "5.5.4")
+    }
+
+    func testOutdatedServedFromCacheWithinTTL() async throws {
+        let p = StubProcess()
+        p.lsOutput = "└── typescript@5.4.0\n"
+        let http = StubHTTP()
+        http.byURL["https://registry.npmjs.org/-/package/typescript/dist-tags"] = Data(#"{"latest":"5.5.4"}"#.utf8)
+        let cache = Cache(directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        let m = BunManager(http: http, process: p, bunBinary: "/tmp/bun-stub", indexCache: cache)
+        _ = try await m.outdated()
+        let m2 = BunManager(http: StubHTTP(), process: p, bunBinary: "/tmp/bun-stub", indexCache: cache)
+        let out = try await m2.outdated()
+        XCTAssertEqual(out.count, 1)
+        XCTAssertEqual(out.first?.latestVersion, "5.5.4")
+    }
 }

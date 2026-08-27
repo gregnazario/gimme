@@ -174,6 +174,26 @@ final class AppStoreManagerTests: XCTestCase {
         XCTAssertEqual(http2.requests, [])
     }
 
+    func testOutdatedForceRefreshBypassesLookupCache() async throws {
+        try makeApp(tmp, "Cached.app", bundleID: "com.cached.app", version: "1.0.0")
+        let http = StubHTTP()
+        stubLookup(http, "com.cached.app", version: "2.0.0")
+        let cache = Cache(directory: tmp.appendingPathComponent("cache2"))
+        let m = AppStoreManager(http: http, process: StubProcess(), applicationDirs: [tmp],
+                                indexCache: cache, masBinary: "")
+        _ = try await m.outdated()  // caches the 2.0.0 lookup
+        let http2 = StubHTTP()
+        stubLookup(http2, "com.cached.app", version: "2.1.0")
+        let m2 = AppStoreManager(http: http2, process: StubProcess(), applicationDirs: [tmp],
+                                 indexCache: cache, masBinary: "")
+        // Normal pass: cached store version still served.
+        let cached = try await m2.outdated()
+        XCTAssertEqual(cached.first?.latestVersion, "2.0.0")
+        // Force pass: re-asks the iTunes Lookup API.
+        let forced = try await m2.outdated(forceRefresh: true)
+        XCTAssertEqual(forced.first?.latestVersion, "2.1.0")
+    }
+
     // MARK: - upgrade
 
     func testUpgradeRunsMasWhenPresent() async throws {

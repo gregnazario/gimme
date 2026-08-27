@@ -27,7 +27,17 @@ public extension HTTPClient {
 public final class URLSessionHTTPClient: NSObject, HTTPClient {
     private let session: URLSession
 
-    public init(session: URLSession = .shared) {
+    /// Outdated checks fan out one registry request per installed package
+    /// (100+ for gem-heavy machines); `URLSession.shared` caps ~6 connections
+    /// per host and serializes the fan-out in waves. Registries are CDNs —
+    /// raise the cap so a cold pass runs at network latency, not queue latency.
+    public static let registrySession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.httpMaximumConnectionsPerHost = 16
+        return URLSession(configuration: config)
+    }()
+
+    public init(session: URLSession = URLSessionHTTPClient.registrySession) {
         self.session = session
     }
 

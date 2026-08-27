@@ -197,6 +197,7 @@ public final class HomebrewManager: PackageManager {
         guard res.exitCode == 0 else {
             throw GimmeError.operationFailed(manager: .homebrew, op: "install", underlying: res.stderr)
         }
+        listMemo.clear()
         let version = (try? await installedVersion(of: package.name)) ?? "unknown"
         return InstallResult(package: InstalledPackage(name: package.name, version: version, manager: .homebrew, installedAt: Date()))
     }
@@ -206,6 +207,7 @@ public final class HomebrewManager: PackageManager {
         guard res.exitCode == 0 else {
             throw GimmeError.operationFailed(manager: .homebrew, op: "uninstall", underlying: res.stderr)
         }
+        listMemo.clear()
     }
 
     public func upgrade(_ package: PackageRef) async throws {
@@ -213,9 +215,22 @@ public final class HomebrewManager: PackageManager {
         guard res.exitCode == 0 else {
             throw GimmeError.operationFailed(manager: .homebrew, op: "upgrade", underlying: res.stderr)
         }
+        listMemo.clear()
     }
 
+    /// Memoized so concurrent engine `list` + `outdated` calls spawn the
+    /// ~0.6 s `brew list` subprocess once instead of twice. Mutating ops
+    /// clear it.
+    private let listMemo = InProcessMemo<[InstalledPackage]>(ttl: 5)
+
     public func listInstalled() async throws -> [InstalledPackage] {
+        if let memoized = listMemo.get() { return memoized }
+        let pkgs = try await runListInstalled()
+        listMemo.set(pkgs)
+        return pkgs
+    }
+
+    private func runListInstalled() async throws -> [InstalledPackage] {
         // `brew list --json --versions` returns:
         // {"formulae":[{"name","versions":["x"],...}], "casks":[{"token","versions":["x"],...}]}
         // Note: formulae use "name", casks use "token" for the identifier.

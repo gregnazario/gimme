@@ -12,13 +12,20 @@ public final class PipxManager: PackageManager {
     private let http: HTTPClient
     private let process: any ProcessRunning
     private let binaryOverride: String?
+    /// Shared disk cache for per-package latest-version lookups (App Store
+    /// pattern: one lookup per package per TTL window instead of per run).
+    /// nil = off.
+    private let indexCache: Cache?
+    private static let latestTTLSeconds = 3600
 
     public init(http: HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
-                binary: String? = nil) {
+                binary: String? = nil,
+                indexCache: Cache? = nil) {
         self.http = http
         self.process = process
         self.binaryOverride = binary
+        self.indexCache = indexCache
     }
 
     private var binaryPath: String {
@@ -69,20 +76,34 @@ public final class PipxManager: PackageManager {
         let spec = options.version.map { "\(package.name)==\($0)" } ?? package.name
         let res = try await process.run(binaryPath, args: ["install", spec], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .pipx, op: "install", underlying: res.stderr) }
+        listMemo.clear()
         return InstallResult(package: InstalledPackage(name: package.name, version: options.version ?? "latest", manager: .pipx, installedAt: Date()))
     }
 
     public func uninstall(_ package: PackageRef) async throws {
         let res = try await process.run(binaryPath, args: ["uninstall", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .pipx, op: "uninstall", underlying: res.stderr) }
+        listMemo.clear()
     }
 
     public func upgrade(_ package: PackageRef) async throws {
         let res = try await process.run(binaryPath, args: ["upgrade", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .pipx, op: "upgrade", underlying: res.stderr) }
+        listMemo.clear()
     }
 
+    /// Memoized so concurrent engine `list` + `outdated` calls spawn
+    /// `pipx list` once instead of twice. Mutating ops clear it.
+    private let listMemo = InProcessMemo<[InstalledPackage]>(ttl: 5)
+
     public func listInstalled() async throws -> [InstalledPackage] {
+        if let memoized = listMemo.get() { return memoized }
+        let pkgs = try await runListInstalled()
+        listMemo.set(pkgs)
+        return pkgs
+    }
+
+    private func runListInstalled() async throws -> [InstalledPackage] {
         // pipx list --json: { venvs: { name: { metadata: { main_package: { package_version } } } } }
         let res = try await process.run(binaryPath, args: ["list", "--json"], env: nil, stream: nil)
         guard res.exitCode == 0, let data = res.stdout.data(using: .utf8) else { return [] }
@@ -99,13 +120,27 @@ public final class PipxManager: PackageManager {
         }
     }
 
-    public func outdated() async throws -> [OutdatedPackage] {
+    /// Latest PyPI version of a tool, cached per package (1 h). forceRefresh
+    /// bypasses the cache read (and overwrites the entry). Returns nil on
+    /// any failure; callers skip the tool rather than flag it.
+    private func latestVersion(of name: String, forceRefresh: Bool = false) async -> String? {
+        let key = "\(id.rawValue):latest:\(name)"
+        if !forceRefresh,
+           let indexCache, let cached = indexCache.get(key, ttlSeconds: Self.latestTTLSeconds, as: String.self) {
+            return cached
+        }
+        guard let doc: PyPIDoc = try? await http.getJSON("https://pypi.org/pypi/\(name)/json", as: PyPIDoc.self),
+              let latest = doc.info.version else { return nil }
+        indexCache?.set(key, value: latest)
+        return latest
+    }
+
+    public func outdated(forceRefresh: Bool) async throws -> [OutdatedPackage] {
         let installed = try await listInstalled()
         return await withTaskGroup(of: OutdatedPackage?.self) { group in
             for pkg in installed {
                 group.addTask {
-                    guard let doc: PyPIDoc = try? await self.http.getJSON("https://pypi.org/pypi/\(pkg.name)/json", as: PyPIDoc.self),
-                          let latest = doc.info.version else { return nil }
+                    guard let latest = await self.latestVersion(of: pkg.name, forceRefresh: forceRefresh) else { return nil }
                     return pkg.version != latest ? OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .pipx) : nil
                 }
             }
@@ -113,5 +148,9 @@ public final class PipxManager: PackageManager {
             for await r in group { if let r { out.append(r) } }
             return out
         }
+    }
+
+    public func outdated() async throws -> [OutdatedPackage] {
+        try await outdated(forceRefresh: false)
     }
 }

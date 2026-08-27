@@ -12,15 +12,20 @@ public final class NpmManager: PackageManager {
     private let process: any ProcessRunning
     private let binaryOverride: String?   // nil = resolve via `which npm`
     private let askpassURL: URL?
+    /// Shared disk cache for per-package dist-tags lookups (App Store pattern:
+    /// one lookup per package per TTL window instead of per run). nil = off.
+    private let indexCache: Cache?
 
     public init(http: HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
                 binary: String? = nil,
-                askpassURL: URL? = nil) {
+                askpassURL: URL? = nil,
+                indexCache: Cache? = nil) {
         self.http = http
         self.process = process
         self.binaryOverride = binary
         self.askpassURL = askpassURL
+        self.indexCache = indexCache
     }
 
     /// Resolve the real npm path (via `which npm`), or use the injected override.
@@ -100,21 +105,35 @@ public final class NpmManager: PackageManager {
     public func install(_ package: PackageRef, options: InstallOptions) async throws -> InstallResult {
         let res = try await process.run(binaryPath, args: ["install", "-g", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .npm, op: "install", underlying: res.stderr) }
+        listMemo.clear()
         return InstallResult(package: InstalledPackage(name: package.name, version: "latest", manager: .npm, installedAt: Date()))
     }
 
     public func uninstall(_ package: PackageRef) async throws {
         let res = try await process.run(binaryPath, args: ["uninstall", "-g", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .npm, op: "uninstall", underlying: res.stderr) }
+        listMemo.clear()
     }
 
     public func upgrade(_ package: PackageRef) async throws {
         // npm semantics: reinstall to latest.
         let res = try await process.run(binaryPath, args: ["install", "-g", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .npm, op: "upgrade", underlying: res.stderr) }
+        listMemo.clear()
     }
 
+    /// Memoized so concurrent engine `list` + `outdated` calls spawn `npm ls`
+    /// once instead of twice. Mutating ops clear it.
+    private let listMemo = InProcessMemo<[InstalledPackage]>(ttl: 5)
+
     public func listInstalled() async throws -> [InstalledPackage] {
+        if let memoized = listMemo.get() { return memoized }
+        let pkgs = try await runListInstalled()
+        listMemo.set(pkgs)
+        return pkgs
+    }
+
+    private func runListInstalled() async throws -> [InstalledPackage] {
         // `npm ls -g --depth=0 --json` -> {"dependencies":{"name":{"version":"x"}, ...}}
         let res = try await process.run(binaryPath, args: ["ls", "-g", "--depth=0", "--json"], env: nil, stream: nil)
         guard res.exitCode == 0, let data = res.stdout.data(using: .utf8) else { return [] }
@@ -127,13 +146,14 @@ public final class NpmManager: PackageManager {
         }
     }
 
-    public func outdated() async throws -> [OutdatedPackage] {
+    public func outdated(forceRefresh: Bool) async throws -> [OutdatedPackage] {
         let installed = try await listInstalled()
         return await withTaskGroup(of: OutdatedPackage?.self) { group in
             for pkg in installed {
                 group.addTask {
-                    guard let doc: NpmPackument = try? await self.http.getJSON("https://registry.npmjs.org/\(pkg.name)", as: NpmPackument.self),
-                          let latest = doc.distTags?.latest else { return nil }
+                    // dist-tags endpoint (~180 B), not the full packument
+                    // (up to MBs) — outdated only ever needed this one field.
+                    guard let latest = await NpmRegistry.latestVersion(of: pkg.name, http: self.http, indexCache: self.indexCache, forceRefresh: forceRefresh) else { return nil }
                     return pkg.version != latest ? OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .npm) : nil
                 }
             }
@@ -141,5 +161,9 @@ public final class NpmManager: PackageManager {
             for await r in group { if let r { out.append(r) } }
             return out
         }
+    }
+
+    public func outdated() async throws -> [OutdatedPackage] {
+        try await outdated(forceRefresh: false)
     }
 }

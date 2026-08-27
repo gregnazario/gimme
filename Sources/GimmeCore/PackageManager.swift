@@ -183,6 +183,10 @@ public protocol PackageManager {
     func upgradeAll(_ packages: [PackageRef],
                     onPackageStart: ((PackageRef) -> Void)?) async -> [(PackageRef, Error?)]
     func listInstalled() async throws -> [InstalledPackage]
+    /// `outdated()` with explicit cache control: forceRefresh=true bypasses the
+    /// adapter's response caches (registry latest-version docs, iTunes lookups)
+    /// and refetches, overwriting the cache. Default forwards to outdated().
+    func outdated(forceRefresh: Bool) async throws -> [OutdatedPackage]
     func outdated() async throws -> [OutdatedPackage]
     func search(_ query: String) async throws -> [SearchHit]
     func info(_ package: PackageRef) async throws -> PackageInfo
@@ -190,6 +194,11 @@ public protocol PackageManager {
 }
 
 public extension PackageManager {
+    /// Default: adapters without response caches have nothing to bypass.
+    func outdated(forceRefresh: Bool) async throws -> [OutdatedPackage] {
+        try await outdated()
+    }
+
     /// Default upgradeAll: loop upgrade() per package. Backends whose tool
     /// needs a single privilege prompt or transaction for many packages
     /// (e.g. mas → sudo askpass, one password dialog) override this to batch.

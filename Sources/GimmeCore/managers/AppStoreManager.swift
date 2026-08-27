@@ -132,11 +132,13 @@ public final class AppStoreManager: PackageManager {
         DottedVersion.isOlder(installed, than: latest)
     }
 
-    /// Fetch (or serve from cache) the store record for a bundle ID. Returns
-    /// nil on any failure — callers skip the app rather than flag it.
-    func lookup(bundleID: String) async -> LookupResponse? {
+    /// Fetch (or serve from cache) the store record for a bundle ID.
+    /// forceRefresh bypasses the cache read (and overwrites the entry).
+    /// Returns nil on any failure — callers skip the app rather than flag it.
+    func lookup(bundleID: String, forceRefresh: Bool = false) async -> LookupResponse? {
         let key = "appstore:lookup:\(bundleID)"
-        if let indexCache, let cached = indexCache.get(key, ttlSeconds: Self.lookupTTL, as: LookupResponse.self) {
+        if !forceRefresh,
+           let indexCache, let cached = indexCache.get(key, ttlSeconds: Self.lookupTTL, as: LookupResponse.self) {
             return cached
         }
         let url = "https://itunes.apple.com/lookup?bundleId=\(bundleID)&country=us"
@@ -145,11 +147,11 @@ public final class AppStoreManager: PackageManager {
         return resp
     }
 
-    public func outdated() async throws -> [OutdatedPackage] {
+    public func outdated(forceRefresh: Bool) async throws -> [OutdatedPackage] {
         await withTaskGroup(of: OutdatedPackage?.self) { group in
             for app in scanInstalledApps() {
                 group.addTask {
-                    guard let store = await self.lookup(bundleID: app.bundleID)?.results.first,
+                    guard let store = await self.lookup(bundleID: app.bundleID, forceRefresh: forceRefresh)?.results.first,
                           let latest = store.version, !latest.isEmpty,
                           Self.isOlder(app.version, than: latest) else { return nil }
                     return OutdatedPackage(name: app.name, installedVersion: app.version,
@@ -160,6 +162,10 @@ public final class AppStoreManager: PackageManager {
             for await r in group { if let r { out.append(r) } }
             return out
         }
+    }
+
+    public func outdated() async throws -> [OutdatedPackage] {
+        try await outdated(forceRefresh: false)
     }
 
     // MARK: - Upgrade (hybrid mas / App Store page)

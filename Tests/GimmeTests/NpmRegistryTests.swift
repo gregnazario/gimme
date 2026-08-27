@@ -26,4 +26,20 @@ final class NpmRegistryTests: XCTestCase {
         let text = parsed?.queryItems?.first { $0.name == "text" }?.value
         XCTAssertEqual(text, "@z_ai/coding-helper")
     }
+
+    func testDistTagsURLForPlainName() {
+        XCTAssertEqual(
+            NpmRegistry.distTagsURL(for: "typescript").absoluteString,
+            "https://registry.npmjs.org/-/package/typescript/dist-tags"
+        )
+    }
+
+    func testDistTagsURLEncodesScopedName() {
+        // The "/" in a scoped name must be percent-encoded — bare, it would
+        // parse as a path segment and the endpoint would 404.
+        XCTAssertEqual(
+            NpmRegistry.distTagsURL(for: "@babel/core").absoluteString,
+            "https://registry.npmjs.org/-/package/@babel%2Fcore/dist-tags"
+        )
+    }
 }

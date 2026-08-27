@@ -11,6 +11,10 @@ public struct CLIArgs: Equatable {
     public var from: ManagerID?
     public var all: Bool = false
     public var refresh: Bool = false
+    /// True force refresh: bypasses the engine result cache AND adapter
+    /// response caches (registry latest-version docs, iTunes lookups), so
+    /// every number is re-asked from the source. Implies `refresh`.
+    public var force: Bool = false
     public var noCache: Bool = false
     public var json: Bool = false
     public var version: String?
@@ -34,7 +38,15 @@ public struct CLIArgs: Equatable {
                 }
             case "--all": p.all = true
             case "--refresh": p.refresh = true
-            case "--no-cache": p.noCache = true
+            case "--force":
+                // Force implies refresh: bypass every cache layer.
+                p.force = true
+                p.refresh = true
+            case "--no-cache":
+                // Historically parsed but inert; now an alias for --force.
+                p.noCache = true
+                p.force = true
+                p.refresh = true
             case "--json": p.json = true
             case "--version":
                 if i + 1 < args.count { p.version = args[i + 1]; i += 1 }

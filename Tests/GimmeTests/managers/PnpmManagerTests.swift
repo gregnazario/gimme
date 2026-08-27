@@ -89,4 +89,37 @@ final class PnpmManagerTests: XCTestCase {
         let v = await m.version()
         XCTAssertEqual(v, "10.33.2")
     }
+
+    // MARK: - outdated
+
+    private func lsOnePackage() -> StubProcess {
+        let p = StubProcess()
+        p.stubs["list"] = ProcessResult(exitCode: 0, stdout: #"[{"dependencies":{"typescript":{"version":"5.4.0"}}}]"#, stderr: "")
+        return p
+    }
+
+    func testOutdatedUsesDistTagsEndpoint() async throws {
+        let http = StubHTTP()
+        // Only the dist-tags URL is stubbed — the old full-packument request
+        // is deliberately absent.
+        http.byURL["https://registry.npmjs.org/-/package/typescript/dist-tags"] = Data(#"{"latest":"5.5.4"}"#.utf8)
+        let m = pnpm(http, lsOnePackage())
+        let out = try await m.outdated()
+        XCTAssertEqual(out.count, 1)
+        XCTAssertEqual(out.first?.name, "typescript")
+        XCTAssertEqual(out.first?.installedVersion, "5.4.0")
+        XCTAssertEqual(out.first?.latestVersion, "5.5.4")
+    }
+
+    func testOutdatedServedFromCacheWithinTTL() async throws {
+        let http = StubHTTP()
+        http.byURL["https://registry.npmjs.org/-/package/typescript/dist-tags"] = Data(#"{"latest":"5.5.4"}"#.utf8)
+        let cache = Cache(directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        let m = PnpmManager(http: http, process: lsOnePackage(), binary: "/tmp/pnpm-stub", indexCache: cache)
+        _ = try await m.outdated()
+        let m2 = PnpmManager(http: StubHTTP(), process: lsOnePackage(), binary: "/tmp/pnpm-stub", indexCache: cache)
+        let out = try await m2.outdated()
+        XCTAssertEqual(out.count, 1)
+        XCTAssertEqual(out.first?.latestVersion, "5.5.4")
+    }
 }

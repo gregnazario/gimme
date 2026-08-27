@@ -10,13 +10,20 @@ public final class CargoManager: PackageManager {
     private let http: HTTPClient
     private let process: any ProcessRunning
     private let cargoBinaryOverride: String?   // nil = resolve via `which cargo`
+    /// Shared disk cache for per-package latest-version lookups (App Store
+    /// pattern: one lookup per package per TTL window instead of per run).
+    /// nil = off.
+    private let indexCache: Cache?
+    private static let latestTTLSeconds = 3600
 
     public init(http: HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
-                cargoBinary: String? = nil) {
+                cargoBinary: String? = nil,
+                indexCache: Cache? = nil) {
         self.http = http
         self.process = process
         self.cargoBinaryOverride = cargoBinary
+        self.indexCache = indexCache
     }
 
     /// Resolve the real cargo path (via `which cargo`), or use the injected override.
@@ -96,6 +103,7 @@ public final class CargoManager: PackageManager {
             res = try await process.run(binaryPath, args: args, env: nil, stream: nil)
         }
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .cargo, op: "install", underlying: res.stderr) }
+        listMemo.clear()
         let version = (try? await installedVersion(of: package.name)) ?? "latest"
         return InstallResult(package: InstalledPackage(name: package.name, version: version, manager: .cargo, installedAt: Date()))
     }
@@ -103,6 +111,7 @@ public final class CargoManager: PackageManager {
     public func uninstall(_ package: PackageRef) async throws {
         let res = try await process.run(binaryPath, args: ["uninstall", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .cargo, op: "uninstall", underlying: res.stderr) }
+        listMemo.clear()
     }
 
     public func upgrade(_ package: PackageRef) async throws {
@@ -115,9 +124,21 @@ public final class CargoManager: PackageManager {
             let res = try await process.run(binaryPath, args: ["install", package.name, "--force"], env: nil, stream: nil)
             guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .cargo, op: "upgrade", underlying: res.stderr) }
         }
+        listMemo.clear()
     }
 
+    /// Memoized so concurrent engine `list` + `outdated` calls spawn
+    /// `cargo install --list` once instead of twice. Mutating ops clear it.
+    private let listMemo = InProcessMemo<[InstalledPackage]>(ttl: 5)
+
     public func listInstalled() async throws -> [InstalledPackage] {
+        if let memoized = listMemo.get() { return memoized }
+        let pkgs = try await runListInstalled()
+        listMemo.set(pkgs)
+        return pkgs
+    }
+
+    private func runListInstalled() async throws -> [InstalledPackage] {
         let res = try await process.run(binaryPath, args: ["install", "--list"], env: nil, stream: nil)
         guard res.exitCode == 0 else { return [] }
         // Lines: "ripgrep v14.1.0:" then indented binaries.
@@ -136,13 +157,27 @@ public final class CargoManager: PackageManager {
         return pkgs
     }
 
-    public func outdated() async throws -> [OutdatedPackage] {
+    /// Latest crates.io version of a crate, cached per package (1 h).
+    /// forceRefresh bypasses the cache read (and overwrites the entry).
+    /// Returns nil on any failure; callers skip the crate rather than flag it.
+    private func latestVersion(of name: String, forceRefresh: Bool = false) async -> String? {
+        let key = "\(id.rawValue):latest:\(name)"
+        if !forceRefresh,
+           let indexCache, let cached = indexCache.get(key, ttlSeconds: Self.latestTTLSeconds, as: String.self) {
+            return cached
+        }
+        guard let doc: CrateInfo = try? await http.getJSON("https://crates.io/api/v1/crates/\(name)", as: CrateInfo.self),
+              let latest = doc.crate.max_version else { return nil }
+        indexCache?.set(key, value: latest)
+        return latest
+    }
+
+    public func outdated(forceRefresh: Bool) async throws -> [OutdatedPackage] {
         let installed = try await listInstalled()
         return await withTaskGroup(of: OutdatedPackage?.self) { group in
             for pkg in installed {
                 group.addTask {
-                    guard let doc: CrateInfo = try? await self.http.getJSON("https://crates.io/api/v1/crates/\(pkg.name)", as: CrateInfo.self),
-                          let latest = doc.crate.max_version else { return nil }
+                    guard let latest = await self.latestVersion(of: pkg.name, forceRefresh: forceRefresh) else { return nil }
                     return pkg.version != latest ? OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .cargo) : nil
                 }
             }
@@ -150,6 +185,10 @@ public final class CargoManager: PackageManager {
             for await r in group { if let r { out.append(r) } }
             return out
         }
+    }
+
+    public func outdated() async throws -> [OutdatedPackage] {
+        try await outdated(forceRefresh: false)
     }
 
     private func installedVersion(of name: String) async throws -> String? {

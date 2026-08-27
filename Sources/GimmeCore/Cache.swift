@@ -26,11 +26,25 @@ public final class Cache {
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
 
-    public func get<T: Decodable>(_ key: String, ttlSeconds: Int, as type: T.Type) -> T? {
+    /// Seconds since the entry for `key` was last written; nil when absent.
+    /// Used by stale-while-revalidate callers to decide whether the value they
+    /// were (about to be) served predates the TTL window.
+    public func age(of key: String) -> TimeInterval? {
+        let url = file(for: key)
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let mtime = attrs[.modificationDate] as? Date else { return nil }
+        return Date().timeIntervalSince(mtime)
+    }
+
+    /// Read a value. Normally an entry older than the TTL is treated as
+    /// missing; `allowStale` (stale-while-revalidate callers) returns it
+    /// anyway — the caller follows up with a normal read to revalidate.
+    public func get<T: Decodable>(_ key: String, ttlSeconds: Int, as type: T.Type, allowStale: Bool = false) -> T? {
         let url = file(for: key)
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
         // TTL check via modification date.
-        if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+        if !allowStale,
+           let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
            let mtime = attrs[.modificationDate] as? Date,
            Date().timeIntervalSince(mtime) > Double(ttlSeconds) {
             return nil

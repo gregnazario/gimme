@@ -139,4 +139,33 @@ final class HomebrewManagerTests: XCTestCase {
         XCTAssertEqual(outdated.first?.installedVersion, "13.0.0")
         XCTAssertEqual(outdated.first?.latestVersion, "14.1.0")
     }
+
+    // MARK: - list memoization
+
+    private func listJSON(_ names: [String]) -> String {
+        let formulae = names.map { #"{"name":"\#($0)","versions":["1.0"]}"# }.joined(separator: ",")
+        return #"{"formulae":[\#(formulae)],"casks":[]}"#
+    }
+
+    func testListInstalledSpawnedOnceWithinMemoWindow() async throws {
+        // The GUI runs `list` and `outdated` concurrently; the expensive brew
+        // list subprocess (~0.6 s) should spawn once, not twice.
+        let p = StubProcess()
+        p.stubs["list"] = ProcessResult(exitCode: 0, stdout: listJSON(["rg"]), stderr: "")
+        let m = brewManager(process: p)
+        _ = try await m.listInstalled()
+        _ = try await m.listInstalled()
+        XCTAssertEqual(p.calls.filter { $0.1.first == "list" }.count, 1)
+    }
+
+    func testMutatingOpsInvalidateListMemo() async throws {
+        let p = StubProcess()
+        p.stubs["list"] = ProcessResult(exitCode: 0, stdout: listJSON(["rg"]), stderr: "")
+        let m = brewManager(process: p)
+        _ = try await m.listInstalled()  // memoized
+        p.stubs["list"] = ProcessResult(exitCode: 0, stdout: listJSON(["rg", "bat"]), stderr: "")
+        _ = try? await m.upgrade(PackageRef(name: "rg"))  // clears memo
+        let pkgs = try await m.listInstalled()
+        XCTAssertEqual(pkgs.count, 2)
+    }
 }

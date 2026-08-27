@@ -10,13 +10,18 @@ public final class BunManager: PackageManager {
     private let http: HTTPClient
     private let process: any ProcessRunning
     private let bunBinaryOverride: String?   // nil = resolve via `which bun`
+    /// Shared disk cache for per-package dist-tags lookups (App Store pattern:
+    /// one lookup per package per TTL window instead of per run). nil = off.
+    private let indexCache: Cache?
 
     public init(http: HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
-                bunBinary: String? = nil) {
+                bunBinary: String? = nil,
+                indexCache: Cache? = nil) {
         self.http = http
         self.process = process
         self.bunBinaryOverride = bunBinary
+        self.indexCache = indexCache
     }
 
     /// Resolve the real bun path (via `which bun`), or use the injected override.
@@ -80,21 +85,35 @@ public final class BunManager: PackageManager {
     public func install(_ package: PackageRef, options: InstallOptions) async throws -> InstallResult {
         let res = try await process.run(binaryPath, args: ["install", "-g", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .bun, op: "install", underlying: res.stderr) }
+        listMemo.clear()
         return InstallResult(package: InstalledPackage(name: package.name, version: "latest", manager: .bun, installedAt: Date()))
     }
 
     public func uninstall(_ package: PackageRef) async throws {
         let res = try await process.run(binaryPath, args: ["remove", "-g", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .bun, op: "uninstall", underlying: res.stderr) }
+        listMemo.clear()
     }
 
     public func upgrade(_ package: PackageRef) async throws {
         // npm semantics: reinstall to latest.
         let res = try await process.run(binaryPath, args: ["install", "-g", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .bun, op: "upgrade", underlying: res.stderr) }
+        listMemo.clear()
     }
 
+    /// Memoized so concurrent engine `list` + `outdated` calls spawn `bun pm ls`
+    /// once instead of twice. Mutating ops clear it.
+    private let listMemo = InProcessMemo<[InstalledPackage]>(ttl: 5)
+
     public func listInstalled() async throws -> [InstalledPackage] {
+        if let memoized = listMemo.get() { return memoized }
+        let pkgs = try await runListInstalled()
+        listMemo.set(pkgs)
+        return pkgs
+    }
+
+    private func runListInstalled() async throws -> [InstalledPackage] {
         let res = try await process.run(binaryPath, args: ["pm", "ls", "-g"], env: nil, stream: nil)
         guard res.exitCode == 0 else { return [] }
         // `bun pm ls -g` emits a tree with drawing characters:
@@ -114,13 +133,14 @@ public final class BunManager: PackageManager {
         }
     }
 
-    public func outdated() async throws -> [OutdatedPackage] {
+    public func outdated(forceRefresh: Bool) async throws -> [OutdatedPackage] {
         let installed = try await listInstalled()
         return await withTaskGroup(of: OutdatedPackage?.self) { group in
             for pkg in installed {
                 group.addTask {
-                    guard let doc: NpmPackument = try? await self.http.getJSON("https://registry.npmjs.org/\(pkg.name)", as: NpmPackument.self),
-                          let latest = doc.distTags?.latest else { return nil }
+                    // dist-tags endpoint (~180 B), not the full packument
+                    // (up to MBs) — outdated only ever needed this one field.
+                    guard let latest = await NpmRegistry.latestVersion(of: pkg.name, http: self.http, indexCache: self.indexCache, forceRefresh: forceRefresh) else { return nil }
                     return pkg.version != latest ? OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .bun) : nil
                 }
             }
@@ -128,5 +148,9 @@ public final class BunManager: PackageManager {
             for await r in group { if let r { out.append(r) } }
             return out
         }
+    }
+
+    public func outdated() async throws -> [OutdatedPackage] {
+        try await outdated(forceRefresh: false)
     }
 }

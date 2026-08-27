@@ -11,13 +11,20 @@ public final class GemManager: PackageManager {
     private let http: HTTPClient
     private let process: any ProcessRunning
     private let binaryOverride: String?   // nil = resolve via `which gem`
+    /// Shared disk cache for per-package latest-version lookups (App Store
+    /// pattern: one lookup per package per TTL window instead of per run).
+    /// nil = off.
+    private let indexCache: Cache?
+    private static let latestTTLSeconds = 3600
 
     public init(http: HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
-                binary: String? = nil) {
+                binary: String? = nil,
+                indexCache: Cache? = nil) {
         self.http = http
         self.process = process
         self.binaryOverride = binary
+        self.indexCache = indexCache
     }
 
     private var binaryPath: String {
@@ -75,6 +82,7 @@ public final class GemManager: PackageManager {
         if let v = options.version { args += ["--version", v] }
         let res = try await process.run(binaryPath, args: args, env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .gem, op: "install", underlying: res.stderr) }
+        listMemo.clear()
         return InstallResult(package: InstalledPackage(name: package.name, version: options.version ?? "latest", manager: .gem, installedAt: Date()))
     }
 
@@ -82,15 +90,28 @@ public final class GemManager: PackageManager {
         // -x: ignore dependencies, -a: uninstall all versions.
         let res = try await process.run(binaryPath, args: ["uninstall", "-x", "-a", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .gem, op: "uninstall", underlying: res.stderr) }
+        listMemo.clear()
     }
 
     public func upgrade(_ package: PackageRef) async throws {
         // No separate upgrade; reinstall the latest.
         let res = try await process.run(binaryPath, args: ["install", package.name], env: nil, stream: nil)
         guard res.exitCode == 0 else { throw GimmeError.operationFailed(manager: .gem, op: "upgrade", underlying: res.stderr) }
+        listMemo.clear()
     }
 
+    /// Memoized so concurrent engine `list` + `outdated` calls spawn `gem list`
+    /// once instead of twice. Mutating ops clear it.
+    private let listMemo = InProcessMemo<[InstalledPackage]>(ttl: 5)
+
     public func listInstalled() async throws -> [InstalledPackage] {
+        if let memoized = listMemo.get() { return memoized }
+        let pkgs = try await runListInstalled()
+        listMemo.set(pkgs)
+        return pkgs
+    }
+
+    private func runListInstalled() async throws -> [InstalledPackage] {
         // `gem list` -> "name (v1, v2)" lines, plus header lines like
         // "*** Local Gems ***". Take the first version listed per gem.
         let res = try await process.run(binaryPath, args: ["list"], env: nil, stream: nil)
@@ -115,18 +136,37 @@ public final class GemManager: PackageManager {
         }
     }
 
-    public func outdated() async throws -> [OutdatedPackage] {
+    /// Latest rubygems.org version of a gem, cached per package (1 h) so a
+    /// 100+-gem machine doesn't re-hit the API on every expired run.
+    /// forceRefresh bypasses the cache read (and overwrites the entry).
+    /// Returns nil on any failure; callers skip the gem rather than flag it.
+    private func latestVersion(of name: String, forceRefresh: Bool = false) async -> String? {
+        let key = "\(id.rawValue):latest:\(name)"
+        if !forceRefresh,
+           let indexCache, let cached = indexCache.get(key, ttlSeconds: Self.latestTTLSeconds, as: String.self) {
+            return cached
+        }
+        guard let doc: GemSearchHit = try? await http.getJSON("https://rubygems.org/api/v1/gems/\(name).json", as: GemSearchHit.self) else { return nil }
+        indexCache?.set(key, value: doc.version)
+        return doc.version
+    }
+
+    public func outdated(forceRefresh: Bool) async throws -> [OutdatedPackage] {
         let installed = try await listInstalled()
         return await withTaskGroup(of: OutdatedPackage?.self) { group in
             for pkg in installed {
                 group.addTask {
-                    guard let doc: GemSearchHit = try? await self.http.getJSON("https://rubygems.org/api/v1/gems/\(pkg.name).json", as: GemSearchHit.self) else { return nil }
-                    return pkg.version != doc.version ? OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: doc.version, manager: .gem) : nil
+                    guard let latest = await self.latestVersion(of: pkg.name, forceRefresh: forceRefresh) else { return nil }
+                    return pkg.version != latest ? OutdatedPackage(name: pkg.name, installedVersion: pkg.version, latestVersion: latest, manager: .gem) : nil
                 }
             }
             var out: [OutdatedPackage] = []
             for await r in group { if let r { out.append(r) } }
             return out
         }
+    }
+
+    public func outdated() async throws -> [OutdatedPackage] {
+        try await outdated(forceRefresh: false)
     }
 }
