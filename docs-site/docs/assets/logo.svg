@@ -1,4 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <rect width="64" height="64" rx="14" fill="#673ab7"/>
-  <text x="32" y="44" font-family="Inter,system-ui,sans-serif" font-size="38" font-weight="700" fill="#fff" text-anchor="middle">g</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Deep indigo → violet brand gradient -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="55%" stop-color="#6D28D9"/>
+      <stop offset="100%" stop-color="#5B21B6"/>
+    </linearGradient>
+    <!-- Soft top-left light -->
+    <radialGradient id="glow" cx="30%" cy="25%" r="70%">
+      <stop offset="0%" stop-color="#A5B4FC" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#6D28D9" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Bottom edge darkening for depth -->
+    <linearGradient id="depth" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#1E1B4B" stop-opacity="0.35"/>
+    </linearGradient>
+    <!-- Brand-tinted tape on the white box -->
+    <linearGradient id="tape" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6D28D9"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Squircle background -->
+  <rect width="1024" height="1024" rx="230" ry="230" fill="url(#bg)"/>
+  <rect width="1024" height="1024" rx="230" ry="230" fill="url(#glow)"/>
+  <rect width="1024" height="1024" rx="230" ry="230" fill="url(#depth)"/>
+
+  <!-- Downward arrow: "give me" — a package arriving -->
+  <path d="M 462 208 L 562 208 L 562 356 L 646 356 L 512 490 L 378 356 L 462 356 Z"
+        fill="#FFFFFF"/>
+
+  <!-- Package box -->
+  <rect x="308" y="520" width="408" height="288" rx="44" fill="#FFFFFF"/>
+  <!-- Tape strip down the box center -->
+  <rect x="468" y="520" width="88" height="288" fill="url(#tape)"/>
+  <!-- Tape end cap (slightly wider, like packing tape) -->
+  <rect x="448" y="520" width="128" height="36" fill="url(#tape)" opacity="0.85"/>
+  <!-- Subtle flap seam, broken by the tape -->
+  <line x1="308" y1="628" x2="468" y2="628" stroke="#E0E7FF" stroke-width="10"/>
+  <line x1="556" y1="628" x2="716" y2="628" stroke="#E0E7FF" stroke-width="10"/>
 </svg>
