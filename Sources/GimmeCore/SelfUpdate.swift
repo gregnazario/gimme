@@ -10,11 +10,15 @@ public final class SelfUpdate {
         public let tag: String               // "v2.3.0"
         public let version: String           // "2.3.0"
         public let assets: [String: String]  // asset name → browser_download_url
+        /// Release notes (the GitHub release body). Nil when absent — older
+        /// releases, or a cache entry written before this field existed.
+        public let notes: String?
 
-        public init(tag: String, version: String, assets: [String: String]) {
+        public init(tag: String, version: String, assets: [String: String], notes: String? = nil) {
             self.tag = tag
             self.version = version
             self.assets = assets
+            self.notes = notes
         }
     }
 
@@ -47,6 +51,7 @@ public final class SelfUpdate {
 
     private struct GHRelease: Decodable {
         let tag_name: String?
+        let body: String?
         let assets: [Asset]?
         struct Asset: Decodable {
             let name: String?
@@ -68,7 +73,7 @@ public final class SelfUpdate {
             }
         }
         let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
-        return Release(tag: tag, version: version, assets: assets)
+        return Release(tag: tag, version: version, assets: assets, notes: doc.body)
     }
 
     public static func isNewer(_ candidate: String, than current: String) -> Bool {

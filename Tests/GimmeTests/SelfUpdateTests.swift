@@ -69,6 +69,31 @@ final class SelfUpdateTests: XCTestCase {
         XCTAssertNil(release)
     }
 
+    func testLatestReleaseParsesNotes() async {
+        http.byURL["https://api.github.com/repos/gregnazario/gimme/releases/latest"] = Data(#"""
+        {"tag_name":"v2.4.1","body":"## Faster fetches\n- per-package latest-version cache","assets":[]}
+        """#.utf8)
+        let release = await sut().latestRelease()
+        XCTAssertEqual(release?.notes, "## Faster fetches\n- per-package latest-version cache")
+    }
+
+    func testLatestReleaseNotesNilWhenBodyAbsent() async {
+        http.byURL["https://api.github.com/repos/gregnazario/gimme/releases/latest"] = Data(#"""
+        {"tag_name":"v2.4.1","assets":[]}
+        """#.utf8)
+        let release = await sut().latestRelease()
+        XCTAssertNil(release?.notes)
+    }
+
+    /// Cache entries written before `notes` existed lack the key; decoding
+    /// an optional must not fail on them (12 h disk cache round-trip).
+    func testReleaseDecodesCacheEntriesWrittenBeforeNotesExisted() throws {
+        let json = #"{"tag":"v2.4.0","version":"2.4.0","assets":{"gimme-darwin-arm64.tar.gz":"https://example.com/a"}}"#
+        let decoded = try JSONDecoder().decode(SelfUpdate.Release.self, from: Data(json.utf8))
+        XCTAssertEqual(decoded.version, "2.4.0")
+        XCTAssertNil(decoded.notes)
+    }
+
     func testIsNewer() {
         XCTAssertTrue(SelfUpdate.isNewer("2.3.0", than: "2.1.0"))
         XCTAssertFalse(SelfUpdate.isNewer("2.1.0", than: "2.1.0"))
