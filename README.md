@@ -45,7 +45,7 @@ gimme install ripgrep        # resolves to the right manager automatically
 gimme install --from cargo ripgrep   # force a backend; remembered next time
 gimme list                   # everything installed, across every manager
 gimme outdated               # what can be upgraded, across every manager
-gimme update                 # upgrade all outdated packages
+gimme upgrade                # upgrade all outdated packages
 gimme brew services start postgres   # passthrough to the real tool
 ```
 
@@ -110,8 +110,9 @@ Use `gimme forget <name>` (or `--all`) to clear remembered preferences.
 ```
 gimme install <name> [--from <manager>] [--version <v>]
 gimme uninstall <name>
-gimme upgrade <name>
-gimme update                       upgrade all outdated, across every manager
+gimme upgrade <name>               upgrade one package
+gimme upgrade                      upgrade ALL outdated, across every manager
+gimme update [--self]              alias of bare `upgrade`; --self updates gimme itself
 gimme list [--from <manager>]      all installed (default); --from filters to one
 gimme outdated [--from <manager>]
 gimme search <query> [--all]       default-priority manager; --all fans out
@@ -125,16 +126,18 @@ gimme config [set priority <a,b,c>]
 tool — `gimme brew tap ...`, `gimme cargo build --release`, etc. gimme doesn't
 parse or model it.
 
-**Flags:** `--from <m>` · `--all` · `--refresh` (bypass cache read) · `--no-cache`
-· `--json` (machine-readable output for `list`/`outdated`/`search`/`info`) ·
-`--version <v>` · `-y` (non-interactive).
+**Flags:** `--from <m>` · `--all` · `--refresh` (bypass cache read) · `--force`
+(bypass every cache layer, incl. per-package registry lookups; implies
+`--refresh`; `--no-cache` is an alias) · `--json` (machine-readable output for
+`list`/`outdated`/`search`/`info`) · `--version <v>` · `-y` (non-interactive).
 
 ## State
 
 - **Live query + TTL cache.** gimme always asks the real managers for the truth
   on `list`/`outdated`/`info`; the disk cache only avoids re-querying within its
-  TTL window (5 min for list/outdated, 1 hour for info). `--refresh` bypasses it.
-  Cache lives in `~/.cache/gimme/`.
+  TTL window (5 min for list/outdated, 1 h for per-package latest-version
+  lookups, 6 h for App Store lookups). `--refresh` bypasses the result cache;
+  `--force` re-asks every registry too. Cache lives in `~/.cache/gimme/`.
 - **Config:** `~/.config/gimme/config.toml` (priority list, enabled managers,
   cache TTLs).
 - **Preferences:** `~/.config/gimme/preferences.toml` (per-package remembered

@@ -31,11 +31,17 @@ gimme uninstall <tool>[@version]
 ```
 Remove a tool (active or specific version). `--force` overrides dependents.
 
+### `upgrade`
+```
+gimme upgrade [<tool>]
+```
+Upgrade one tool, or every outdated tool when run with no arguments.
+
 ### `update`
 ```
-gimme update [<tool>]|--all
+gimme update [--self]
 ```
-Update one tool or every non-pinned tool. `--check` reports outdated without updating.
+Alias of bare `upgrade`; `--self` updates gimme itself.
 
 ### `use`
 ```

@@ -113,23 +113,27 @@ struct GimmeCLI {
             try await gimme.uninstall(name: name, from: p.from)
             print("uninstalled \(name)")
         case "upgrade":
-            guard let name = p.positional.first else { throw GimmeError.usage("usage: gimme upgrade <name>") }
-            try await gimme.upgrade(name: name, from: p.from)
-            print("upgraded \(name)")
+            if p.positional.isEmpty {
+                // Bare `gimme upgrade` upgrades everything outdated — the
+                // same flow as `gimme update`.
+                try await runUpgradeAll(gimme)
+            } else {
+                guard let name = p.positional.first else { throw GimmeError.usage("usage: gimme upgrade <name>") }
+                try await gimme.upgrade(name: name, from: p.from)
+                print("upgraded \(name)")
+            }
         case "update":
             if p.selfUpdate {
                 try await runSelfUpdate()
             } else {
-                let summary = try await gimme.updateAll()
-                for id in summary.succeeded { print("updated \(id)") }
-                for f in summary.failed { print("FAILED \(f.id): \(f.error)") }
+                try await runUpgradeAll(gimme)
             }
         case "list":
             let list = try await gimme.list(from: p.from, refresh: p.refresh)
             if p.json { print((try? JSONEncoder().encode(list)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]") }
             else { list.forEach { print("[\($0.manager.rawValue)] \($0.name) \($0.version)") } }
         case "outdated":
-            let outdated = try await gimme.outdated(from: p.from, refresh: p.refresh)
+            let outdated = try await gimme.outdated(from: p.from, refresh: p.refresh, force: p.force)
             if p.json { print((try? JSONEncoder().encode(outdated)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]") }
             else { outdated.forEach { print("[\($0.manager.rawValue)] \($0.name) \($0.installedVersion) → \($0.latestVersion)") } }
         case "search":
@@ -254,6 +258,14 @@ struct GimmeCLI {
         }
     }
 
+    /// `gimme update` / bare `gimme upgrade`: upgrade every outdated package
+    /// across all managers.
+    static func runUpgradeAll(_ gimme: Gimme) async throws {
+        let summary = try await gimme.updateAll()
+        for id in summary.succeeded { print("updated \(id)") }
+        for f in summary.failed { print("FAILED \(f.id): \(f.error)") }
+    }
+
     /// `gimme update --self`: check the latest GitHub release and replace the
     /// running binary (spec: 2026-08-22-self-update-design.md).
     static func runSelfUpdate() async throws {
@@ -280,8 +292,8 @@ struct GimmeCLI {
         Usage:
           gimme install <name> [--from <manager>] [--version <v>]
           gimme uninstall <name>
-          gimme upgrade <name>
-          gimme update [--self]              (upgrade all outdated; --self updates gimme)
+          gimme upgrade [<name>]             (no name: upgrade all outdated)
+          gimme update [--self]              (alias of bare `upgrade`; --self updates gimme)
           gimme list [--from <manager>]
           gimme outdated [--from <manager>]
           gimme search <query> [--all]
@@ -293,7 +305,8 @@ struct GimmeCLI {
 
         Passthrough: gimme <manager> <args...>   (homebrew|go|uv|cargo|bun)
 
-        Flags: --from <m> --all --refresh --no-cache --json --version <v> -y
+        Flags: --from <m> --all --refresh --force --no-cache --json --version <v> -y
+               (--force: bypass all caches, incl. per-package registry lookups)
         """)
     }
 }

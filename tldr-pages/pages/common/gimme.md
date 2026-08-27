@@ -20,9 +20,9 @@
 
 `gimme list --all`
 
-- Update all tools that aren't pinned:
+- Upgrade all tools that aren't pinned:
 
-`gimme update --all`
+`gimme upgrade`
 
 - Switch the active version of an installed tool (no download):
 

@@ -52,6 +52,9 @@ struct GimmeApp: App {
                 Button("About gimme") { store.showAbout = true }
                 Button("Check for Updates…") { Task { await store.checkForUpdates(manual: true) } }
                     .disabled(store.isSelfUpdating)
+                Divider()
+                Button("Install Command-Line Tool…") { Task { await store.installCLITool() } }
+                    .disabled(store.isInstallingCLI)
             }
             CommandGroup(after: .help) {
                 Button("Report an Issue…") { store.showReportIssue = true }
@@ -227,6 +230,35 @@ final class GimmeStore: ObservableObject {
     }
     @Published var errorMessage = ""
 
+    // MARK: - CLI tool install (menu bar → Install Command-Line Tool…)
+
+    @Published var isInstallingCLI = false
+    private let cliToolInstaller = CLIToolInstaller()
+
+    /// Install (or update in place) the `gimme` command-line tool from the
+    /// latest GitHub release. Fresh installs land in ~/.local/bin — same
+    /// location install.sh uses — so both entry points agree.
+    func installCLITool() async {
+        guard !isInstallingCLI else { return }
+        isInstallingCLI = true
+        defer { isInstallingCLI = false }
+        do {
+            let outcome = try await cliToolInstaller.installOrUpdate()
+            log(outcome.message)
+            var text = "\(outcome.message)."
+            if case .installed = outcome {
+                text += "\nLocation: \(cliToolInstaller.defaultTarget.path)"
+                let dir = cliToolInstaller.defaultTarget.deletingLastPathComponent().path
+                if !CLIToolInstaller.isOnPATH(dir) {
+                    text += "\nNote: that folder is not on your PATH — add it to your shell profile to run `gimme` in a terminal."
+                }
+            }
+            updateInfo = InfoAlert(text: text)
+        } catch {
+            showError(error)
+        }
+    }
+
     /// Per-package upgrade progress for the Updates view.
     enum UpgradeState: Equatable {
         case pending      // queued
@@ -265,10 +297,15 @@ final class GimmeStore: ObservableObject {
     func loadAll(refresh: Bool = false) async {
         loading = true
         defer { loading = false }
+        // Stale-while-revalidate on the auto-load path: paint expired cache
+        // data instantly, then revalidate in the background. Explicit
+        // refreshes (button/⌘R) stay fully blocking.
+        let preferStale = !refresh
+        let needsRevalidation = preferStale && gimme.hasExpiredListOrOutdatedCache()
         // All four are independent — run concurrently so the user waits for
         // the slowest one, not the sum.
-        async let installedResult = gimme.list(from: nil, refresh: refresh)
-        async let outdatedResult = gimme.outdated(from: nil, refresh: refresh)
+        async let installedResult = gimme.list(from: nil, refresh: refresh, preferStale: preferStale)
+        async let outdatedResult = gimme.outdated(from: nil, refresh: refresh, preferStale: preferStale)
         async let statusesResult = gimme.statuses()
         async let runtimesResult = VersionManagerDetector.detect()
         do {
@@ -280,6 +317,18 @@ final class GimmeStore: ObservableObject {
         // Fire-and-forget: post a notification when a newer release exists
         // (12 h-cached; silent when up to date or notifications are off).
         Task { await checkForUpdates(manual: false) }
+        if needsRevalidation { Task { await revalidateInstalledAndOutdated() } }
+    }
+
+    /// Background pass behind a stale-while-revalidate load. With normal TTL
+    /// semantics this is a disk hit (no subprocess, no network) when the fast
+    /// pass served fresh data, and a full refetch that republishes when it
+    /// served expired data.
+    private func revalidateInstalledAndOutdated() async {
+        async let installedResult = gimme.list(from: nil, refresh: false)
+        async let outdatedResult = gimme.outdated(from: nil, refresh: false)
+        if let i = try? await installedResult { installed = i }
+        if let o = try? await outdatedResult { outdated = o }
     }
 
     /// Refresh just the per-manager status (availability + version).
@@ -484,6 +533,20 @@ final class GimmeStore: ObservableObject {
         do {
             outdated = try await gimme.outdated(from: nil, refresh: true)
             // Clear stale per-package status for packages no longer outdated.
+            let currentIDs = Set(outdated.map { $0.id })
+            for id in upgradeStatus.keys where !currentIDs.contains(id) {
+                upgradeStatus.removeValue(forKey: id)
+            }
+        } catch { showError(error) }
+    }
+
+    /// True force refresh: bypasses the per-package registry/App Store
+    /// response caches too, so every "latest version" is re-asked.
+    func forceRefreshOutdated() async {
+        isRefreshingOutdated = true
+        defer { isRefreshingOutdated = false }
+        do {
+            outdated = try await gimme.outdated(from: nil, refresh: true, force: true)
             let currentIDs = Set(outdated.map { $0.id })
             for id in upgradeStatus.keys where !currentIDs.contains(id) {
                 upgradeStatus.removeValue(forKey: id)

@@ -33,8 +33,11 @@ struct UpdatesView: View {
                     .font(.headline)
             }
             Spacer()
-            Button {
-                Task { await store.refreshOutdated() }
+            // Refresh (cached answers, fast) vs Force Refresh (re-asks every
+            // registry — slower, but never a stale "latest version").
+            Menu {
+                Button("Refresh") { Task { await store.refreshOutdated() } }
+                Button("Force Refresh") { Task { await store.forceRefreshOutdated() } }
             } label: {
                 if store.isRefreshingOutdated {
                     ProgressView().controlSize(.small)
@@ -43,7 +46,7 @@ struct UpdatesView: View {
                 }
             }
             .disabled(store.isUpdating || store.isRefreshingOutdated)
-            .help("Re-check for updates across all managers")
+            .help("Re-check for updates (Force Refresh also bypasses per-package caches)")
 
             Button {
                 Task { await store.updateAll() }
