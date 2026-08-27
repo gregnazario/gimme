@@ -49,7 +49,7 @@ local packaging uses `--skip-notarize` (signed but not notarized).
 
 - CI: the next tagged release's `spctl -a -t open` on the DMG shows
   "accepted"; the release assets are signed.
-- Local: `spctl -a -t open --context context:primary-signature dist/gimme-<v>-arm64.dmg`
+- Local: `spctl -a -t open --context context:primary-signature dist/GimmeUI-<v>-arm64.dmg`
   reports accepted, and `xcrun stapler validate` passes.
 
 ## Notes
@@ -57,5 +57,6 @@ local packaging uses `--skip-notarize` (signed but not notarized).
 - Self-update doesn't depend on this: it verifies SHA256SUMS and runs the
   curl path (no Gatekeeper quarantine). Notarization matters for anyone
   downloading the DMG from a browser.
-- The DMG attached to releases is built locally (signed + notarized once
-  step 2 is done); CI's tarballs serve the CLI and in-app self-update.
+- Every tagged release attaches the DMG (`GimmeUI-<version>-arm64.dmg`,
+  built by CI via the same `scripts/make-dmg.sh` as `just package`); the
+  versionless tarballs serve the CLI, install.sh, and in-app self-update.

@@ -139,6 +139,42 @@ jobs:
 
       # --- Package + Release ---
 
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Build UI installer DMG
+        # Same recipe as local `just package` (scripts/make-dmg.sh): the app
+        # is already signed + stapled, and its staple travels inside the DMG.
+        # Versioned name: this is the human-facing download (the versionless
+        # tarballs are the stable-URL artifacts consumed by install.sh and
+        # self-update).
+        run: |
+          sh scripts/make-dmg.sh \
+            "GimmeUI-${{ steps.version.outputs.version }}-arm64.dmg" \
+            "gimme ${{ steps.version.outputs.version }}"
+
+      - name: Notarize + staple DMG
+        if: env.MACOS_CERTIFICATE != '' && env.APPLE_ID != ''
+        env:
+          APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PWD: ${{ secrets.APPLE_ID_PWD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          DMG="GimmeUI-${{ steps.version.outputs.version }}-arm64.dmg"
+          # Sign the DMG itself (the app inside is already signed + stapled),
+          # then notarize + staple the DMG so browser downloads open clean.
+          codesign --force --timestamp \
+            --sign "$APPLE_DEVELOPER_ID" "$DMG"
+
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PWD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+          xcrun stapler staple "$DMG"
+
       - name: Strip + tarball CLI
         run: |
           strip .build/release/gimme
@@ -148,13 +184,21 @@ jobs:
         # Named GimmeUI-, not Gimme-: GitHub treats release asset names as
         # case-insensitively unique, so Gimme-darwin-arm64.tar.gz collided
         # with gimme-darwin-arm64.tar.gz and the second upload always failed.
+        # Consumed by name by install.sh and the in-app self-update — the DMG
+        # does not replace it.
         run: tar czf GimmeUI-darwin-arm64.tar.gz -C app Gimme.app
 
       - name: Generate SHA256SUMS
         # Consumed by `gimme update --self` / GUI self-update and install.sh —
         # downloaded artifacts are verified against these digests before
-        # anything is executed or replaced.
-        run: shasum -a 256 gimme-darwin-arm64.tar.gz GimmeUI-darwin-arm64.tar.gz > SHA256SUMS
+        # anything is executed or replaced. Lookups are by filename, so the
+        # DMG line is additive.
+        run: |
+          shasum -a 256 \
+            gimme-darwin-arm64.tar.gz \
+            GimmeUI-darwin-arm64.tar.gz \
+            "GimmeUI-${{ steps.version.outputs.version }}-arm64.dmg" \
+            > SHA256SUMS
 
       - name: Clean up keychain
         if: always()
@@ -176,4 +220,5 @@ jobs:
             --notes-from-tag \
             gimme-darwin-arm64.tar.gz \
             GimmeUI-darwin-arm64.tar.gz \
+            "GimmeUI-${{ steps.version.outputs.version }}-arm64.dmg" \
             SHA256SUMS

@@ -9,7 +9,7 @@ unified interface, so you can address packages by name across all of them
 
 **macOS app:** download the signed + notarized DMG from
 [releases](https://github.com/gregnazario/gimme/releases), open it, and drag
-gimme to `Applications`. No Gatekeeper prompts.
+Gimme to `Applications`. No Gatekeeper prompts.
 
 **CLI (and app) via the install script:**
 ```bash
