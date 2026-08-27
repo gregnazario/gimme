@@ -26,12 +26,13 @@ final class UpdateNotifier {
         post(title: "gimme", body: Self.body(updated: updated, failed: failed))
     }
 
-    /// Informational post (e.g. a newer gimme release is available). Unlike
-    /// run-finished summaries this is NOT background-only: there is no in-app
-    /// surface announcing it, so hiding it while frontmost would hide it
-    /// entirely. Settings/permission checks still apply; silent when denied.
+    /// Informational post (e.g. a newer gimme release is available). Like
+    /// run-finished summaries this is background-only: the in-app update
+    /// banner announces it while Gimme is frontmost, so a notification there
+    /// would be redundant. Settings/permission checks still apply; silent
+    /// when denied.
     func post(title: String, body: String) {
-        guard isBundled else { return }
+        guard isBundled, NSApp.isActive == false else { return }
         Task {
             let settings = await center.notificationSettings()
             guard settings.authorizationStatus == .authorized else { return }

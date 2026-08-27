@@ -34,14 +34,20 @@ struct ContentView: View {
             }
             .navigationTitle("gimme")
         } detail: {
-            switch store.sidebarSelection {
-            case .installed:     InstalledView()
-            case .updates:       UpdatesView()
-            case .browse:        BrowseView()
-            case .managers:      PackageManagersView()
-            case .consolidate:   ConsolidateView()
-            case .preferences:   PreferencesView()
-            case .activity:      ActivityView()
+            VStack(spacing: 0) {
+                if store.pendingUpdate != nil {
+                    UpdateBanner()
+                    Divider()
+                }
+                switch store.sidebarSelection {
+                case .installed:     InstalledView()
+                case .updates:       UpdatesView()
+                case .browse:        BrowseView()
+                case .managers:      PackageManagersView()
+                case .consolidate:   ConsolidateView()
+                case .preferences:   PreferencesView()
+                case .activity:      ActivityView()
+                }
             }
         }
     }

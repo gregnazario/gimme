@@ -29,18 +29,9 @@ struct GimmeApp: App {
                         store.showReportIssue = true
                     })
                 }
-                .alert("Update gimme?", isPresented: Binding(
-                    get: { store.pendingUpdate != nil },
-                    set: { if !$0 { store.pendingUpdate = nil } }
-                )) {
-                    Button("Update Now") {
-                        if let release = store.pendingUpdate {
-                            Task { await store.updateSelf(release) }
-                        }
-                    }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text(store.pendingUpdate.map { "gimme \($0.version) is available (you have \(GimmeVersion.current)). The app downloads, verifies, and relaunches itself." } ?? "")
+                .sheet(isPresented: $store.showUpdateSheet) {
+                    UpdateSheet()
+                        .environmentObject(store)
                 }
                 .alert(item: $store.updateInfo) { info in
                     Alert(title: Text("gimme"), message: Text(info.text),
@@ -166,14 +157,17 @@ final class GimmeStore: ObservableObject {
     }
     /// Set when a newer release exists and the user should confirm updating.
     @Published var pendingUpdate: SelfUpdate.Release?
+    /// Presents the What's New / Update Now sheet (manual check or banner).
+    @Published var showUpdateSheet = false
     /// One-shot informational alert (up-to-date, check failed).
     @Published var updateInfo: InfoAlert?
     @Published var isSelfUpdating = false
     private let selfUpdater = SelfUpdate()
 
-    /// Latest-release check. `manual` (menu item) bypasses the 12 h cache and
-    /// reports the result; the background launch check only posts a
-    /// notification (when notifications are on).
+    /// Latest-release check. `manual` (menu item) bypasses the 12 h cache,
+    /// reports the result, and opens the What's New sheet when an update
+    /// exists; the background launch check raises the in-app banner (and
+    /// posts a notification) only while `notifyUpdates` is on.
     func checkForUpdates(manual: Bool) async {
         let key = "meta:selfupdate:latest"
         var release: SelfUpdate.Release?
@@ -193,9 +187,11 @@ final class GimmeStore: ObservableObject {
         }
         if manual {
             pendingUpdate = release
+            showUpdateSheet = true
         } else if config.notifyUpdates {
+            pendingUpdate = release
             notifier.post(title: "gimme",
-                body: "gimme \(release.version) available — gimme menu → Check for Updates…")
+                body: "gimme \(release.version) available — update from the gimme app")
         }
     }
 
