@@ -1,0 +1,2533 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A unified package manager for macOS — one CLI and GUI over Homebrew, Go, uv, Cargo, npm, and more.">
+      
+      
+      
+        <link rel="canonical" href="https://gregnazario.github.io/gimme/latest/design/foundation/">
+      
+      
+        <link rel="prev" href="../../reference/decisions/">
+      
+      
+        <link rel="next" href="../mise/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Foundation spec - gimme</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#gimme-foundation-design" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="gimme" class="md-header__button md-logo" aria-label="gimme" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            gimme
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Foundation spec
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="indigo"  aria-label="Switch to dark"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="indigo"  aria-label="Switch to light"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/gregnazario/gimme" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    gregnazario/gimme
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="gimme" class="md-nav__button md-logo" aria-label="gimme" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="logo">
+
+    </a>
+    gimme
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/gregnazario/gimme" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    gregnazario/gimme
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guides/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/formulae/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Formula format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/mise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mise/asdf interop
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/agents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../reference/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/exit-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exit codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Foundation spec
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Foundation spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-decomposition-for-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope decomposition (for context)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build order
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-architecture-project-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Architecture &amp; project structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Architecture &amp; project structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#on-disk-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        On-disk layout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#module-boundaries-inside-gimmecore" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Module boundaries inside GimmeCore
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-formula-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Formula format
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Formula format">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manifest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#version-assets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version assets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#livecheck-for-latest-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Livecheck (for "latest" discovery)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install strategies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-lua-ctx-sandbox-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Lua ctx sandbox API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#provenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provenance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-version-resolution-latest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Version resolution &amp; "latest"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Version resolution &amp; &#34;latest&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#version-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version queries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#livecheck-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Livecheck strategies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#semver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SemVer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dependency-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependency resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#host-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Host detection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resolution-behavior-for-mvp-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolution behavior for MVP commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-install-pipeline-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Install pipeline &amp; state
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Install pipeline &amp; state">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-pipeline-one-version-top-to-bottom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The pipeline (one version, top to bottom)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#receipts-per-install-audit-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Receipts (per-install audit record)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state-files-derived-rebuildable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State files (derived, rebuildable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uninstall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uninstall
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concurrency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concurrency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#progress-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Progress &amp; output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-cli-surface-command-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. CLI surface &amp; command model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. CLI surface &amp; command model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command tree
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-gimme-tool-shortcut-signature-ux" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The gimme &lt;tool&gt; shortcut (signature UX)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#global-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit codes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output conventions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-gimmeconfigtoml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration (~/.gimme/config.toml)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#first-run-experience" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First-run experience
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-ai-agent-interaction-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. AI-agent interaction contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-testing-error-model-non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Testing, error model &amp; non-goals
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Testing, error model &amp; non-goals">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#testing-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#non-goals-for-the-foundation-explicitly-out-of-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-goals for the foundation (explicitly out of scope)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#done-definition-for-the-foundation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Done" definition for the foundation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mise interop spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../foundation-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Foundation plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mise-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mise plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-decomposition-for-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope decomposition (for context)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build order
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-architecture-project-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Architecture &amp; project structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Architecture &amp; project structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#on-disk-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        On-disk layout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#module-boundaries-inside-gimmecore" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Module boundaries inside GimmeCore
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-formula-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Formula format
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Formula format">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manifest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#version-assets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version assets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#livecheck-for-latest-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Livecheck (for "latest" discovery)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install strategies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-lua-ctx-sandbox-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Lua ctx sandbox API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#provenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provenance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-version-resolution-latest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Version resolution &amp; "latest"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Version resolution &amp; &#34;latest&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#version-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version queries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#livecheck-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Livecheck strategies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#semver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SemVer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dependency-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependency resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#host-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Host detection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resolution-behavior-for-mvp-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolution behavior for MVP commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-install-pipeline-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Install pipeline &amp; state
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Install pipeline &amp; state">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-pipeline-one-version-top-to-bottom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The pipeline (one version, top to bottom)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#receipts-per-install-audit-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Receipts (per-install audit record)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state-files-derived-rebuildable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State files (derived, rebuildable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uninstall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uninstall
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concurrency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concurrency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#progress-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Progress &amp; output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-cli-surface-command-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. CLI surface &amp; command model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. CLI surface &amp; command model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command tree
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-gimme-tool-shortcut-signature-ux" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The gimme &lt;tool&gt; shortcut (signature UX)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#global-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit codes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output conventions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-gimmeconfigtoml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration (~/.gimme/config.toml)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#first-run-experience" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First-run experience
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-ai-agent-interaction-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. AI-agent interaction contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-testing-error-model-non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Testing, error model &amp; non-goals
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Testing, error model &amp; non-goals">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#testing-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#non-goals-for-the-foundation-explicitly-out-of-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-goals for the foundation (explicitly out of scope)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#done-definition-for-the-foundation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Done" definition for the foundation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="gimme-foundation-design">gimme — Foundation Design<a class="headerlink" href="#gimme-foundation-design" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> Approved (2026-08-03)
+<strong>Scope:</strong> Foundation subsystem only. Source builds, Homebrew compatibility, GUI app, and MCP server are explicitly out of scope (see Non-goals).</p>
+<hr />
+<h2 id="1-overview">1. Overview<a class="headerlink" href="#1-overview" title="Permanent link">&para;</a></h2>
+<p><code>gimme</code> is a Swift-based package manager for macOS that supports source-based and download-based installation. It has a native UI app and a CLI. Tools are described by <strong>formulae</strong>, which combine a typed declarative manifest with sandboxed Lua logic.</p>
+<p>The user-facing signature is the shortcut:</p>
+<ul>
+<li><code>gimme git</code> — install <code>git</code> if missing, update if stale, no-op if current or pinned.</li>
+<li><code>gimme rustup</code> — same.</li>
+</ul>
+<p>This spec defines the <strong>foundation</strong>: the core engine, the formula format, version resolution, the install pipeline, the CLI (with a first-class AI-agent contract), and the testing/error model. Source builds, Homebrew compatibility, the GUI app, and an MCP server are deferred follow-on specs that this architecture is shaped to accommodate.</p>
+<h3 id="scope-decomposition-for-context">Scope decomposition (for context)<a class="headerlink" href="#scope-decomposition-for-context" title="Permanent link">&para;</a></h3>
+<p>The full <code>gimme</code> vision contains six subsystems. This foundation spec covers subsystem 1 and the interfaces the others will plug into:</p>
+<ol>
+<li><strong>Core engine</strong> — formula loading, dependency resolution, install orchestration, version/latest resolution, the cellar, PATH management. ← <strong>This spec.</strong></li>
+<li><strong>Formula system</strong> — manifest + Lua sandbox. ← <strong>This spec.</strong></li>
+<li><strong>CLI</strong> — <code>gimme git</code> and subcommands. ← <strong>This spec.</strong></li>
+<li><strong>Source-based builds</strong> — follow-on. Enum value reserved, not implemented.</li>
+<li><strong>Homebrew compatibility</strong> — follow-on. Formula abstraction shaped to receive translations.</li>
+<li><strong>Native GUI app</strong> — follow-on. Consumes <code>GimmeCore</code> directly or the <code>--json</code> contract.</li>
+</ol>
+<h3 id="build-order">Build order<a class="headerlink" href="#build-order" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Core engine + formula format + CLI MVP ← <strong>start here (this spec)</strong></li>
+<li>Version management &amp; "latest" resolution (covered in this spec)</li>
+<li>Source-based builds (follow-on)</li>
+<li>Homebrew compat layer (follow-on)</li>
+<li>Native GUI app (follow-on)</li>
+</ol>
+<hr />
+<h2 id="2-architecture-project-structure">2. Architecture &amp; project structure<a class="headerlink" href="#2-architecture-project-structure" title="Permanent link">&para;</a></h2>
+<p>Single SwiftPM workspace, <code>gimme</code>, with targets:</p>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>Type</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GimmeCore</code></td>
+<td>library</td>
+<td>The engine: manifest decoding, tap management, dependency resolver, version resolution, cellar, download/verify, sandbox runtime, install orchestration, state/receipts. Pure logic, no UI.</td>
+</tr>
+<tr>
+<td><code>gimme</code></td>
+<td>executable</td>
+<td>The CLI. Built with Apple's <code>ArgumentParser</code>. Thin layer over <code>GimmeCore</code> — parses args, calls engine, formats output.</td>
+</tr>
+<tr>
+<td><code>GimmeLua</code></td>
+<td>library (vendored)</td>
+<td>Lua 5.4 C sources + a thin Swift overlay exposing the sandboxed <code>ctx</code> API to formulae. Separate target so the Lua build is isolated.</td>
+</tr>
+<tr>
+<td><code>GimmeTests</code></td>
+<td>test</td>
+<td>Unit + integration tests against fixtures.</td>
+</tr>
+<tr>
+<td><code>FormulaFixtures</code></td>
+<td>resource</td>
+<td>A fake in-repo tap used by tests (local tarballs as "downloads").</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Future targets (not in this spec, reserving the shape):</strong> <code>GimmeUI</code> (macOS SwiftUI app, links <code>GimmeCore</code>), <code>GimmeBrew</code> (Homebrew-compat translator, links <code>GimmeCore</code>).</p>
+<h3 id="on-disk-layout">On-disk layout<a class="headerlink" href="#on-disk-layout" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>~/.gimme/
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  bin/                 # PATH shims (real executables); user adds this to PATH once
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  cellar/&lt;tool&gt;/&lt;ver&gt;/ # one dir per installed version = the install prefix
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  cache/&lt;sha256&gt;/      # content-addressed downloads (shared, dedup&#39;d)
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  taps/&lt;name&gt;/         # git clones of formula repos (core + user-added)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  staging/             # temp work dirs for in-flight installs
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  state/               # installed.json (index), pinned.json, gimme.lock
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>  logs/
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  config.toml
+</code></pre></div>
+<h3 id="module-boundaries-inside-gimmecore">Module boundaries inside <code>GimmeCore</code><a class="headerlink" href="#module-boundaries-inside-gimmecore" title="Permanent link">&para;</a></h3>
+<p>Each is a Swift type/namespace, independently testable:</p>
+<ul>
+<li><code>TapStore</code> — clone/update/list taps, find formula by name across taps.</li>
+<li><code>Formula</code> — manifest (<code>Codable</code> struct) + loader + version model.</li>
+<li><code>Resolver</code> — dependency DAG + version selection.</li>
+<li><code>Downloader</code> — fetch → cache, sha256 verify.</li>
+<li><code>Stager</code> — temp work dir, runs declarative install steps or sandboxed Lua.</li>
+<li><code>Cellar</code> — atomic install into versioned prefix, receipts.</li>
+<li><code>ShimManager</code> — create/remove/rewrite PATH shims.</li>
+<li><code>StateStore</code> — active versions, pins (the derived index).</li>
+<li><code>Installer</code> — the orchestrator that wires the above into the install pipeline.</li>
+</ul>
+<hr />
+<h2 id="3-formula-format">3. Formula format<a class="headerlink" href="#3-formula-format" title="Permanent link">&para;</a></h2>
+<p>Hybrid model: <strong>typed manifest for data, sandboxed Lua for logic.</strong></p>
+<h3 id="manifest">Manifest<a class="headerlink" href="#manifest" title="Permanent link">&para;</a></h3>
+<p>Two accepted forms, same schema:</p>
+<p><strong>A. <code>formula.toml</code> (preferred — portable, easy to author/review):</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">[package]</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;git&quot;</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">desc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Distributed version control system&quot;</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">homepage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://git-scm.com&quot;</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">license</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;GPL-2.0-only&quot;</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="k">[[version]]</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">ver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;2.40.0&quot;</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">released</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;2023-03-02&quot;</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="k">[install]</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">strategy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lua&quot;</span><span class="w">          </span><span class="c1"># or &quot;steps&quot;, or &quot;source&quot; (reserved, not implemented)</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">script</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;install.lua&quot;</span><span class="w">    </span><span class="c1"># path relative to formula dir; required iff strategy == &quot;lua&quot;</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="k">[[dep]]</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;gettext&quot;</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="n">ver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&gt;=0.21&quot;</span><span class="w">            </span><span class="c1"># semver range; optional</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="k">[[provides]]</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="n">bin</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;git&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;git-receive-pack&quot;</span><span class="p">]</span>
+</code></pre></div>
+<p><strong>B. <code>formula.swift</code> (Swift literal)</strong> — same fields, decoded via <code>@dynamicMemberLookup</code> builder for autocomplete and type-checking. <strong>Generated/parsed, never executed.</strong> This avoids the "running arbitrary Swift" problem entirely.</p>
+<h3 id="version-assets">Version assets<a class="headerlink" href="#version-assets" title="Permanent link">&para;</a></h3>
+<p>Per-version download declarations:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">[[version.asset]]</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">arch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;arm64&quot;</span><span class="w">            </span><span class="c1"># matched against host</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">os</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;macos&quot;</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">url</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://.../git-2.40.0-arm64.tar.gz&quot;</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">sha256</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;abcd...&quot;</span>
+</code></pre></div>
+<h3 id="livecheck-for-latest-discovery">Livecheck (for "latest" discovery)<a class="headerlink" href="#livecheck-for-latest-discovery" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">[livecheck]</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">strategy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;github-release&quot;</span><span class="w">   </span><span class="c1"># or &quot;url-match&quot;, &quot;lua&quot;, &quot;none&quot;</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">repo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;git/git&quot;</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">regex</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;git-(\d+\.\d+\.\d+)&#39;</span>
+</code></pre></div>
+<h3 id="install-strategies">Install strategies<a class="headerlink" href="#install-strategies" title="Permanent link">&para;</a></h3>
+<p><code>[install].strategy</code> selects how the version gets from asset → cellar prefix:</p>
+<ul>
+<li><strong><code>steps</code></strong> — declarative, no code. Engine runs these directly. Most binary-distribution formulae use only this. No sandbox needed.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">[[install.step]]</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">extract</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;${asset}&quot;</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">[[install.step]]</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">copy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">from</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;git-2.40.0&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;${prefix}&quot;</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<ul>
+<li>
+<p><strong><code>lua</code></strong> — when logic is required. Engine runs <code>install.lua</code> in the sandbox with the <code>ctx</code> API.</p>
+</li>
+<li>
+<p><strong><code>source</code></strong> — build from source. <strong>Out of scope for this spec</strong> (follow-on), but the enum value is reserved so the format is forward-compatible.</p>
+</li>
+</ul>
+<h3 id="the-lua-ctx-sandbox-api">The Lua <code>ctx</code> sandbox API<a class="headerlink" href="#the-lua-ctx-sandbox-api" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kr">function</span><span class="w"> </span><span class="nf">install</span><span class="p">(</span><span class="nv">ctx</span><span class="p">)</span><span class="w">       </span><span class="c1">-- required entry point</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="kd">local</span><span class="w"> </span><span class="nv">stage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">ctx</span><span class="p">:</span><span class="nf">download</span><span class="p">()</span><span class="w">      </span><span class="c1">-- staged asset path; sha already verified</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="kd">local</span><span class="w"> </span><span class="nv">dir</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="nv">ctx</span><span class="p">:</span><span class="nf">extract</span><span class="p">(</span><span class="nv">stage</span><span class="p">)</span><span class="w">  </span><span class="c1">-- tgz/tbz/zip auto-detected</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="nv">ctx</span><span class="p">:</span><span class="nf">install_dir</span><span class="p">(</span><span class="nv">dir</span><span class="w"> </span><span class="o">..</span><span class="w"> </span><span class="s2">&quot;/bin&quot;</span><span class="p">)</span><span class="w">    </span><span class="c1">-- move into ${prefix}/bin</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span><span class="nv">ctx</span><span class="p">:</span><span class="nf">mkdir</span><span class="p">(</span><span class="s2">&quot;${prefix}/share/man&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span><span class="nv">ctx</span><span class="p">:</span><span class="nf">set_provides</span><span class="p">({</span><span class="s2">&quot;git&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;git-receive-pack&quot;</span><span class="p">})</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">  </span><span class="kd">local</span><span class="w"> </span><span class="nv">gettext</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">ctx</span><span class="p">:</span><span class="nf">dep_path</span><span class="p">(</span><span class="s2">&quot;gettext&quot;</span><span class="p">)</span><span class="w">  </span><span class="c1">-- path to a resolved dependency</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">  </span><span class="kd">local</span><span class="w"> </span><span class="nv">host</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">ctx</span><span class="p">:</span><span class="nf">host</span><span class="p">()</span><span class="w">                  </span><span class="c1">-- { os=..., arch=..., macos_version=... }</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="kr">end</span>
+</code></pre></div>
+<p><strong>Blocked by the sandbox (by construction):</strong> <code>os.execute</code>, <code>io.popen</code>, <code>loadfile</code>, <code>require</code> of arbitrary modules, <code>os.getenv</code> beyond a whitelist, <code>debug.*</code>, raw <code>os.remove</code>/<code>io.open</code> outside the work prefix. Network is only <code>ctx:download()</code> against declared asset URLs — no raw socket access. File writes confined to the work dir + target prefix.</p>
+<p><strong>Exposed by the sandbox:</strong> the controlled <code>ctx</code> API above, basic Lua stdlib (<code>string</code>, <code>table</code>, <code>math</code>, string patterns), declared dependency paths via <code>ctx:dep_path</code>.</p>
+<h3 id="provenance">Provenance<a class="headerlink" href="#provenance" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Every <code>[[version.asset]]</code> <strong>must</strong> have <code>sha256</code>. Manifest decode fails otherwise.</li>
+<li><code>gimme install</code> refuses on mismatch. <code>--insecure</code> (per-install) bypasses for power users and is loud about it.</li>
+<li>The manifest itself is integrity-checked against the tap's git commit (formula provenance = tap trust).</li>
+</ul>
+<hr />
+<h2 id="4-version-resolution-latest">4. Version resolution &amp; "latest"<a class="headerlink" href="#4-version-resolution-latest" title="Permanent link">&para;</a></h2>
+<h3 id="version-queries">Version queries<a class="headerlink" href="#version-queries" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Query form</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>git</code> (no version)</td>
+<td>Default version for <code>git</code> — "latest" by default, or the pinned version if pinned.</td>
+</tr>
+<tr>
+<td><code>git@2.40</code></td>
+<td>Constraint: any 2.40.x. Highest available matching is chosen.</td>
+</tr>
+<tr>
+<td><code>git@2.40.0</code></td>
+<td>Exact version.</td>
+</tr>
+<tr>
+<td><code>git@^2.40</code> / <code>git@&gt;=2.40,&lt;3</code></td>
+<td>SemVer range expressions.</td>
+</tr>
+</tbody>
+</table>
+<p>Resolution always picks the <strong>highest version satisfying the query</strong> that has a usable asset for the host (<code>os=macos</code>, <code>arch=arm64</code>/<code>x86_64</code>). If no asset matches the host → clear error ("git 2.40.0 has no darwin-arm64 build; available: …").</p>
+<h3 id="livecheck-strategies">Livecheck strategies<a class="headerlink" href="#livecheck-strategies" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong><code>github-release</code></strong> — hit <code>api.github.com/repos/&lt;repo&gt;/releases/latest</code>, parse the tag with <code>regex</code>.</li>
+<li><strong><code>url-match</code></strong> — fetch a listing page, regex out version strings.</li>
+<li><strong><code>lua</code></strong> — a sandboxed <code>livecheck(ctx)</code> function returning a version string.</li>
+<li><strong><code>none</code></strong> (default if absent) — the formula is static: latest = highest version literally listed in the manifest. No network on <code>update --check</code>.</li>
+</ul>
+<p><code>gimme update --check</code> runs livechecks across installed formulae; <code>gimme update git</code> runs it for one. Results are cached (default 1h; configurable via <code>[cache].max_age_hours</code>) so <code>gimme list</code> doesn't hammer the network.</p>
+<h3 id="semver">SemVer<a class="headerlink" href="#semver" title="Permanent link">&para;</a></h3>
+<p>Vendored SemVer type in <code>GimmeCore</code> (parse, compare, range matching against <code>^</code>, <code>~</code>, <code>&gt;=</code>, <code>&lt;</code>, <code>*</code>). No external dependency. Pre-release tags (<code>2.40.0-rc1</code>) sort below their release. Formula authors opt into pre-releases with an explicit range (<code>&gt;=2.40.0-rc</code>); the default query never selects a pre-release over a release.</p>
+<h3 id="dependency-resolution">Dependency resolution<a class="headerlink" href="#dependency-resolution" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Resolver builds the dependency DAG from the top query.</li>
+<li>For each dep, it queries the cellar first ("is an installed version already satisfying this?"), then available formula versions.</li>
+<li>It picks the highest satisfying version; if a dep is already installed at a satisfying version, <strong>reuse it</strong> (don't reinstall).</li>
+<li>Conflicts (two formulae needing incompatible ranges of a shared dep) → error with the conflicting chain, not a silent guess.</li>
+</ol>
+<p>This is intentionally <strong>simpler than a full SAT solver</strong> (à la Cargo) — reuse-installed-first and pick-highest covers the vast majority of real cases. A real solver is a follow-on if it proves necessary; the <code>Resolver</code> interface is shaped so one can be swapped in.</p>
+<h3 id="host-detection">Host detection<a class="headerlink" href="#host-detection" title="Permanent link">&para;</a></h3>
+<p><code>Host</code> struct resolved once at startup: <code>os</code> (<code>macos</code>), <code>arch</code> (<code>arm64</code>/<code>x86_64</code>), <code>macos_version</code> (for formulae that gate on OS version). Cached; formulae read it via <code>ctx:host()</code>.</p>
+<h3 id="resolution-behavior-for-mvp-commands">Resolution behavior for MVP commands<a class="headerlink" href="#resolution-behavior-for-mvp-commands" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>gimme git</code> → latest (or pinned) → highest host-matching version → resolve deps → install.</li>
+<li><code>gimme git@2.40</code> → highest 2.40.x with host asset.</li>
+<li><code>gimme update git</code> → run livecheck → if newer than installed, install it; old version kept in cellar, shims repointed.</li>
+<li><code>gimme update --all</code> → above for every non-pinned installed formula.</li>
+<li><code>gimme pin git</code> / <code>gimme pin git@2.40</code> → writes <code>pinned.json</code>; <code>git</code> queries now resolve to the pinned version, <code>update --all</code> skips it.</li>
+<li><code>gimme use git 2.40.0</code> → repoints the active shim to an already-installed version (no download).</li>
+</ul>
+<hr />
+<h2 id="5-install-pipeline-state">5. Install pipeline &amp; state<a class="headerlink" href="#5-install-pipeline-state" title="Permanent link">&para;</a></h2>
+<p>Designed for <strong>atomicity</strong> (a failed install never leaves a half-installed tool) and <strong>observability</strong> (every install is reversible and auditable).</p>
+<h3 id="the-pipeline-one-version-top-to-bottom">The pipeline (one version, top to bottom)<a class="headerlink" href="#the-pipeline-one-version-top-to-bottom" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>resolve(query)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>  → [Resolver] concrete (formula, version, asset) + dep plan
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>fetch(asset)
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>  → [Downloader] cache lookup by sha256; else download → verify sha256 → write to cache/&lt;sha&gt;
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>stage
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>  → [Stager] create temp work dir under ~/.gimme/staging/
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>  → run strategy:
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>      &quot;steps&quot; → engine executes declarative steps in work dir
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>      &quot;lua&quot;   → run install.lua in sandbox against work dir, ctx API only
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>prepare prefix
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  → build the cellar prefix offline: ~/.gimme/cellar/git/2.40.0/
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>commit
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>  → atomic rename of staged prefix into cellar (rename is atomic on same volume)
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>  → write receipt.json into the prefix
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>activate
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>  → [ShimManager] (re)write ~/.gimme/bin/git shim pointing at this version
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>  → update state: installed.json[git].active = 2.40.0
+</code></pre></div>
+<p><strong>Failure handling at every stage:</strong> anything before <code>commit</code> fails → delete the staging dir, leave the cellar and state untouched (previous version, if any, still active). Failure between <code>commit</code> and <code>activate</code> → the new version is in the cellar but not active; we roll <code>active</code> back to the prior version and surface the error. <code>commit</code> itself is the single atomic step (rename).</p>
+<h3 id="receipts-per-install-audit-record">Receipts (per-install audit record)<a class="headerlink" href="#receipts-per-install-audit-record" title="Permanent link">&para;</a></h3>
+<p>Every installed version dir gets <code>~/.gimme/cellar/git/2.40.0/RECEIPT.json</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">&quot;formula&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;git&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;tap&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;core&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.40.0&quot;</span><span class="p">,</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="nt">&quot;installed_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-08-03T12:00:00Z&quot;</span><span class="p">,</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">&quot;asset&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;sha256&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abcd...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;arch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;arm64&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;os&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;macos&quot;</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span><span class="nt">&quot;deps&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gettext&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.21&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;resolved&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.21.1&quot;</span><span class="w"> </span><span class="p">}],</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span><span class="nt">&quot;gimme_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span><span class="p">,</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;download&quot;</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="p">}</span>
+</code></pre></div>
+<p><code>gimme uninstall</code>, <code>list</code>, and the dep resolver all read receipts. This is the source of truth — <strong>not</strong> a separate index that can drift. <code>installed.json</code> is a derived fast-index.</p>
+<h3 id="state-files-derived-rebuildable">State files (derived, rebuildable)<a class="headerlink" href="#state-files-derived-rebuildable" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong><code>~/.gimme/state/installed.json</code></strong> — <code>{ "git": { "active": "2.40.0", "installed": ["2.39.0","2.40.0"] }, ... }</code>. Derived from receipts on startup; if missing/corrupt, rebuilt by scanning the cellar. Never hand-edited.</li>
+<li><strong><code>~/.gimme/state/pinned.json</code></strong> — <code>{ "git": "2.40.0" }</code>. Authoritative for pins (it's the user's intent, not derivable).</li>
+</ul>
+<p>This split (receipts = truth, state = cache) means a corrupted index is never fatal — delete it and it rebuilds.</p>
+<h3 id="uninstall">Uninstall<a class="headerlink" href="#uninstall" title="Permanent link">&para;</a></h3>
+<p><code>gimme uninstall git</code> → removes the <strong>active</strong> version's prefix, repoints shim to the next-highest installed version (or removes shim if none), updates state. <code>gimme uninstall git@2.39.0</code> removes a specific version. Receipts make this a directory delete + state update — no guesswork.</p>
+<h3 id="concurrency">Concurrency<a class="headerlink" href="#concurrency" title="Permanent link">&para;</a></h3>
+<p>A single <code>~/.gimme/state/gimme.lock</code> advisory file lock held for the duration of any mutating command (install/uninstall/update/pin/use). Read-only commands (<code>list</code>, <code>search</code>, <code>info</code>) don't lock. Prevents two parallel <code>gimme install</code> corrupting state; a stale lock (pid dead) is auto-recovered.</p>
+<h3 id="progress-output">Progress &amp; output<a class="headerlink" href="#progress-output" title="Permanent link">&para;</a></h3>
+<p>CLI streams human-readable progress (<code>fetch → verify → stage → install → activate</code>) with a final summary line. A <code>--json</code> flag on every command emits structured output for the future GUI app to consume (the GUI will speak this JSON, not parse prose).</p>
+<hr />
+<h2 id="6-cli-surface-command-model">6. CLI surface &amp; command model<a class="headerlink" href="#6-cli-surface-command-model" title="Permanent link">&para;</a></h2>
+<p>Built on Apple's <code>ArgumentParser</code>. Designed so the GUI app can reuse the same command → engine calls (or just speak <code>--json</code>).</p>
+<h3 id="command-tree">Command tree<a class="headerlink" href="#command-tree" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>gimme                              # short help + `gimme list` if interactive
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>gimme &lt;tool&gt;[@version]             # INSTALL SHORTCUT (see below)
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>gimme install &lt;tool&gt;[@version]     # explicit install
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>gimme uninstall &lt;tool&gt;[@version]   # remove (active or specific version)
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>gimme update [&lt;tool&gt;]|[--all]      # update one or everything non-pinned
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>gimme use &lt;tool&gt; &lt;version&gt;         # switch active version (no download)
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>gimme pin &lt;tool&gt;[@version]         # pin to current or specific version
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>gimme unpin &lt;tool&gt;
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>gimme list [--all]                 # installed tools (or all known)
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>gimme search &lt;term&gt;                # search formulae across taps
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>gimme info &lt;tool&gt;                  # show formula details, versions, deps
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>gimme outdated                     # show installed tools with updates available
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>gimme tap &lt;add|remove|list&gt; &lt;url&gt;  # manage formula sources
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>gimme doctor                       # health check (PATH, permissions, receipts)
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>gimme config &lt;get|set&gt;             # read/write ~/.gimme/config.toml
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>gimme introspect                   # machine-readable CLI spec (agent contract)
+</code></pre></div>
+<h3 id="the-gimme-tool-shortcut-signature-ux">The <code>gimme &lt;tool&gt;</code> shortcut (signature UX)<a class="headerlink" href="#the-gimme-tool-shortcut-signature-ux" title="Permanent link">&para;</a></h3>
+<p><code>gimme git</code> does the right thing without subcommand ceremony:</p>
+<table>
+<thead>
+<tr>
+<th>State of <code>git</code></th>
+<th>What <code>gimme git</code> does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Not installed</td>
+<td><strong>Install</strong> latest.</td>
+</tr>
+<tr>
+<td>Installed, not pinned, update available</td>
+<td><strong>Update</strong> to latest.</td>
+</tr>
+<tr>
+<td>Installed, not pinned, up to date</td>
+<td><strong>No-op</strong>, message "git 2.40.0 is current".</td>
+</tr>
+<tr>
+<td>Installed, <strong>pinned</strong></td>
+<td><strong>No-op</strong>, message "git is pinned at 2.40.0".</td>
+</tr>
+</tbody>
+</table>
+<p><code>gimme git@2.40</code> follows the same logic but scoped to the 2.40.x line — if no 2.40.x installed, install highest 2.40.x; if installed and a higher 2.40.x exists, update to it.</p>
+<p>Dispatch: "is the first non-flag argument a known tool name (no subcommand)?" → yes → shortcut mode. Ambiguity is resolved by reserving the subcommand verbs above; a tool literally named <code>install</code> would require <code>gimme install install</code>.</p>
+<h3 id="global-flags">Global flags<a class="headerlink" href="#global-flags" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>--json              # structured output for all commands (GUI + agent bridge)
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>--dry-run           # plan mutations without executing (agent contract)
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>--yes               # non-interactive confirm (machine mode)
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>--no-color          # disable color
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>--verbose / -v      # debug logging
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>--tap &lt;name&gt;        # restrict this command to one tap
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>--prefix &lt;path&gt;     # override ~/.gimme (testing/self-contained installs)
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>--version           # gimme version
+</code></pre></div>
+<p><code>--prefix</code> is what makes the whole thing testable without touching the user's real <code>~/.gimme</code>.</p>
+<h3 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h3>
+<p>Deterministic for scripting. The exit code ↔ error category map is fixed and authoritative (the error model in section 8 and the agent contract in section 7 both rely on it):</p>
+<table>
+<thead>
+<tr>
+<th>Exit</th>
+<th>Category</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>—</td>
+<td>Success, including intentional no-op (e.g. "already current").</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td><code>USAGE</code>, <code>NOT_FOUND</code></td>
+<td>Bad args, unknown tool/version, malformed query.</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td><code>INSTALL</code>, <code>NETWORK</code>, <code>CHECKSUM</code>, <code>PERMISSION</code></td>
+<td>Failure during fetch/verify/stage/activate.</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td><code>CONFLICT</code></td>
+<td>Unresolvable dependency/version conflict.</td>
+</tr>
+<tr>
+<td><code>4</code></td>
+<td><code>LOCK</code></td>
+<td>Could not acquire the state lock (another gimme is running).</td>
+</tr>
+<tr>
+<td><code>70</code></td>
+<td><code>UNKNOWN</code></td>
+<td>Internal/unexpected error (bug); always includes diagnostics under <code>--verbose</code>.</td>
+</tr>
+<tr>
+<td><code>64-79</code></td>
+<td>reserved</td>
+<td>sysexits-style range; <code>70</code> is the only one assigned in the foundation.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="output-conventions">Output conventions<a class="headerlink" href="#output-conventions" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Human output:</strong> colored, prefixed status lines (<code>fetch ✓</code>, <code>verify ✓</code>, <code>install ✓ git 2.40.0</code>), final one-line summary.</li>
+<li><strong><code>--json</code> output:</strong> one JSON object per command to stdout, machine-consumable. Every response carries <code>schema_version</code>.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">&quot;cmd&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;install&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;ok&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;schema_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;tool&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;git&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.40.0&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span><span class="nt">&quot;active&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.40.0&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;shim&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;~/.gimme/bin/git&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1240</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<h3 id="configuration-gimmeconfigtoml">Configuration (<code>~/.gimme/config.toml</code>)<a class="headerlink" href="#configuration-gimmeconfigtoml" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">[behavior]</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">auto_update_check</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">      </span><span class="c1"># background livecheck freshness for `list`/`outdated`</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">prune_old_versions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="w">    </span><span class="c1"># keep all versions vs auto-prune non-active</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="k">[cache]</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="n">max_age_hours</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="w">             </span><span class="c1"># livecheck result freshness</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="k">[taps.core]</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://github.com/gimme/core.git&quot;</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+</code></pre></div>
+<h3 id="first-run-experience">First-run experience<a class="headerlink" href="#first-run-experience" title="Permanent link">&para;</a></h3>
+<p><code>gimme</code> (no args) on first run: prints a one-time setup banner ("Add <code>~/.gimme/bin</code> to your PATH" with shell-specific instructions for zsh/bash/fish), runs <code>doctor</code>, and offers to bootstrap the core tap. Doesn't modify shell rc files — just instructs.</p>
+<hr />
+<h2 id="7-ai-agent-interaction-contract">7. AI-agent interaction contract<a class="headerlink" href="#7-ai-agent-interaction-contract" title="Permanent link">&para;</a></h2>
+<p>The principle: <strong>the CLI is a documented API, not just a human tool.</strong></p>
+<ol>
+<li>
+<p><strong><code>--json</code> is first-class and complete.</strong> Every command emits a single well-formed JSON object. Every JSON response carries a <code>schema_version</code> field so agents can pin and detect drift. Breaking changes bump the version.</p>
+</li>
+<li>
+<p><strong><code>gimme introspect</code>.</strong> Emits the full machine-readable spec of the entire CLI — every subcommand, its positional args, flags (with types/defaults/constraints), exit codes, and the JSON output schema for each. An agent loads this once to know the whole surface without parsing prose. <code>gimme introspect --json</code> is canonical; supports <code>--command install</code> to scope it.</p>
+</li>
+<li>
+<p><strong><code>--dry-run</code> on every mutating command</strong> (<code>install</code>, <code>uninstall</code>, <code>update</code>, <code>use</code>, <code>pin</code>, <code>tap</code>). Reports the plan as JSON: what would be fetched (url+sha), which deps resolved, what cellar/prefix/shim changes, any conflict — without executing. Agents plan and validate before acting.</p>
+</li>
+<li>
+<p><strong>Non-interactive under <code>--json</code> / <code>--yes</code>.</strong> Machine mode never blocks on a TTY prompt. Destructive or dependency-affecting actions (<code>uninstall</code> of a tool others depend on) return a structured error listing the dependents and a <code>--force</code> suggestion, exit non-zero — no hidden prompts.</p>
+</li>
+<li>
+<p><strong>Bounded, filterable read output.</strong> <code>list</code> / <code>search</code> / <code>info</code> / <code>outdated</code> take <code>--limit N</code>, <code>--fields a,b,c</code> (project specific fields in JSON), and <code>--query '&lt;expr&gt;'</code> (filter). Keeps payloads small and deterministic.</p>
+</li>
+<li>
+<p><strong>Structured errors everywhere.</strong> JSON error object:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">&quot;ok&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CHECKSUM_MISMATCH&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">             </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span><span class="w"> </span><span class="nt">&quot;recoverable&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">             </span><span class="nt">&quot;suggested&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gimme uninstall git &amp;&amp; gimme install git&quot;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+   Exit code ↔ error category is a fixed, documented map. <code>suggested</code> lets an agent chain recovery.</p>
+</li>
+<li>
+<p><strong>Consistent, exhaustive help.</strong> <code>gimme &lt;cmd&gt; --help</code> (and <code>--help --json</code>) follows one template: usage, args, flags w/ types, exit codes, JSON schema, examples, related commands. Same data <code>introspect</code> exposes, per-command.</p>
+</li>
+<li>
+<p><strong>Docs.</strong> <code>docs/agent-interface.md</code> — a stable "CLI for agents" reference auto-generated from <code>introspect</code>, plus worked agent flows (install+verify, plan with dry-run, handle conflicts). README has an "AI agents" section pointing there.</p>
+</li>
+<li>
+<p><strong>Reserved follow-on (not in this spec): <code>gimme mcp</code></strong> — a Model Context Protocol server exposing gimme as native tool calls. Trivial to build later because the <code>--json</code> contract + <code>introspect</code> already describe the surface; an MCP adapter is just a thin mapping.</p>
+</li>
+</ol>
+<p>Net effect: an AI agent can <code>gimme introspect --json</code>, plan with <code>--dry-run</code>, execute with <code>--json</code>, and recover from structured errors — all without scraping human prose or guessing at output shapes.</p>
+<hr />
+<h2 id="8-testing-error-model-non-goals">8. Testing, error model &amp; non-goals<a class="headerlink" href="#8-testing-error-model-non-goals" title="Permanent link">&para;</a></h2>
+<h3 id="testing-strategy">Testing strategy<a class="headerlink" href="#testing-strategy" title="Permanent link">&para;</a></h3>
+<p>Four layers:</p>
+<p><strong>1. Unit tests (<code>GimmeTests</code>)</strong> — pure-logic modules in isolation, fast, no network, no filesystem writes to home:</p>
+<ul>
+<li><code>SemVer</code> parsing/range matching (exhaustive cases including pre-releases).</li>
+<li>Manifest decode (<code>formula.toml</code> → <code>Formula</code> struct) — valid fixtures + rejection of malformed/missing-checksum.</li>
+<li><code>Resolver</code> with mock taps + cellar — dependency reuse, conflict detection, host-asset filtering.</li>
+<li>Livecheck strategy parsing against recorded HTML/JSON fixtures (no network).</li>
+<li><code>Receipt</code> round-trip; <code>StateStore</code> rebuild-from-cellar.</li>
+<li>Sandbox API surface (Lua <code>ctx</code> calls return expected values; blocked stdlib calls are actually blocked).</li>
+</ul>
+<p><strong>2. Integration tests (<code>GimmeTests</code>, <code>--prefix</code> to temp dir)</strong> — full pipeline against a temp <code>~/.gimme</code>:</p>
+<ul>
+<li>A vendored fake tap (<code>FormulaFixtures</code>) with formulae whose <code>url</code> points at <strong>local tarballs</strong> committed to the repo. Deterministic, offline, content-addressed by real sha256.</li>
+<li>Assert the observable outcomes: cellar layout, receipts, shim files, state files, exit codes, <code>--json</code> output.</li>
+<li>Cover the atomicity guarantees: inject a failure mid-pipeline (bad sha, missing asset) and assert the cellar/state are untouched.</li>
+</ul>
+<p><strong>3. CLI snapshot tests</strong> — run the actual <code>gimme</code> executable in a temp prefix against fixtures, assert on structured <code>--json</code> output (deterministic) and stable help text. Protects the agent contract from drift.</p>
+<p><strong>4. Network-gated tests (opt-in)</strong> — a small set tagged <code>@network</code> that fetches a real formula from the real core tap (e.g. a tiny static binary). Off by default (CI runs them nightly). Proves livecheck/download against reality without making local runs flaky.</p>
+<p>Coverage targets for the foundation: every public type in <code>GimmeCore</code> has unit tests; every CLI command has at least one integration test (success + one error path) and one JSON-schema assertion.</p>
+<h3 id="error-model">Error model<a class="headerlink" href="#error-model" title="Permanent link">&para;</a></h3>
+<p>Three orthogonal dimensions, every error carries all three:</p>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Category</strong> (maps to exit code per section 6)</td>
+<td><code>USAGE</code>, <code>NOT_FOUND</code> → 1; <code>INSTALL</code>, <code>NETWORK</code>, <code>CHECKSUM</code>, <code>PERMISSION</code> → 2; <code>CONFLICT</code> → 3; <code>LOCK</code> → 4; <code>UNKNOWN</code> → 70</td>
+</tr>
+<tr>
+<td><strong><code>GimmeError</code></strong> — a typed Swift enum with associated context</td>
+<td><code>.checksumMismatch(asset:expected:actual:)</code></td>
+</tr>
+<tr>
+<td><strong>Recoverability + suggestion</strong></td>
+<td><code>recoverable: false</code>, <code>suggested: "gimme uninstall git &amp;&amp; gimme install git"</code></td>
+</tr>
+</tbody>
+</table>
+<p>The Swift error type is what the engine throws; the CLI layer translates to <code>{category, message, details, recoverable, suggested}</code> JSON + the right exit code. The agent contract (section 7) consumes this directly. <strong>No error is a bare string</strong> — every failure path constructs a <code>GimmeError</code>.</p>
+<p>User-facing messages are written for humans (actionable, no stack traces in default output); <code>--verbose</code> adds diagnostics; <code>--json</code> adds the structured form.</p>
+<h3 id="non-goals-for-the-foundation-explicitly-out-of-scope">Non-goals for the foundation (explicitly out of scope)<a class="headerlink" href="#non-goals-for-the-foundation-explicitly-out-of-scope" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Source-based builds</strong> (<code>strategy = "source"</code>) — enum reserved, not implemented.</li>
+<li><strong>Homebrew formula/cask compatibility</strong> — separate <code>GimmeBrew</code> target later; the formula abstraction is shaped to receive translations.</li>
+<li><strong>Native GUI app</strong> (<code>GimmeUI</code>) — separate target later; consumes <code>GimmeCore</code> directly or the <code>--json</code> contract.</li>
+<li><strong>MCP server</strong> (<code>gimme mcp</code>) — reserved command, not built; the <code>--json</code>/<code>introspect</code> contract makes it a thin later adapter.</li>
+<li><strong>Linux/Windows support</strong> — macOS only for the foundation (host detection already abstracts this for the future).</li>
+<li><strong>Self-managed core tap content</strong> — the mechanism (taps, livecheck) ships; the library of formulae is a separate ongoing effort, not blocked on this spec.</li>
+<li><strong>A real SAT dependency solver</strong> — reuse-installed-first + pick-highest (section 4); upgrade path reserved.</li>
+<li><strong>Background daemons / auto-update services</strong> — <code>gimme update --check</code> is on-demand only.</li>
+</ul>
+<h3 id="done-definition-for-the-foundation">"Done" definition for the foundation<a class="headerlink" href="#done-definition-for-the-foundation" title="Permanent link">&para;</a></h3>
+<ol>
+<li><code>gimme install git</code> works against a real (download-strategy) core formula, end to end, and <code>git</code> is on PATH.</li>
+<li><code>gimme git</code> (shortcut), <code>update</code>, <code>uninstall</code>, <code>use</code>, <code>pin</code>, <code>list</code>, <code>search</code>, <code>info</code>, <code>outdated</code>, <code>tap</code>, <code>doctor</code>, <code>config</code>, <code>introspect</code> all work and emit <code>--json</code>.</li>
+<li><code>--dry-run</code> plans any mutation accurately.</li>
+<li>A failing install leaves the cellar and state unchanged (atomicity test passes).</li>
+<li>The test layers above exist and pass on CI.</li>
+<li><code>docs/agent-interface.md</code> documents the CLI for AI agents, generated from <code>introspect</code>.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/gregnazario/gimme" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

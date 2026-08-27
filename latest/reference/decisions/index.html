@@ -1,0 +1,2543 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A unified package manager for macOS — one CLI and GUI over Homebrew, Go, uv, Cargo, npm, and more.">
+      
+      
+      
+        <link rel="canonical" href="https://gregnazario.github.io/gimme/latest/reference/decisions/">
+      
+      
+        <link rel="prev" href="../exit-codes/">
+      
+      
+        <link rel="next" href="../../design/foundation/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Decision log - gimme</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#gimme-decision-log" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="gimme" class="md-header__button md-logo" aria-label="gimme" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            gimme
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Decision log
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="indigo"  aria-label="Switch to dark"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="indigo"  aria-label="Switch to light"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/gregnazario/gimme" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    gregnazario/gimme
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="gimme" class="md-nav__button md-logo" aria-label="gimme" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="logo">
+
+    </a>
+    gimme
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/gregnazario/gimme" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    gregnazario/gimme
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guides/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/formulae/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Formula format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/mise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mise/asdf interop
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/agents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../exit-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exit codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision log
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#foundation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Foundation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Foundation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#f1-single-swiftpm-workspace-with-a-shared-gimmecore-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F1. Single SwiftPM workspace with a shared GimmeCore library
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f2-hybrid-formula-format-toml-manifest-sandboxed-lua" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F2. Hybrid formula format: TOML manifest + sandboxed Lua
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f3-vendored-lua-54-c-glue-with-a-runtime-dispatch-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F3. Vendored Lua 5.4 + C glue with a runtime dispatch table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f4-versioned-cellar-atomic-commits-rename" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F4. Versioned cellar + atomic commits (rename)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f5-path-shims-gimmebin-over-shell-rc-editing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F5. PATH shims (~/.gimme/bin) over shell-rc editing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f6-reuse-installed-first-resolver-not-a-sat-solver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F6. Reuse-installed-first resolver (not a SAT solver)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f7-first-class-ai-agent-contract-json-introspect-dry-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F7. First-class AI-agent contract (--json + introspect + --dry-run)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-hardening-post-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security hardening (post-review)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security hardening (post-review)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#s1-lua-sandbox-opens-only-safe-libraries-no-packageloadlib" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S1. Lua sandbox opens only safe libraries (no package/loadlib)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s2-path-containment-for-all-formula-influenced-destinations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S2. Path containment for all formula-influenced destinations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s3-safe-tar-extraction-no-traversal-no-escaping-symlinks-no-uidsetuid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S3. Safe tar extraction (no traversal, no escaping symlinks, no uid/setuid)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s4-downloader-cache-re-verifies-on-every-hit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S4. Downloader cache re-verifies on every hit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s5-install-atomicity-rollback-committed-but-incomplete-versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S5. Install atomicity: rollback committed-but-incomplete versions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s6-uninstall-dependents-check-covers-any-version-no-dangling-shims" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S6. uninstall: dependents check covers any version; no dangling shims
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s7-resolver-reuses-any-installed-satisfying-version-not-just-active" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S7. Resolver reuses any installed satisfying version (not just active)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s8-semver-pre-release-precedence-per-spec-200-build-metadata-parsed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S8. SemVer pre-release precedence per spec 2.0.0; build metadata parsed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s9-lock-is-re-entrant-within-one-process-depth-counter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S9. Lock is re-entrant within one process (depth counter)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s10-install-rollback-fails-hard-on-backup-move-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S10. Install rollback fails hard on backup-move failure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s11-configtotoml-validates-tap-names-and-escapes-urls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S11. Config.toTOML validates tap names and escapes URLs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s12-atomic-state-writes-self-healing-installedjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S12. Atomic state writes + self-healing installed.json
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s13-uninstall-dependents-check-matches-the-resolved-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S13. Uninstall dependents check matches the resolved version
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s14-tapstoreremove-validates-the-tap-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S14. TapStore.remove validates the tap name
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s15-shim-script-names-are-validated-as-shellpath-safe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S15. Shim script names are validated as shell/path safe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s16-pinnedjson-is-written-atomically-and-under-the-lock" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S16. pinned.json is written atomically and under the lock
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s17-downloader-caps-size-and-streams-the-hash" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S17. Downloader caps size and streams the hash
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s18-safeextractor-extracts-member-by-member-and-verifies-containment-after-each" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S18. SafeExtractor extracts member-by-member and verifies containment after each
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s19-livecheck-bounds-the-regex-input-against-redos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S19. Livecheck bounds the regex input against ReDoS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s20-lock-is-thread-safe-and-opens-with-o_nofollow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S20. Lock is thread-safe and opens with O_NOFOLLOW
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s21-toml-comment-strip-tracks-backslash-escapes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S21. TOML comment-strip tracks backslash escapes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s22-cellarscanall-is-not-memoized-tried-reverted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S22. Cellar.scanAll is NOT memoized (tried, reverted)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s23-safeextractor-bulk-extract-post-extract-escape-rejection-per-member-reverted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S23. SafeExtractor: bulk extract + post-extract escape rejection (per-member reverted)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s24-mise-prefixmajor-and-bare-major-queries-mean-any-majorxx" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S24. mise prefix:&lt;major&gt; and bare-major queries mean "any major.x.x"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s25-tap-fails-loud-until-implemented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S25. --tap fails loud until implemented
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s26-unknown-cli-flags-exit-nonzero" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S26. Unknown CLI flags exit nonzero
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#miseasdf-interop-follow-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mise/asdf interop (follow-on)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mise/asdf interop (follow-on)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#m1-interop-not-parity-global-model-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M1. Interop, not parity — global model only
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m2-auto-detect-on-gimme-install-no-args" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M2. Auto-detect on gimme install (no args)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m3-skip-mise-managed-tools-never-clobber" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M3. Skip mise-managed tools (never clobber)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m4-path-resolve-standardized-path-detection-no-mise-dependency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M4. PATH-resolve + standardized-path detection (no mise dependency)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m5-honest-global-vs-per-dir-caveat-documented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M5. Honest global-vs-per-dir caveat (documented)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m6-unsupported-specs-skipped-not-errored" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M6. Unsupported specs skipped, not errored
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m7-batch-exit-code-is-partial-failure-aware" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M7. Batch exit code is partial-failure-aware
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m8-walk-up-to-git-project-root-with-a-depth-cap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M8. Walk up to .git (project root), with a depth cap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m9-ltsaliases-treated-as-newest-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M9. lts/aliases treated as "newest available"
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reserved-follow-ons-explicitly-not-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reserved follow-ons (explicitly NOT done)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/foundation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Foundation spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/mise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mise interop spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/foundation-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Foundation plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/mise-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mise plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#foundation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Foundation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Foundation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#f1-single-swiftpm-workspace-with-a-shared-gimmecore-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F1. Single SwiftPM workspace with a shared GimmeCore library
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f2-hybrid-formula-format-toml-manifest-sandboxed-lua" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F2. Hybrid formula format: TOML manifest + sandboxed Lua
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f3-vendored-lua-54-c-glue-with-a-runtime-dispatch-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F3. Vendored Lua 5.4 + C glue with a runtime dispatch table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f4-versioned-cellar-atomic-commits-rename" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F4. Versioned cellar + atomic commits (rename)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f5-path-shims-gimmebin-over-shell-rc-editing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F5. PATH shims (~/.gimme/bin) over shell-rc editing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f6-reuse-installed-first-resolver-not-a-sat-solver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F6. Reuse-installed-first resolver (not a SAT solver)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f7-first-class-ai-agent-contract-json-introspect-dry-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F7. First-class AI-agent contract (--json + introspect + --dry-run)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-hardening-post-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security hardening (post-review)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security hardening (post-review)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#s1-lua-sandbox-opens-only-safe-libraries-no-packageloadlib" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S1. Lua sandbox opens only safe libraries (no package/loadlib)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s2-path-containment-for-all-formula-influenced-destinations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S2. Path containment for all formula-influenced destinations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s3-safe-tar-extraction-no-traversal-no-escaping-symlinks-no-uidsetuid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S3. Safe tar extraction (no traversal, no escaping symlinks, no uid/setuid)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s4-downloader-cache-re-verifies-on-every-hit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S4. Downloader cache re-verifies on every hit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s5-install-atomicity-rollback-committed-but-incomplete-versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S5. Install atomicity: rollback committed-but-incomplete versions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s6-uninstall-dependents-check-covers-any-version-no-dangling-shims" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S6. uninstall: dependents check covers any version; no dangling shims
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s7-resolver-reuses-any-installed-satisfying-version-not-just-active" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S7. Resolver reuses any installed satisfying version (not just active)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s8-semver-pre-release-precedence-per-spec-200-build-metadata-parsed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S8. SemVer pre-release precedence per spec 2.0.0; build metadata parsed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s9-lock-is-re-entrant-within-one-process-depth-counter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S9. Lock is re-entrant within one process (depth counter)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s10-install-rollback-fails-hard-on-backup-move-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S10. Install rollback fails hard on backup-move failure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s11-configtotoml-validates-tap-names-and-escapes-urls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S11. Config.toTOML validates tap names and escapes URLs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s12-atomic-state-writes-self-healing-installedjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S12. Atomic state writes + self-healing installed.json
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s13-uninstall-dependents-check-matches-the-resolved-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S13. Uninstall dependents check matches the resolved version
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s14-tapstoreremove-validates-the-tap-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S14. TapStore.remove validates the tap name
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s15-shim-script-names-are-validated-as-shellpath-safe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S15. Shim script names are validated as shell/path safe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s16-pinnedjson-is-written-atomically-and-under-the-lock" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S16. pinned.json is written atomically and under the lock
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s17-downloader-caps-size-and-streams-the-hash" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S17. Downloader caps size and streams the hash
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s18-safeextractor-extracts-member-by-member-and-verifies-containment-after-each" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S18. SafeExtractor extracts member-by-member and verifies containment after each
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s19-livecheck-bounds-the-regex-input-against-redos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S19. Livecheck bounds the regex input against ReDoS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s20-lock-is-thread-safe-and-opens-with-o_nofollow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S20. Lock is thread-safe and opens with O_NOFOLLOW
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s21-toml-comment-strip-tracks-backslash-escapes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S21. TOML comment-strip tracks backslash escapes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s22-cellarscanall-is-not-memoized-tried-reverted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S22. Cellar.scanAll is NOT memoized (tried, reverted)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s23-safeextractor-bulk-extract-post-extract-escape-rejection-per-member-reverted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S23. SafeExtractor: bulk extract + post-extract escape rejection (per-member reverted)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s24-mise-prefixmajor-and-bare-major-queries-mean-any-majorxx" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S24. mise prefix:&lt;major&gt; and bare-major queries mean "any major.x.x"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s25-tap-fails-loud-until-implemented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S25. --tap fails loud until implemented
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s26-unknown-cli-flags-exit-nonzero" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S26. Unknown CLI flags exit nonzero
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#miseasdf-interop-follow-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mise/asdf interop (follow-on)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mise/asdf interop (follow-on)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#m1-interop-not-parity-global-model-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M1. Interop, not parity — global model only
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m2-auto-detect-on-gimme-install-no-args" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M2. Auto-detect on gimme install (no args)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m3-skip-mise-managed-tools-never-clobber" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M3. Skip mise-managed tools (never clobber)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m4-path-resolve-standardized-path-detection-no-mise-dependency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M4. PATH-resolve + standardized-path detection (no mise dependency)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m5-honest-global-vs-per-dir-caveat-documented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M5. Honest global-vs-per-dir caveat (documented)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m6-unsupported-specs-skipped-not-errored" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M6. Unsupported specs skipped, not errored
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m7-batch-exit-code-is-partial-failure-aware" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M7. Batch exit code is partial-failure-aware
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m8-walk-up-to-git-project-root-with-a-depth-cap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M8. Walk up to .git (project root), with a depth cap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m9-ltsaliases-treated-as-newest-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M9. lts/aliases treated as "newest available"
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reserved-follow-ons-explicitly-not-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reserved follow-ons (explicitly NOT done)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="gimme-decision-log">gimme — Decision Log<a class="headerlink" href="#gimme-decision-log" title="Permanent link">&para;</a></h1>
+<p>A record of the significant design and implementation decisions made on gimme,
+with rationale. Ordered roughly chronologically by feature area. Each entry
+notes the decision, alternatives considered, and why this path was chosen.</p>
+<hr />
+<h2 id="foundation">Foundation<a class="headerlink" href="#foundation" title="Permanent link">&para;</a></h2>
+<h3 id="f1-single-swiftpm-workspace-with-a-shared-gimmecore-library">F1. Single SwiftPM workspace with a shared <code>GimmeCore</code> library<a class="headerlink" href="#f1-single-swiftpm-workspace-with-a-shared-gimmecore-library" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> One SwiftPM workspace. <code>GimmeCore</code> (library) holds the engine;
+<code>gimme</code> (executable) is a thin CLI layer; the future GUI app will link
+<code>GimmeCore</code> directly or consume the <code>--json</code> contract.</p>
+<p><strong>Alternatives considered:</strong> (a) CLI + separate GUI project talking via
+subprocess/IPC; (b) single combined binary that is both CLI and GUI.</p>
+<p><strong>Why:</strong> Shared library target = one build, one source of truth, no IPC
+boundary or duplicated logic. The GUI is a future target that plugs into the
+same engine; building it later needs no engine rework.</p>
+<h3 id="f2-hybrid-formula-format-toml-manifest-sandboxed-lua">F2. Hybrid formula format: TOML manifest + sandboxed Lua<a class="headerlink" href="#f2-hybrid-formula-format-toml-manifest-sandboxed-lua" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> Formula metadata lives in a typed TOML manifest
+(<code>formula.toml</code>); imperative install logic, when needed, is a sandboxed Lua
+<code>install(ctx)</code> function. ~80% of formulae are pure declarative <code>steps</code>; Lua is
+only invoked for the messy cases.</p>
+<p><strong>Alternatives:</strong> pure Swift DSL (heavy/slow at runtime, sandboxing hard);
+pure Lua (loses type safety on metadata); support all three (triples testing).</p>
+<p><strong>Why:</strong> Type-safe data + real scripting + clean sandbox boundary. Lua is
+purpose-built for embedding (microsecond startup, first-class sandboxing via
+restricted env). This is also the cleanest on-ramp for future Homebrew-compat
+(Ruby <code>install do</code> maps onto <code>steps</code> or <code>lua</code>, never requiring us to run Ruby).</p>
+<h3 id="f3-vendored-lua-54-c-glue-with-a-runtime-dispatch-table">F3. Vendored Lua 5.4 + C glue with a runtime dispatch table<a class="headerlink" href="#f3-vendored-lua-54-c-glue-with-a-runtime-dispatch-table" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> Lua 5.4 C sources vendored under <code>Sources/GimmeLua/lua54/</code>
+(without <code>lua.c</code>/<code>luac.c</code> main()). The <code>ctx</code> API is exposed via
+<code>CGimmeLuaSupport</code> (C glue) that calls back into Swift through a
+<strong>function-pointer table registered at runtime</strong> — not via <code>extern</code> Swift
+symbols.</p>
+<p><strong>Alternatives:</strong> link-time <code>@_cdecl</code> symbols; a mixed Swift+C target.</p>
+<p><strong>Why:</strong> SwiftPM does not support mixed-language targets, and linking C
+against Swift <code>@_cdecl</code> symbols fails at link time because the C target is a
+<em>dependency</em> of the Swift target (circular). The runtime dispatch table breaks
+the cycle cleanly: the C code holds function pointers that Swift fills in once
+at startup. No link-order issues, no mixed-target gymnastics.</p>
+<h3 id="f4-versioned-cellar-atomic-commits-rename">F4. Versioned cellar + atomic commits (rename)<a class="headerlink" href="#f4-versioned-cellar-atomic-commits-rename" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> Each tool@version gets <code>~/.gimme/cellar/&lt;tool&gt;/&lt;version&gt;/</code>.
+Install stages into a temp dir, then <code>rename</code>s into the cellar (atomic on the
+same volume). Receipts (<code>RECEIPT.json</code>) are the source of truth; the
+<code>installed.json</code> index is derived and rebuildable.</p>
+<p><strong>Alternatives:</strong> single-version-per-tool (no parallel versions, hard
+rollbacks); commit-then-activate with no atomic step.</p>
+<p><strong>Why:</strong> Atomicity guarantee (failed installs never leave half-installed
+state) is the single most important property of a package manager. Versioned
+cellar enables <code>gimme git@2.40</code>, rollbacks, and parallel installs for free.
+Receipt-as-truth means a corrupted index is never fatal.</p>
+<h3 id="f5-path-shims-gimmebin-over-shell-rc-editing">F5. PATH shims (<code>~/.gimme/bin</code>) over shell-rc editing<a class="headerlink" href="#f5-path-shims-gimmebin-over-shell-rc-editing" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> gimme manages a directory of real executable shims; the user
+adds it to PATH once. Each shim exec's the active version's real binary.</p>
+<p><strong>Alternatives:</strong> edit shell rc files (fragile, fights user rc, shell-specific);
+require <code>eval $(gimme env)</code> hook (forces every user to add a line, version
+switches need a new shell); user manages PATH (worst UX).</p>
+<p><strong>Why:</strong> Robust across shells, no per-shell hook, instant version switches.
+This is the proven asdf/mise model.</p>
+<h3 id="f6-reuse-installed-first-resolver-not-a-sat-solver">F6. Reuse-installed-first resolver (not a SAT solver)<a class="headerlink" href="#f6-reuse-installed-first-resolver-not-a-sat-solver" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> Dependency resolution reuses already-installed satisfying
+versions; otherwise picks the highest satisfying version. Conflicts surface as
+explicit errors with the conflicting chain.</p>
+<p><strong>Alternatives:</strong> a full SAT solver (à la Cargo).</p>
+<p><strong>Why:</strong> Covers the vast majority of real cases with far less complexity. The
+<code>Resolver</code> interface is shaped so a SAT solver can be swapped in later if
+proven necessary — YAGNI for the foundation.</p>
+<h3 id="f7-first-class-ai-agent-contract-json-introspect-dry-run">F7. First-class AI-agent contract (<code>--json</code> + <code>introspect</code> + <code>--dry-run</code>)<a class="headerlink" href="#f7-first-class-ai-agent-contract-json-introspect-dry-run" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> Every command emits a single well-formed JSON object with a
+<code>schema_version</code>. <code>gimme introspect --json</code> exposes the entire CLI surface
+(args/flags/exit-codes/output-schemas) as data. <code>--dry-run</code> plans any
+mutation. Errors are structured (<code>code</code>/<code>message</code>/<code>details</code>/<code>recoverable</code>/
+<code>suggested</code>). Exit code ↔ error category is a fixed, documented map.</p>
+<p><strong>Why:</strong> An agent can <code>introspect</code> once, <code>--dry-run</code> to plan, execute with
+<code>--json</code>, and recover from structured errors — without scraping human prose or
+guessing output shapes. This also makes a future MCP server a thin adapter.</p>
+<hr />
+<h2 id="security-hardening-post-review">Security hardening (post-review)<a class="headerlink" href="#security-hardening-post-review" title="Permanent link">&para;</a></h2>
+<p>These decisions record the security and correctness fixes made after a
+dedicated security/correctness/performance review of the codebase. Each
+addresses a concrete defect found during that review.</p>
+<h3 id="s1-lua-sandbox-opens-only-safe-libraries-no-packageloadlib">S1. Lua sandbox opens only safe libraries (no <code>package</code>/<code>loadlib</code>)<a class="headerlink" href="#s1-lua-sandbox-opens-only-safe-libraries-no-packageloadlib" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> The sandboxed Lua state is initialized with a custom library list
+that omits <code>LUA_LOADLIBNAME</code> (the <code>package</code> library) and <code>LUA_DBLIBNAME</code>
+(<code>debug</code>), then nil's out <code>package</code>, <code>loadfile</code>, <code>dofile</code>, <code>load</code>, <code>require</code>,
+and the dangerous <code>os.*</code>/<code>io.*</code> functions.</p>
+<p><strong>Why:</strong> The original code called <code>luaL_openlibs</code> (which opens <code>package</code>) and
+then nil'd <code>os</code>/<code>io</code>/<code>loadfile</code>/<code>dofile</code>/<code>load</code>/<code>require</code>/<code>debug</code> — but never
+touched <code>package</code>. That left <code>package.loadlib</code> (which maps to <code>dlopen</code>/<code>dlsym</code>
+on macOS) fully functional: a formula could call
+<code>package.loadlib("/usr/lib/libSystem.B.dylib","system")("rm -rf ~")</code> for
+arbitrary native-code execution, completely defeating the sandbox. This was the
+single most severe finding. The fix removes the <code>package</code> library at the source
+(Lua's <code>linit.c</code> is explicitly designed for this — its header invites copying a
+custom openlibs), so there is no <code>loadlib</code> to nil out in the first place.</p>
+<h3 id="s2-path-containment-for-all-formula-influenced-destinations">S2. Path containment for all formula-influenced destinations<a class="headerlink" href="#s2-path-containment-for-all-formula-influenced-destinations" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> A new <code>PathContainment</code> helper validates that any destination a
+formula (declarative <code>steps</code> or sandboxed Lua) can influence resolves <em>under</em>
+the cellar/staging prefix. <code>ctx:install_dir</code>, <code>ctx:mkdir</code>, and the Stager's
+<code>copy</code> step all enforce it. Archive-derived filenames are rejected if they
+contain <code>..</code>, <code>/</code>, or <code>\</code>. The C dispatch now <code>luaL_error</code>s on a rejected path
+so the violation aborts the install rather than returning a soft failure.</p>
+<p><strong>Why:</strong> <code>resolvePath</code> previously honored absolute paths (<code>ctx:mkdir("/etc/x")</code>)
+and <code>..</code> traversal (<code>${prefix}/../../../etc</code>), and <code>install_dir</code> moved
+archive-controlled filenames verbatim into the prefix. A malicious archive
+could write anywhere on disk.</p>
+<h3 id="s3-safe-tar-extraction-no-traversal-no-escaping-symlinks-no-uidsetuid">S3. Safe tar extraction (no traversal, no escaping symlinks, no uid/setuid)<a class="headerlink" href="#s3-safe-tar-extraction-no-traversal-no-escaping-symlinks-no-uidsetuid" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> A new <code>SafeExtractor</code> lists members before extracting and rejects
+absolute paths, <code>..</code> segments, and drive-letter paths; extracts with
+<code>--no-same-owner --no-same-permissions</code> (so the archive can't impose uid/gid or
+setuid bits); and post-extract strips any symlink whose target resolves outside
+the extract dir. Used by both <code>ctxExtract</code> and the Stager's <code>steps</code> strategy.</p>
+<p><strong>Why:</strong> bsdtar on macOS does not strip these by default. A crafted release
+tarball (whose bytes are pinned by sha256 but whose <em>structure</em> is chosen by the
+formula author) could write outside the extract dir via <code>..</code> members, absolute
+paths, or symlink redirection. This is the classic tarball-overwrite class.</p>
+<h3 id="s4-downloader-cache-re-verifies-on-every-hit">S4. Downloader cache re-verifies on every hit<a class="headerlink" href="#s4-downloader-cache-re-verifies-on-every-hit" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> A cache hit re-hashes the file and compares against <code>asset.sha256</code>;
+a mismatch evicts the entry and re-fetches.</p>
+<p><strong>Why:</strong> The cache path is the sha256 hex; a hit returned the file with no
+re-verification. Any wrong/corrupted/poisoned file at that name (a prior
+<code>--insecure</code> install, a concurrent race, a manually-placed file, a future
+hash-prefixed collision) would be trusted forever. Since the checksum is the
+only integrity gate, the cache must not become a trust oracle.</p>
+<h3 id="s5-install-atomicity-rollback-committed-but-incomplete-versions">S5. Install atomicity: rollback committed-but-incomplete versions<a class="headerlink" href="#s5-install-atomicity-rollback-committed-but-incomplete-versions" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> The post-commit steps (write receipt, activate shims, update state)
+are wrapped so any failure rolls back the just-committed cellar entry and
+restores any prior version that was displaced.</p>
+<p><strong>Why:</strong> A failure between <code>commit</code> (rename into cellar) and the receipt/shim/state
+steps previously left a half-installed version: present in the cellar, absent
+from <code>installed.json</code>, no receipt, stale or no shim. <code>rebuild</code> wouldn't fully
+fix it. Now an interrupted install leaves the system as it was before.</p>
+<h3 id="s6-uninstall-dependents-check-covers-any-version-no-dangling-shims">S6. uninstall: dependents check covers any version; no dangling shims<a class="headerlink" href="#s6-uninstall-dependents-check-covers-any-version-no-dangling-shims" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> The dependents check runs for <em>any</em> uninstall of a version some
+receipt depends on (previously only when uninstalling the active version).
+After removal, shim repoint/deactivation falls back to reading the removed
+version's <code>bin/</code> dir when the formula can't be found (tap disabled), so shims
+never dangle.</p>
+<p><strong>Why:</strong> Uninstalling a non-active version something depended on would silently
+break the dependent. And if the tap was gone, <code>shims.deactivate</code> was skipped
+entirely, leaving shims pointing at a deleted version.</p>
+<h3 id="s7-resolver-reuses-any-installed-satisfying-version-not-just-active">S7. Resolver reuses any installed satisfying version (not just active)<a class="headerlink" href="#s7-resolver-reuses-any-installed-satisfying-version-not-just-active" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> When resolving a dependency, the resolver scans <em>all</em> installed
+versions for one satisfying the constraint (highest first), not just the active
+one.</p>
+<p><strong>Why:</strong> A present-but-inactive satisfying version was previously ignored,
+triggering an unnecessary re-download and breaking offline installs — violating
+the advertised "reuse-installed-first" property.</p>
+<h3 id="s8-semver-pre-release-precedence-per-spec-200-build-metadata-parsed">S8. SemVer pre-release precedence per spec 2.0.0; build metadata parsed<a class="headerlink" href="#s8-semver-pre-release-precedence-per-spec-200-build-metadata-parsed" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> Pre-release identifiers compare dot-by-dot per SemVer 11 (numeric
+identifiers as integers with lower precedence than alphanumeric; more fields
+wins when prefix equal). Build metadata (<code>+...</code>) is parsed and stored but
+ignored for precedence per SemVer 10.</p>
+<p><strong>Why:</strong> Pre-release comparison was a plain lexical string compare, which got
+<code>1.0.0-2</code> vs <code>1.0.0-10</code> backwards (lexical <code>"2" &gt; "10"</code>, numeric <code>2 &lt; 10</code>),
+mis-ordered <code>rc</code>/<code>beta</code>/<code>alpha</code> chains, and failed to parse <code>+build</code> metadata
+entirely (<code>1.2.3+build</code> returned nil). Real-world impact: wrong "latest" for
+any formula shipping pre-releases.</p>
+<h3 id="s9-lock-is-re-entrant-within-one-process-depth-counter">S9. Lock is re-entrant within one process (depth counter)<a class="headerlink" href="#s9-lock-is-re-entrant-within-one-process-depth-counter" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> <code>Lock</code> tracks an acquisition depth counter. A nested <code>acquire()</code>
+on the same instance (already held) just increments depth and returns; <code>release()</code>
+only unlocks when depth returns to 0.</p>
+<p><strong>Why:</strong> <code>Installer.install</code> acquires the lock, then for each unmet dependency
+calls <code>ensureInstalled</code>, which calls <code>install</code> again on the same <code>World</code>/<code>Lock</code>.
+Before this fix, the nested <code>acquire</code> re-opened the lock file, overwrote the
+stored fd without closing the first, and either deadlocked (<code>EWOULDBLOCK</code> spin
+for 30s, since a fresh <code>open()</code> creates a distinct open-file-description and
+<code>flock</code> is per-description) or leaked the fd so the lock was never released —
+breaking the next gimme command. A single shared <code>Lock</code> per process should be
+re-entrant; <code>flock</code> is meant to be held via one open file description per
+holder. A regression test (<code>DependencyInstallTests.testInstallFormulaWithDependencyDoesNotDeadlock</code>)
+installs a formula-with-a-dep end-to-end, the exact scenario that broke.</p>
+<h3 id="s10-install-rollback-fails-hard-on-backup-move-failure">S10. Install rollback fails hard on backup-move failure<a class="headerlink" href="#s10-install-rollback-fails-hard-on-backup-move-failure" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> Moving the prior version aside before commit no longer uses <code>try?</code>.
+On <code>moveItem</code> failure (e.g. cross-volume <code>EXDEV</code>), it falls back to copy+remove
+and only proceeds once the backup exists; if neither works, the install aborts
+rather than destroying the prior version with no backup.</p>
+<p><strong>Why:</strong> The previous <code>try?</code> swallowed a failed backup move, then <code>commit</code>
+removed the (still-present) prior and installed the new one — leaving the user
+with neither the old nor a complete new version, and the rollback path found no
+backup to restore. The backup exists specifically to enable rollback; silently
+skipping it defeats the atomicity guarantee.</p>
+<h3 id="s11-configtotoml-validates-tap-names-and-escapes-urls">S11. Config.toTOML validates tap names and escapes URLs<a class="headerlink" href="#s11-configtotoml-validates-tap-names-and-escapes-urls" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> <code>TapStore.add</code> rejects tap names outside <code>[A-Za-z0-9._-]+</code> and
+empty URLs. <code>Config.toTOML</code> escapes the URL string (backslash, quote, newline)
+for the TOML basic-string value.</p>
+<p><strong>Why:</strong> Unescaped interpolation let a name like <code>foo]\n[evil]</code> inject a new
+<code>[evil]</code> table header, and a crafted URL (containing <code>"</code> or newline) broke TOML
+parsing — which then silently fell back to <code>Config.defaults</code>, wiping the user's
+tap list. A crafted valid config could also point taps at attacker-chosen git
+URLs. Names are validated at entry (the only path that adds taps), so the
+header stays unquoted for round-trip safety; URLs are escaped unconditionally.</p>
+<h3 id="s12-atomic-state-writes-self-healing-installedjson">S12. Atomic state writes + self-healing installed.json<a class="headerlink" href="#s12-atomic-state-writes-self-healing-installedjson" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> <code>installed.json</code> and <code>RECEIPT.json</code> are written with <code>.atomic</code>.
+<code>StateStore</code> holds a cellar reference; when <code>loadInstalled()</code> finds the index
+missing or unparseable, it rebuilds from cellar receipts and persists the
+repaired index.</p>
+<p><strong>Why:</strong> The non-atomic writes meant a crash/SIGKILL/power loss mid-write left
+truncated JSON. <code>loadInstalled</code> returned <code>[:]</code> on decode failure with no
+rebuild, so <code>gimme list</code> showed nothing, the resolver couldn't see installed
+deps (causing spurious re-downloads), and <code>uninstall</code> reported everything as
+"not installed" — violating the documented "receipts are source of truth;
+index is a rebuildable cache" invariant. The receipts remain authoritative;
+the index now genuinely self-heals.</p>
+<h3 id="s13-uninstall-dependents-check-matches-the-resolved-version">S13. Uninstall dependents check matches the resolved version<a class="headerlink" href="#s13-uninstall-dependents-check-matches-the-resolved-version" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> <code>findDependents(tool:version:)</code> matches the version being removed
+against the <code>resolved</code> version recorded in dependents' receipts, not just the
+tool name.</p>
+<p><strong>Why:</strong> The previous name-only check refused removing <em>any</em> version of a tool
+that had any dependent — so <code>gimme uninstall node@20</code> was blocked when only
+<code>node@18</code> was a dependency, making multi-version management (the product's core
+feature) painful for shared dependencies. Matching <code>Receipt.DepRef.resolved</code>
+(which is populated at install time with the actual resolved version) means an
+unused version uninstalls freely while a depended-on version is still
+protected.</p>
+<h3 id="s14-tapstoreremove-validates-the-tap-name">S14. TapStore.remove validates the tap name<a class="headerlink" href="#s14-tapstoreremove-validates-the-tap-name" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> <code>remove(name:)</code> applies the same charset check as <code>add</code> (via a
+shared <code>validateTapName</code> helper). The validator rejects <code>.</code> and <code>..</code> explicitly
+in addition to the charset, since <code>.</code> is an allowed character but <code>..</code> as a
+whole name is a path-traversal.</p>
+<p><strong>Why:</strong> <code>remove</code> built the path <code>paths.taps.appendingPathComponent(name)</code>,
+which honors <code>..</code> segments. An unchecked <code>gimme tap remove "../../.ssh"</code>
+resolved to <code>~/.gimme/taps/../../.ssh</code> = <code>~/.ssh</code> and deleted it — an
+arbitrary-directory-deletion primitive reachable from the CLI. The <code>add</code> path
+was already validated (S11), but <code>remove</code> was missed; both now share one
+validator.</p>
+<h3 id="s15-shim-script-names-are-validated-as-shellpath-safe">S15. Shim script names are validated as shell/path safe<a class="headerlink" href="#s15-shim-script-names-are-validated-as-shellpath-safe" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> A new <code>NameSafety</code> helper validates the package name, version
+strings, and provided bin names against a filename/shell-safe charset
+(alphanumerics plus <code>. _ + -</code>, with <code>.</code>/<code>..</code> rejected as whole names). It runs
+in <code>ManifestLoader.validate</code> (rejects malicious taps at load time) and again in
+<code>ShimManager.activate</code> (defense in depth).</p>
+<p><strong>Why:</strong> <code>ShimManager.shimScript</code> interpolates <code>tool</code>, <code>version</code>, and <code>bin</code>
+raw into a generated <code>#!/bin/sh</code> script <em>and</em> into path components
+(<code>cellar/&lt;tool&gt;/&lt;version&gt;/bin/&lt;bin&gt;</code> and <code>~/.gimme/bin/&lt;bin&gt;</code>). None were
+validated. A tap with <code>bin = ["foo\";rm -rf ~ #"]</code> produced
+<code>exec ".../bin/foo";rm -rf "$HOME" #" "$@"</code> — command injection on the next
+invocation of the tool. A <code>bin = ["../evil"]</code> wrote the shim outside
+<code>~/.gimme/bin</code>. These values cross a trust boundary (tap author → user's shell)
+and must be names, not shell fragments.</p>
+<h3 id="s16-pinnedjson-is-written-atomically-and-under-the-lock">S16. pinned.json is written atomically and under the lock<a class="headerlink" href="#s16-pinnedjson-is-written-atomically-and-under-the-lock" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> <code>StateStore.pin</code>/<code>unpin</code> use <code>.atomic</code> writes. <code>Gimme.runPin</code>/
+<code>runUnpin</code> acquire the lock before mutating (matching <code>install</code>/<code>uninstall</code>/
+<code>switchActive</code>).</p>
+<p><strong>Why:</strong> <code>pinned.json</code> is the authoritative user-intent store (per the file's
+own comment), yet it was written non-atomically and without the lock. A crash
+mid-write left a corrupt file, and <code>loadPinned</code> returns <code>[:]</code> on decode failure
+with no self-heal — so a corrupt file <em>silently discarded every pin the user
+set</em>. Without the lock, two concurrent gimme commands (e.g. <code>gimme pin a</code> and
+<code>gimme install b</code>) doing read-modify-write could interleave and lose one
+update. Pins are user intent that can't be reconstructed from the cellar, so
+atomic writes (not self-heal) are the prevention.</p>
+<h3 id="s17-downloader-caps-size-and-streams-the-hash">S17. Downloader caps size and streams the hash<a class="headerlink" href="#s17-downloader-caps-size-and-streams-the-hash" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> <code>sha256(of:)</code> streams the file in 64 KiB chunks via <code>FileHandle</code>
+rather than loading it all into memory. <code>fetch</code> enforces a configurable
+<code>maxDownloadBytes</code> (default 2 GiB) for both <code>file://</code> copies and HTTP
+downloads (via <code>expectedContentLength</code>/file size), rejecting larger assets with
+a <code>.network</code> error before the checksum gate runs.</p>
+<p><strong>Why:</strong> The previous whole-file <code>Data(contentsOf:)</code> hash loaded entire release
+tarballs into RAM, and there was no upper bound on download size — a
+compromised mirror (or a <code>file:///dev/zero</code>-style asset under <code>--insecure</code>)
+could fill the disk before the sha256 gate ran. The cap is generous (2 GiB
+covers real tool tarballs) and the streaming hash removes the memory ceiling.</p>
+<h3 id="s18-safeextractor-extracts-member-by-member-and-verifies-containment-after-each">S18. SafeExtractor extracts member-by-member and verifies containment after each<a class="headerlink" href="#s18-safeextractor-extracts-member-by-member-and-verifies-containment-after-each" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> Instead of one bulk <code>tar xf</code> followed by a post-extract symlink
+strip, <code>SafeExtractor</code> now extracts each member individually in archive order
+and, after writing each, verifies the resolved on-disk path (symlinks resolved)
+stays within the dest root. A member that wrote through an escaping symlink
+created by an earlier member resolves outside the root → abort + clean up the
+whole dest. The post-extract strip remains as defense in depth.</p>
+<p><strong>Why:</strong> The previous post-extract-only strip left a window between <code>tar xf</code>
+and the walk where a carefully ordered archive (symlink member, then a member
+that writes through it) could escape. Per-member extraction + per-member
+containment closes that window: the second member's check resolves through the
+first member's symlink and aborts before the write can do harm.</p>
+<h3 id="s19-livecheck-bounds-the-regex-input-against-redos">S19. Livecheck bounds the regex input against ReDoS<a class="headerlink" href="#s19-livecheck-bounds-the-regex-input-against-redos" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> <code>parseVersionStatic</code> caps the input fed to the formula-supplied
+regex at <code>maxRegexInputBytes</code> (1 MiB) before matching. Version strings appear
+early on real release pages, so the cap doesn't lose valid matches in practice.</p>
+<p><strong>Why:</strong> A formula-supplied regex is applied to fetched, untrusted HTML/JSON
+via <code>NSRegularExpression</code> (ICU, backtracking). A vulnerable pattern (e.g.
+<code>(a+)+</code>) against adversarial page content (a compromised livecheck URL) can
+catastrophically backtrack and hang the process. Capping the input bounds the
+worst-case work; combined with only requesting <code>firstMatch</code>, the regex path is
+no longer an unbounded CPU sink.</p>
+<h3 id="s20-lock-is-thread-safe-and-opens-with-o_nofollow">S20. Lock is thread-safe and opens with O_NOFOLLOW<a class="headerlink" href="#s20-lock-is-thread-safe-and-opens-with-o_nofollow" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> The <code>fd</code>/<code>depth</code> fields are guarded by an <code>os_unfair_lock</code>,
+removing the latent data race (today all access is single-threaded, but this
+makes the lock safe under future concurrency). The lock file is opened with
+<code>O_CREAT | O_RDWR | O_NOFOLLOW</code>, refusing to follow a symlink at the lock
+path, with a fallback plain open for legacy symlinked lock files.</p>
+<p><strong>Why:</strong> Without <code>O_NOFOLLOW</code>, an attacker with write access to
+<code>~/.gimme/state</code> could plant a symlink at <code>gimme.lock</code> pointing at an
+arbitrary file; the holder-PID write would clobber the target. The thread-safety
+guard is forward-looking — <code>flock</code> re-entrancy (S9) already works
+single-threaded, but the counter must be safe if gimme ever adopts concurrency.</p>
+<h3 id="s21-toml-comment-strip-tracks-backslash-escapes">S21. TOML comment-strip tracks backslash escapes<a class="headerlink" href="#s21-toml-comment-strip-tracks-backslash-escapes" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> <code>stripComment</code> tracks <code>\</code> escapes inside basic strings so an
+escaped quote (<code>\"</code>) doesn't toggle the string closed and expose a later <code>#</code>
+as a comment.</p>
+<p><strong>Why:</strong> A formula value like <code>url = "https://x/y#z"</code> (a URL with a fragment)
+followed by a real <code>#</code> comment was being truncated at <code>#z</code> because the bare
+<code>#</code> handling didn't account for escapes. The fix mirrors <code>parseBasicString</code>'s
+escape handling so the two agree.</p>
+<h3 id="s22-cellarscanall-is-not-memoized-tried-reverted">S22. Cellar.scanAll is NOT memoized (tried, reverted)<a class="headerlink" href="#s22-cellarscanall-is-not-memoized-tried-reverted" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> <code>Cellar.scanAll()</code> always reads fresh; there is no per-instance
+cache. <code>Cellar</code> is a class (reference type) so <code>StateStore</code> can hold a stable
+reference for self-healing, but the scan itself is uncached.</p>
+<p><strong>Why:</strong> A memoization attempt (invalidate on <code>commit</code>/<code>remove</code>) caused a real
+staleness regression: receipts and dirs are written by paths <em>outside</em> Cellar's
+mutations (the install-atomicity backup, the StateStore self-heal trigger,
+tests, external tooling), so the memo could return a pre-mutation snapshot and
+the dependents check would miss a just-installed dependent. The performance
+gain (avoiding re-walks within one command) wasn't worth the correctness risk.
+If profiling later shows <code>scanAll</code> is hot, the safe caching boundary is one
+logical command with explicit invalidation hooks added at <em>every</em> writer — a
+larger change than warranted now.</p>
+<h3 id="s23-safeextractor-bulk-extract-post-extract-escape-rejection-per-member-reverted">S23. SafeExtractor: bulk extract + post-extract escape rejection (per-member reverted)<a class="headerlink" href="#s23-safeextractor-bulk-extract-post-extract-escape-rejection-per-member-reverted" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> <code>SafeExtractor.extract</code> does ONE bulk <code>tar xf</code> into dest, then a
+post-extract walk that rejects anything that escaped dest — both escaping
+symlinks (the redirect primitive) and regular files whose realpath is outside
+dest (a write that went <em>through</em> an escaping symlink created by an earlier
+member). On any escape, the artifact is removed and dest is cleaned up,
+aborting the install.</p>
+<p><strong>Why:</strong> S18 originally used per-member extraction (one <code>tar xf &lt;member&gt;</code> per
+member, with a containment check after each) to close the write-through-symlink
+window. That was secure but O(n²) for gzipped archives — each per-member
+invocation re-decompressed the gzip stream from the start (gzip isn't seekable),
+taking ~28s for a 200-member tarball. Verification confirmed bsdtar/macOS
+genuinely follows symlinks during extraction, so the threat is real — but the
+per-member implementation imposed a performance cliff on the most common asset
+type (large gzipped release tarballs).</p>
+<p>The bulk + post-walk design is O(n) and still catches the escape: a file
+written through an escaping symlink lands at a realpath outside dest, which the
+walk detects (and undoes) before the install proceeds. This is the same
+defense-in-depth shape as the Cellar memoization tradeoff (S22): prefer the
+design whose correctness doesn't depend on every writer being instrumented.</p>
+<h3 id="s24-mise-prefixmajor-and-bare-major-queries-mean-any-majorxx">S24. mise <code>prefix:&lt;major&gt;</code> and bare-major queries mean "any major.x.x"<a class="headerlink" href="#s24-mise-prefixmajor-and-bare-major-queries-mean-any-majorxx" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> <code>MiseVersionSpec</code> distinguishes <code>prefixMajor(Int)</code> (from
+<code>prefix:3</code>) from <code>prefix(Int, Int)</code> (from <code>prefix:1.19</code>). <code>VersionConstraint</code>
+gained a <code>.major(Int)</code> case and now parses a bare major (<code>"3"</code>) as <code>.major(3)</code>
+= any <code>3.x.x</code>, while <code>"3.0"</code> stays <code>majorMinor(3, 0)</code> = any <code>3.0.x</code>.</p>
+<p><strong>Why:</strong> mise's <code>prefix:3</code> means "any 3.x.x", but gimme was collapsing it to
+<code>prefix(3, 0)</code> → query <code>tool@3.0</code> → resolver <code>majorMinor(3, 0)</code> = "any 3.0.x".
+A user writing <code>go prefix:1</code> or <code>python prefix:3</code> would silently get only the
+<code>3.0.x</code> line (or a confusing "no version satisfies" if no <code>3.0.x</code> exists),
+when mise would have picked the highest <code>3.x.x</code>. The fix aligns gimme's
+bare-major semantics with the mise/asdf/npm convention, which also makes
+<code>gimme tool@3</code> do the intuitive thing (any 3.x) for direct queries.</p>
+<h3 id="s25-tap-fails-loud-until-implemented">S25. <code>--tap</code> fails loud until implemented<a class="headerlink" href="#s25-tap-fails-loud-until-implemented" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> The <code>--tap</code> global flag is documented in <code>Introspect</code> and parsed
+by the CLI, but the scoped-search behavior was never implemented. Rather than
+silently ignoring it (which violates the agent contract — an agent reading
+<code>introspect</code> would pass <code>--tap</code> expecting scoped behavior and get unscoped
+results), <code>main.swift</code> now exits nonzero with a structured <code>--tap is not yet
+implemented</code> error when the flag is set.</p>
+<p><strong>Why:</strong> A documented flag that silently does nothing is worse than no flag:
+it misleads agents and users into thinking they've scoped an operation when
+they haven't, potentially installing from an unintended tap. Failing loud makes
+the gap visible and unblocks a future implementation that threads the filter
+through <code>TapStore.find</code>/<code>allFormulae</code>/<code>Resolver</code>.</p>
+<h3 id="s26-unknown-cli-flags-exit-nonzero">S26. Unknown CLI flags exit nonzero<a class="headerlink" href="#s26-unknown-cli-flags-exit-nonzero" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> The hand-rolled arg parser now <code>exit(1)</code>s on any unrecognized
+flag, after writing a <code>gimme: unknown flag &lt;x&gt;</code> message to stderr.</p>
+<p><strong>Why:</strong> Previously an unknown flag was written to stderr but parsing continued
+with exit 0. A typo in a safety-critical flag (<code>--dry-run</code>, <code>--force</code>,
+<code>--insecure</code>, <code>--no-mise</code>) would cause real side effects with no error signal
+— <code>gimme install foo --dry-run --typo</code> would actually install. Most CLI tools
+exit nonzero on unknown flags for exactly this reason; the structured <code>--json</code>
+contract also benefits (the previous behavior emitted <code>ok: true</code> while a
+warning went to stderr).</p>
+<hr />
+<h2 id="miseasdf-interop-follow-on">Mise/asdf interop (follow-on)<a class="headerlink" href="#miseasdf-interop-follow-on" title="Permanent link">&para;</a></h2>
+<h3 id="m1-interop-not-parity-global-model-only">M1. Interop, not parity — global model only<a class="headerlink" href="#m1-interop-not-parity-global-model-only" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> gimme reads <code>.tool-versions</code>/<code>mise.toml</code> and installs what they
+declare via gimme formulae, but does NOT attempt per-directory activation.
+gimme stays a global/static-shim tool (the Homebrew model); mise/asdf are
+per-directory (a different paradigm).</p>
+<p><strong>Alternatives:</strong> become a per-directory runtime manager (reimplement mise's
+core trick).</p>
+<p><strong>Why:</strong> The two activation models don't merge cleanly. Per-project resolution
+would require the shim itself to re-resolve on every invocation by walking the
+dir tree — that's reimplementing mise. "Full mise support" isn't a feature you
+bolt on; it's a different product. Interop (read its config, defer to it) is
+cheap, high-value, and doesn't compromise gimme's design.</p>
+<h3 id="m2-auto-detect-on-gimme-install-no-args">M2. Auto-detect on <code>gimme install</code> (no args)<a class="headerlink" href="#m2-auto-detect-on-gimme-install-no-args" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> <code>gimme install</code> with no positional arg auto-detects mise config
+in the cwd or a parent and installs the batch. <code>--no-mise</code> opts out;
+<code>--from-mise</code> forces.</p>
+<p><strong>Alternatives:</strong> explicit flag only (less ergonomic); auto-detect without an
+opt-out (surprising).</p>
+<p><strong>Why:</strong> Most mise-like UX (cd into a project, run <code>gimme install</code>) while
+keeping an opt-out for users who want <code>gimme install</code> to stay explicit. The
+auto-detect prints a notice so it's never silent.</p>
+<h3 id="m3-skip-mise-managed-tools-never-clobber">M3. Skip mise-managed tools (never clobber)<a class="headerlink" href="#m3-skip-mise-managed-tools-never-clobber" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> If mise/asdf already manages a tool on PATH, gimme skips
+installing it. The two never fight.</p>
+<p><strong>Alternatives:</strong> gimme always installs and its shim wins; per-tool prompt.</p>
+<p><strong>Why:</strong> Safe, predictable, respects the user's existing setup. A skip is
+reported in the batch result as <code>skipped_managed</code> with the manager named, so
+the user always sees why.</p>
+<h3 id="m4-path-resolve-standardized-path-detection-no-mise-dependency">M4. PATH-resolve + standardized-path detection (no mise dependency)<a class="headerlink" href="#m4-path-resolve-standardized-path-detection-no-mise-dependency" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> To decide if mise manages tool X, gimme resolves X on PATH
+(excluding its own bin), and checks if the PATH entry lives under a known
+shims dir (<code>$MISE_DATA_DIR/shims</code>, <code>~/.local/share/mise/shims</code>,
+<code>~/.asdf/shims</code>).</p>
+<p><strong>Alternatives:</strong> shell out to <code>mise</code> (couples gimme to mise being installed,
+breaks if mise changes output); config-only (too conservative).</p>
+<p><strong>Why:</strong> Self-contained, no mise-as-a-dependency, robust to how mise was
+installed (curl|sh, brew, mise-installs-itself) because it keys off the shim
+<em>location</em>. Crucial implementation detail: we compare the <strong>standardized PATH
+entry path</strong> (NOT the symlink-followed realpath) — following the symlink all
+the way out to the final binary would lose the "lives in shims dir" signal.</p>
+<h3 id="m5-honest-global-vs-per-dir-caveat-documented">M5. Honest global-vs-per-dir caveat (documented)<a class="headerlink" href="#m5-honest-global-vs-per-dir-caveat-documented" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> PATH-based detection sees the globally-active version of a tool,
+not per-directory ones. If mise manages <code>node</code> only inside certain project dirs
+and you run <code>gimme install</code> from a dir where mise isn't active for <code>node</code>,
+gimme will install its own <code>node</code>.</p>
+<p><strong>Why:</strong> This is the safe direction (user gets a working tool rather than a
+confusing skip) and a deliberate consequence of gimme's global model. A future
+per-directory detection strategy (asking <code>mise current &lt;tool&gt;</code> directly) is
+reserved; the <code>MiseDetector</code> interface already accommodates it without engine
+changes.</p>
+<h3 id="m6-unsupported-specs-skipped-not-errored">M6. Unsupported specs skipped, not errored<a class="headerlink" href="#m6-unsupported-specs-skipped-not-errored" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> <code>ref:</code> (VCS-ref builds), <code>path:</code> (local-dir runtimes), and
+<code>sub-</code> (version arithmetic) specs are reported as <code>skipped_unsupported</code> in the
+batch result — they don't abort the run.</p>
+<p><strong>Alternatives:</strong> error the whole batch on an unsupported spec.</p>
+<p><strong>Why:</strong> A project's <code>.tool-versions</code> often mixes supported and unsupported
+tools; erroring the whole batch would prevent installing the supported ones.
+Per-tool status gives the full picture in one run.</p>
+<h3 id="m7-batch-exit-code-is-partial-failure-aware">M7. Batch exit code is partial-failure-aware<a class="headerlink" href="#m7-batch-exit-code-is-partial-failure-aware" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> Exit 0 if nothing failed and at least one tool installed; exit 1
+if any tool failed OR nothing installed. Individual failures don't abort the
+batch — the JSON carries per-tool status.</p>
+<p><strong>Why:</strong> CI/scripts can detect partial failure via exit code while still
+getting the structured per-tool breakdown in the JSON. Required restructuring
+<code>Gimme.dispatch</code> to return <code>([json], exitCode)</code> so commands can signal
+non-zero exits alongside their payload (previously exit code came only from
+thrown errors).</p>
+<h3 id="m8-walk-up-to-git-project-root-with-a-depth-cap">M8. Walk up to <code>.git</code> (project root), with a depth cap<a class="headerlink" href="#m8-walk-up-to-git-project-root-with-a-depth-cap" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> Config discovery walks up from cwd collecting
+<code>.tool-versions</code>/<code>mise.toml</code>, stopping at the first directory containing
+<code>.git</code> or the filesystem root. Defensive depth cap of 64.</p>
+<p><strong>Why:</strong> Matches the common "project + global" layering. The depth cap is
+hard-won: an early test hung because an unbounded walk from a temp dir
+traversed the entire filesystem (slow). The cap makes traversal
+unconditionally bounded.</p>
+<h3 id="m9-ltsaliases-treated-as-newest-available">M9. <code>lts</code>/aliases treated as "newest available"<a class="headerlink" href="#m9-ltsaliases-treated-as-newest-available" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> mise aliases like <code>lts</code>, <code>stable</code> resolve to gimme's "newest
+available" (no constraint), not to upstream LTS tags.</p>
+<p><strong>Why:</strong> gimme's foundation doesn't track upstream LTS tags. Best-effort
+resolution installs a working version; the result reports what was actually
+chosen so the user can see. Tracking LTS tags would be a future enhancement.</p>
+<hr />
+<h2 id="reserved-follow-ons-explicitly-not-done">Reserved follow-ons (explicitly NOT done)<a class="headerlink" href="#reserved-follow-ons-explicitly-not-done" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Per-directory detection via <code>mise current &lt;tool&gt;</code></strong> — <code>MiseDetector</code> and
+  <code>Manager</code> already accommodate this; only the detection internals change.</li>
+<li><strong><code>ref:</code> / <code>path:</code> spec support</strong> — would need source builds (foundation's
+  reserved <code>strategy = "source"</code>) and a local-dir provider.</li>
+<li><strong>Source-based builds</strong> (<code>strategy = "source"</code>) — enum value reserved.</li>
+<li><strong>Homebrew formula/cask compatibility</strong> — separate <code>GimmeBrew</code> target later.</li>
+<li><strong>Native GUI app</strong> (<code>GimmeUI</code>) — separate target later.</li>
+<li><strong>MCP server</strong> (<code>gimme mcp</code>) — reserved command; the <code>--json</code>/<code>introspect</code>
+  contract makes it a thin adapter.</li>
+<li><strong>Writing mise config</strong> (<code>gimme init</code>).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/gregnazario/gimme" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

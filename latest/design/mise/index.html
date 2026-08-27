@@ -1,0 +1,1892 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A unified package manager for macOS — one CLI and GUI over Homebrew, Go, uv, Cargo, npm, and more.">
+      
+      
+      
+        <link rel="canonical" href="https://gregnazario.github.io/gimme/latest/design/mise/">
+      
+      
+        <link rel="prev" href="../foundation/">
+      
+      
+        <link rel="next" href="../foundation-plan/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Mise interop spec - gimme</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#gimme-miseasdf-interop-design" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="gimme" class="md-header__button md-logo" aria-label="gimme" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            gimme
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Mise interop spec
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="indigo"  aria-label="Switch to dark"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="indigo"  aria-label="Switch to light"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/gregnazario/gimme" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    gregnazario/gimme
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="gimme" class="md-nav__button md-logo" aria-label="gimme" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="logo">
+
+    </a>
+    gimme
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/gregnazario/gimme" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    gregnazario/gimme
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guides/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/formulae/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Formula format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/mise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mise/asdf interop
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/agents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../reference/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/exit-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exit codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../foundation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Foundation spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mise interop spec
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mise interop spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#decisions-locked-during-brainstorming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decisions (locked during brainstorming)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#out-of-scope-explicitly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Out of scope (explicitly)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-module-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Module layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-config-parsing-version-specs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Config parsing &amp; version specs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Config parsing &amp; version specs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tool-versions-asdf-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        .tool-versions (asdf format)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#misetoml-tools-parsed-via-gimmes-existing-toml-parser" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mise.toml [tools] (parsed via gimme's existing TOML parser)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miseversionspec-grammar-and-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MiseVersionSpec — grammar and mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#config-walk-merge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config walk &amp; merge
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-coexistence-skip-mise-managed-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Coexistence — skip mise-managed tools
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Coexistence — skip mise-managed tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#detection-path-resolve-realpath-prefix-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detection: PATH resolve + realpath prefix check
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-skipped-vs-installed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets skipped vs installed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#honest-limitation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Honest limitation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-cli-integration-result-shape-doctor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. CLI integration, result shape &amp; doctor
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. CLI integration, result shape &amp; doctor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cli-surface-stays-inside-existing-install-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI surface (stays inside existing install command)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#result-shape-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Result shape (--json)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gimme-doctor-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gimme doctor integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#introspect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Introspect
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-reserved-follow-ons-explicitly-not-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Reserved follow-ons (explicitly not now)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Testing
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../foundation-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Foundation plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mise-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mise plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#decisions-locked-during-brainstorming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decisions (locked during brainstorming)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#out-of-scope-explicitly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Out of scope (explicitly)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-module-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Module layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-config-parsing-version-specs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Config parsing &amp; version specs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Config parsing &amp; version specs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tool-versions-asdf-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        .tool-versions (asdf format)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#misetoml-tools-parsed-via-gimmes-existing-toml-parser" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mise.toml [tools] (parsed via gimme's existing TOML parser)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miseversionspec-grammar-and-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MiseVersionSpec — grammar and mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#config-walk-merge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config walk &amp; merge
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-coexistence-skip-mise-managed-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Coexistence — skip mise-managed tools
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Coexistence — skip mise-managed tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#detection-path-resolve-realpath-prefix-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detection: PATH resolve + realpath prefix check
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-skipped-vs-installed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets skipped vs installed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#honest-limitation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Honest limitation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-cli-integration-result-shape-doctor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. CLI integration, result shape &amp; doctor
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. CLI integration, result shape &amp; doctor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cli-surface-stays-inside-existing-install-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI surface (stays inside existing install command)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#result-shape-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Result shape (--json)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gimme-doctor-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gimme doctor integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#introspect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Introspect
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-reserved-follow-ons-explicitly-not-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Reserved follow-ons (explicitly not now)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Testing
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="gimme-miseasdf-interop-design">gimme — Mise/asdf Interop Design<a class="headerlink" href="#gimme-miseasdf-interop-design" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> Approved (2026-08-03)
+<strong>Scope:</strong> Follow-on feature, layered on the gimme foundation. Adds two capabilities:
+(1) read <code>.tool-versions</code> / <code>mise.toml</code> project config and install what they
+declare via gimme formulae; (2) coexist with mise/asdf by skipping tools those
+managers already manage.</p>
+<hr />
+<h2 id="1-overview">1. Overview<a class="headerlink" href="#1-overview" title="Permanent link">&para;</a></h2>
+<p>gimme's foundation uses a <strong>global, static-shim activation model</strong> (the
+Homebrew model). mise/asdf use a <strong>per-directory activation model</strong>. These do
+not merge cleanly, so this feature deliberately does NOT attempt per-directory
+activation. Instead it provides two cheap, high-value capabilities:</p>
+<ul>
+<li><strong>Read project config</strong> — <code>gimme install</code> (no args) auto-detects
+  <code>.tool-versions</code> / <code>mise.toml</code> in the cwd or a parent and installs what they
+  declare via gimme formulae.</li>
+<li><strong>Coexist</strong> — if mise/asdf already manages a tool on PATH, gimme skips it
+  rather than clobbering. The two never fight.</li>
+</ul>
+<p>This is interop, not parity. gimme remains a global tool manager; it just
+reads the standard project-config file formats and defers to other managers
+where they're already active.</p>
+<h3 id="decisions-locked-during-brainstorming">Decisions (locked during brainstorming)<a class="headerlink" href="#decisions-locked-during-brainstorming" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Discovery:</strong> auto-detect on <code>gimme install</code> (no args), with <code>--no-mise</code>
+  (opt-out) and <code>--from-mise</code> (force) flags.</li>
+<li><strong>Conflict policy:</strong> skip mise-managed tools (never clobber).</li>
+<li><strong>Detection:</strong> PATH resolve + realpath prefix check (no mise dependency).</li>
+</ul>
+<h3 id="out-of-scope-explicitly">Out of scope (explicitly)<a class="headerlink" href="#out-of-scope-explicitly" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Per-directory activation</strong> — the activation-model trap. gimme stays global.</li>
+<li><strong><code>ref:</code> / <code>path:</code> / <code>sub-:</code> specs</strong> — don't map to gimme's download model.
+  Reported as <code>skipped_unsupported</code>, not implemented.</li>
+<li><strong>Writing mise config</strong> (<code>gimme init</code>). Read-only.</li>
+<li><strong><code>MISE_&lt;TOOL&gt;_VERSION</code> env override</strong> beyond simple recognition.</li>
+<li><strong>Shelling out to <code>mise</code></strong> as a detection strategy — reserved as a future
+  per-directory-aware strategy (see §6).</li>
+</ul>
+<hr />
+<h2 id="2-module-layout">2. Module layout<a class="headerlink" href="#2-module-layout" title="Permanent link">&para;</a></h2>
+<p>New module under the existing <code>GimmeCore</code>, matching the codebase's
+one-file-per-responsibility convention:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Sources/GimmeCore/mise/
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  MiseConfig.swift        # parse .tool-versions + mise.toml [tools]; walk + merge
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  MiseVersionSpec.swift   # the spec grammar; mapping to gimme queries/constraints
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  MiseDetector.swift      # is a tool already managed by mise/asdf? (PATH-based)
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  MiseIntegration.swift   # orchestrator: read -&gt; filter -&gt; install via Installer
+</code></pre></div>
+<p><strong>Consumes from the foundation (no changes required):</strong>
+<code>Installer.install(query:)</code>, <code>Resolver</code>, <code>FormulaProvider</code> / <code>TapStore</code>,
+<code>GimmeError</code>, <code>GimmePaths</code>, <code>Schema</code>, the <code>--json</code> response shape.</p>
+<p><strong>Adds to the CLI:</strong> auto-detect behavior inside the existing <code>install</code>
+command plus two flags (<code>--from-mise</code>, <code>--no-mise</code>). No new subcommands.</p>
+<hr />
+<h2 id="3-config-parsing-version-specs">3. Config parsing &amp; version specs<a class="headerlink" href="#3-config-parsing-version-specs" title="Permanent link">&para;</a></h2>
+<h3 id="tool-versions-asdf-format"><code>.tool-versions</code> (asdf format)<a class="headerlink" href="#tool-versions-asdf-format" title="Permanent link">&para;</a></h3>
+<p>One tool per line, whitespace-separated, <code>#</code> comments allowed, blank lines
+ignored:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>node 20.0.0       # comments allowed
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>ruby 3            # fuzzy version
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>shellcheck latest
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>go prefix:1.19
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>erlang ref:master
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>shfmt path:./shfmt
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>node lts
+</code></pre></div>
+<p>Grammar per line: <code>&lt;name&gt; &lt;version-spec&gt; [# comment]</code>. First token = tool
+name, second = spec; everything after <code>#</code> dropped. A line with only a name is
+invalid → recorded as a parse error and skipped (does not abort the run).</p>
+<h3 id="misetoml-tools-parsed-via-gimmes-existing-toml-parser"><code>mise.toml</code> <code>[tools]</code> (parsed via gimme's existing TOML parser)<a class="headerlink" href="#misetoml-tools-parsed-via-gimmes-existing-toml-parser" title="Permanent link">&para;</a></h3>
+<p>Two shapes per mise's docs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">[tools]</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;20&quot;</span><span class="w">                                          </span><span class="c1"># simple string</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">python</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;3.12&quot;</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">version</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;22&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">postinstall</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;corepack enable&quot;</span><span class="w"> </span><span class="p">}</span><span class="w">  </span><span class="c1"># inline table</span>
+</code></pre></div>
+<p>For each <code>[tools]</code> entry: a string value is the spec directly; an inline table
+value uses its <code>version</code> field. mise-specific keys (<code>postinstall</code>,
+<code>install_env</code>, <code>depends</code>) are <strong>ignored</strong> — gimme formulae declare their own
+install logic.</p>
+<h3 id="miseversionspec-grammar-and-mapping"><code>MiseVersionSpec</code> — grammar and mapping<a class="headerlink" href="#miseversionspec-grammar-and-mapping" title="Permanent link">&para;</a></h3>
+<p>mise version strings aren't SemVer; they're fuzzy. Each maps to a gimme
+<code>VersionConstraint</code> (or to a skip marker):</p>
+<table>
+<thead>
+<tr>
+<th>mise spec</th>
+<th>gimme interpretation</th>
+<th>gimme query</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>20.0.0</code></td>
+<td>exact</td>
+<td><code>tool@20.0.0</code></td>
+<td>install</td>
+</tr>
+<tr>
+<td><code>20</code>, <code>3</code></td>
+<td>fuzzy major</td>
+<td><code>tool@20</code></td>
+<td>install</td>
+</tr>
+<tr>
+<td><code>20.10.5</code></td>
+<td>exact</td>
+<td><code>tool@20.10.5</code></td>
+<td>install</td>
+</tr>
+<tr>
+<td><code>latest</code></td>
+<td>newest available</td>
+<td><code>tool</code></td>
+<td>install</td>
+</tr>
+<tr>
+<td><code>lts</code></td>
+<td>alias</td>
+<td><code>tool</code> (best-effort)</td>
+<td>install (see note)</td>
+</tr>
+<tr>
+<td><code>prefix:1.19</code></td>
+<td>newest matching prefix</td>
+<td><code>tool@1.19</code></td>
+<td>install</td>
+</tr>
+<tr>
+<td><code>ref:&lt;sha&gt;</code></td>
+<td>compile from VCS ref</td>
+<td>—</td>
+<td><strong>skip (unsupported)</strong></td>
+</tr>
+<tr>
+<td><code>path:./dir</code></td>
+<td>use a local dir</td>
+<td>—</td>
+<td><strong>skip (unsupported)</strong></td>
+</tr>
+<tr>
+<td><code>sub-2:lts</code></td>
+<td>arithmetic on resolved</td>
+<td>—</td>
+<td><strong>skip (unsupported)</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>lts</code> note:</strong> gimme's foundation doesn't track upstream LTS tags, so <code>lts</code>
+is treated as "newest available" (<code>tool</code>, no constraint). Documented
+limitation; the result entry reports the actually-installed version so the
+user can see what was chosen.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kd">public</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="nc">MiseVersionSpec</span><span class="p">:</span><span class="w"> </span><span class="nb">Equatable</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nv">raw</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="w">           </span><span class="c1">// original spec string, e.g. &quot;prefix:1.19&quot;</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nv">kind</span><span class="p">:</span><span class="w"> </span><span class="n">Kind</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">enum</span><span class="w"> </span><span class="nc">Kind</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="n">exact</span><span class="p">(</span><span class="n">Version</span><span class="p">)</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="n">fuzzyMajor</span><span class="p">(</span><span class="nb">Int</span><span class="p">)</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="n">latest</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="n">alias</span><span class="p">(</span><span class="nb">String</span><span class="p">)</span><span class="w">           </span><span class="c1">// &quot;lts&quot; or any non-numeric, non-scoped string</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="kr">prefix</span><span class="p">(</span><span class="nb">Int</span><span class="p">,</span><span class="w"> </span><span class="nb">Int</span><span class="p">)</span><span class="w">        </span><span class="c1">// prefix:1.19 -&gt; (1, 19)</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="n">unsupported</span><span class="p">(</span><span class="nb">String</span><span class="p">)</span><span class="w">     </span><span class="c1">// ref:, path:, sub- -&gt; reason in raw</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">func</span><span class="w"> </span><span class="nf">parse</span><span class="p">(</span><span class="kc">_</span><span class="w"> </span><span class="n">s</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="n">MiseVersionSpec</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="p">}</span>
+</code></pre></div>
+<p>A spec is translated to a <strong>gimme query string</strong> (e.g. <code>node@20</code>) handed to
+<code>Installer.install(query:)</code>. The existing resolver already handles
+<code>tool@&lt;constraint&gt;</code>, so the integration is mostly spec → query translation.</p>
+<h3 id="config-walk-merge">Config walk &amp; merge<a class="headerlink" href="#config-walk-merge" title="Permanent link">&para;</a></h3>
+<p>When gimme auto-detects, it starts at the cwd and walks up the directory tree
+collecting every <code>.tool-versions</code> and <code>mise.toml</code>, stopping at the first
+directory containing a <code>.git</code> (project root) <strong>or</strong> the filesystem root. This
+matches the common "project + global" layering without walking the entire home
+dir every run.</p>
+<p><strong>Merge rule (matching mise):</strong> for <code>[tools]</code> / <code>.tool-versions</code> content,
+closer-to-cwd wins per-tool; different tools accumulate. <code>~/mise.toml</code> says
+<code>node=18</code> and <code>~/proj/mise.toml</code> says <code>node=20</code> + <code>go=1.21</code> → merged result is
+<code>{node: 20, go: 1.21}</code>.</p>
+<hr />
+<h2 id="4-coexistence-skip-mise-managed-tools">4. Coexistence — skip mise-managed tools<a class="headerlink" href="#4-coexistence-skip-mise-managed-tools" title="Permanent link">&para;</a></h2>
+<p>Per the locked conflict policy: if mise/asdf already manages a tool, gimme
+skips it rather than clobbering.</p>
+<h3 id="detection-path-resolve-realpath-prefix-check">Detection: PATH resolve + realpath prefix check<a class="headerlink" href="#detection-path-resolve-realpath-prefix-check" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Resolve the tool on PATH</strong> — <code>which</code>-style walk of <code>$PATH</code> for an
+   executable named <code>&lt;tool&gt;</code>, <strong>excluding gimme's own <code>~/.gimme/bin</code> shim dir</strong>
+   (so gimme doesn't detect itself).</li>
+<li><strong>realpath the result</strong> — follow symlinks to the final on-disk binary.</li>
+<li><strong>Check if that realpath is under a known mise/asdf shims dir.</strong> Candidates,
+   in priority order:</li>
+<li><code>$MISE_DATA_DIR/shims</code> (if set; mise respects this)</li>
+<li><code>~/.local/share/mise/shims</code> (mise default on macOS)</li>
+<li><code>~/.asdf/shims</code> (asdf)</li>
+</ol>
+<p>If the realpath starts with any of these → <strong>that manager owns the tool</strong> → skip.</p>
+<p>This is robust to how mise was installed (curl|sh, brew, mise-installs-itself)
+because it keys off the <em>shim location</em>, not mise's binary location. If none of
+those dirs exist or the tool isn't on PATH, gimme proceeds to install — the
+right behavior on a machine without mise.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kd">public</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="nc">MiseDetector</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">init</span><span class="p">(</span><span class="n">paths</span><span class="p">:</span><span class="w"> </span><span class="n">GimmePaths</span><span class="p">)</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="c1">/// Does mise/asdf currently manage `tool`? (PATH resolve + realpath check)</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">func</span><span class="w"> </span><span class="nf">isManaged</span><span class="p">(</span><span class="n">byManager</span><span class="w"> </span><span class="n">tool</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nb">Bool</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="c1">/// Which manager owns it (for reporting)? nil if unmanaged.</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">func</span><span class="w"> </span><span class="nf">owner</span><span class="p">(</span><span class="n">of</span><span class="w"> </span><span class="n">tool</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="n">Manager</span><span class="p">?</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">enum</span><span class="w"> </span><span class="nc">Manager</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">case</span><span class="w"> </span><span class="n">mise</span><span class="p">,</span><span class="w"> </span><span class="n">asdf</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="what-gets-skipped-vs-installed">What gets skipped vs installed<a class="headerlink" href="#what-gets-skipped-vs-installed" title="Permanent link">&para;</a></h3>
+<p>For a merged config <code>{node: 20, go: 1.21, ripgrep: latest, erlang: ref:master}</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>mise owns on PATH?</th>
+<th>Spec supported?</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>node@20</code></td>
+<td>yes</td>
+<td>yes</td>
+<td><strong>skip</strong> — managed by mise</td>
+</tr>
+<tr>
+<td><code>go@1.21</code></td>
+<td>no</td>
+<td>yes</td>
+<td><strong>install</strong></td>
+</tr>
+<tr>
+<td><code>ripgrep@latest</code></td>
+<td>no</td>
+<td>yes</td>
+<td><strong>install</strong></td>
+</tr>
+<tr>
+<td><code>erlang@ref:...</code></td>
+<td>(n/a)</td>
+<td>no</td>
+<td><strong>skip</strong> — unsupported spec</td>
+</tr>
+</tbody>
+</table>
+<p>Skips never abort the run. Each tool in the config becomes one entry in the
+result array with a status (section 5).</p>
+<h3 id="honest-limitation">Honest limitation<a class="headerlink" href="#honest-limitation" title="Permanent link">&para;</a></h3>
+<p>PATH-based detection sees the <strong>globally-active</strong> version of a tool, not
+per-directory ones. If mise manages <code>node</code> only inside certain project dirs
+and you run <code>gimme install</code> from a dir where mise isn't active for <code>node</code>,
+gimme won't see mise owning it and will install its own <code>node</code>. This is the
+safe direction (the user gets a working tool rather than a confusing skip) and
+is a deliberate consequence of gimme's global model. A future per-directory
+detection strategy is reserved (§6).</p>
+<hr />
+<h2 id="5-cli-integration-result-shape-doctor">5. CLI integration, result shape &amp; doctor<a class="headerlink" href="#5-cli-integration-result-shape-doctor" title="Permanent link">&para;</a></h2>
+<h3 id="cli-surface-stays-inside-existing-install-command">CLI surface (stays inside existing <code>install</code> command)<a class="headerlink" href="#cli-surface-stays-inside-existing-install-command" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Invocation</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gimme install</code> (no positional arg), mise config present</td>
+<td>Auto-detect, install supported+unmanaged, skip rest</td>
+</tr>
+<tr>
+<td><code>gimme install</code> (no positional arg), no mise config</td>
+<td>Existing behavior — print usage</td>
+</tr>
+<tr>
+<td><code>gimme install --dry-run</code> (flag but no positional arg)</td>
+<td>Auto-detect + plan each tool, no install</td>
+</tr>
+<tr>
+<td><code>gimme install node</code> (any positional arg)</td>
+<td>Explicit install — bypasses config reading entirely</td>
+</tr>
+<tr>
+<td><code>gimme install --from-mise [tool]</code></td>
+<td>Force reading mise config even with a positional arg / when it wouldn't auto-trigger</td>
+</tr>
+<tr>
+<td><code>gimme install --no-mise</code></td>
+<td>Disable auto-detection for this run (opt-out)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>"Auto-detect" trigger, precisely:</strong> <code>gimme install</code> enters mise-reading mode
+when (a) there is no positional tool argument, AND (b) <code>--no-mise</code> is absent,
+AND (c) a <code>.tool-versions</code> or <code>mise.toml</code> is found by the walk (§3). <code>--from-mise</code>
+forces mise-reading mode even when (a) or (c) wouldn't otherwise trigger (e.g.
+a positional arg is also present, meaning "install this tool AND read config").
+When mise-reading mode is active, the response uses <code>cmd: "install-from-mise"</code>;
+otherwise the existing single-install path (<code>cmd: "install"</code>) is unchanged.</p>
+<p>Auto-detect prints a one-line notice when it triggers: <em>"Detected mise config
+— installing 2 tools, skipping 1 (managed by mise)."</em> Not silent, not noisy.</p>
+<p><code>--dry-run</code> plans each tool in the config without installing — the
+agent-friendly path: <code>gimme install --dry-run --json</code> shows exactly what a
+project needs.</p>
+<h3 id="result-shape-json">Result shape (<code>--json</code>)<a class="headerlink" href="#result-shape-json" title="Permanent link">&para;</a></h3>
+<p>One JSON object covering the whole batch. <code>cmd: "install-from-mise"</code> so
+consumers distinguish a batch from a single install. Each tool entry carries
+its own status; failures carry their own structured error:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">&quot;cmd&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;install-from-mise&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">&quot;ok&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="nt">&quot;schema_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;.tool-versions&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span><span class="nt">&quot;tools&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;tool&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;go&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1.21&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;installed&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1.21.5&quot;</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;tool&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;node&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;20&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;skipped_managed&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">      </span><span class="nt">&quot;manager&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mise&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;node is managed by mise&quot;</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;tool&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ripgrep&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;installed&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;14.0.3&quot;</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;tool&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;erlang&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ref:master&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;skipped_unsupported&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">      </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gimme does not support ref: specs&quot;</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;tool&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ruby&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;3&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;failed&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">      </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NOT_FOUND&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;no formula named &#39;ruby&#39;&quot;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">  </span><span class="p">],</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">  </span><span class="nt">&quot;summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;installed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;skipped&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;failed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="p">}</span>
+</code></pre></div>
+<p>Top-level <code>ok</code> is <code>true</code> if at least one tool installed or was already-current;
+<code>false</code> only if every tool failed. Individual failures don't abort the batch.</p>
+<p><strong>Exit code:</strong> <code>0</code> if nothing failed, <code>1</code> if any tool failed (so CI/scripts can
+detect partial failure). Matches the foundation's exit-code map.</p>
+<p>Per-tool <code>status</code> values: <code>installed</code> | <code>already_current</code> | <code>skipped_managed</code>
+| <code>skipped_unsupported</code> | <code>failed</code>.</p>
+<h3 id="gimme-doctor-integration"><code>gimme doctor</code> integration<a class="headerlink" href="#gimme-doctor-integration" title="Permanent link">&para;</a></h3>
+<p>One new check: report whether mise/asdf is detected on PATH and, if so, list
+which gimme-installed tools are <em>also</em> managed by it. Output line:
+<code>[✓] mise: detected; manages: node, python (gimme defers to mise for these)</code>.</p>
+<h3 id="introspect">Introspect<a class="headerlink" href="#introspect" title="Permanent link">&para;</a></h3>
+<p>The <code>install</code> command's flag list in <code>Introspect</code> gains <code>--from-mise</code> and
+<code>--no-mise</code> with descriptions. No schema-version bump required (the new
+<code>cmd: "install-from-mise"</code> is an additive response shape).</p>
+<hr />
+<h2 id="6-reserved-follow-ons-explicitly-not-now">6. Reserved follow-ons (explicitly not now)<a class="headerlink" href="#6-reserved-follow-ons-explicitly-not-now" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Per-directory detection via <code>mise current &lt;tool&gt;</code></strong> — a future
+  <code>MiseDetector</code> strategy that asks mise directly. The <code>Manager</code> enum and
+  <code>isManaged</code> interface already accommodate it; only the detection internals
+  change.</li>
+<li><strong><code>ref:</code> / <code>path:</code> support</strong> — would require source builds (the foundation's
+  reserved <code>strategy = "source"</code>) and a local-dir provider respectively.</li>
+<li><strong>Writing mise config</strong> (<code>gimme init</code>).</li>
+<li><strong><code>MISE_&lt;TOOL&gt;_VERSION</code> env override</strong> beyond simple recognition.</li>
+</ul>
+<hr />
+<h2 id="7-testing">7. Testing<a class="headerlink" href="#7-testing" title="Permanent link">&para;</a></h2>
+<p>Three layers, matching the foundation's style:</p>
+<ol>
+<li><strong>Unit</strong> — <code>MiseConfigTests</code>, <code>MiseVersionSpecTests</code>, <code>MiseDetectorTests</code>.
+   Parse each config format; exercise every spec kind (incl. unsupported);
+   test PATH-resolution detection against a fake PATH pointing at a temp
+   "shims" dir (both mise and asdf layouts); verify gimme's own shim dir is
+   excluded.</li>
+<li><strong>Integration</strong> — <code>MiseIntegrationTests</code>. End-to-end: drop a
+   <code>.tool-versions</code> in a temp dir, run the integration with <code>cwd</code> set there,
+   assert install/skip outcomes. Uses the same local-tarball fixture pattern as
+   the existing <code>InstallerTests</code>.</li>
+<li><strong>CLI snapshot</strong> — extend <code>CLISnapshotTests</code> with one test that runs
+   <code>gimme install --json</code> in a temp cwd containing a <code>.tool-versions</code> and
+   asserts the batch JSON shape.</li>
+</ol>
+<p>Coverage target: the new <code>mise/</code> module at ≥90% line coverage, consistent with
+the foundation's bar.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/gregnazario/gimme" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
