@@ -280,6 +280,12 @@ struct GimmeCLI {
             return
         }
         print("updating to \(release.version)…")
+        if let notes = release.notes?.trimmingCharacters(in: .whitespacesAndNewlines), !notes.isEmpty {
+            print("What's new:")
+            for line in notes.components(separatedBy: .newlines) {
+                print("  \(line)")
+            }
+        }
         let executable = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
         let version = try await updater.updateCLI(at: executable, to: release) { line in print(line) }
         print("updated to \(version)")
