@@ -167,9 +167,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # --notes-from-tag: the annotated tag message IS the release body —
+          # it surfaces as "What's New" in `gimme update --self` and the GUI.
+          # (Annotated tags are the process convention anyway; a lightweight
+          # tag would fall back to the commit message.)
           gh release create "$GITHUB_REF_NAME" \
             --title "gimme ${{ steps.version.outputs.version }}" \
-            --generate-notes \
+            --notes-from-tag \
             gimme-darwin-arm64.tar.gz \
             GimmeUI-darwin-arm64.tar.gz \
             SHA256SUMS
