@@ -12,3 +12,6 @@ icon-1024.png
 # Release packaging output (just package / scripts/package-mac.sh)
 dist/
 app/dmg-background.tiff
+
+# Local agent-tool hook state
+.mimosa/
