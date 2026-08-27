@@ -36,15 +36,14 @@ docs-setup:
     python3 -m venv {{site-venv}}
     {{site-venv}}/bin/pip install -r docs-site/requirements.txt
 
-# Regenerate the man page from the current binary into the source tree.
+# Install the hand-maintained man page locally (there is no `gimme man`
+# verb; edit man/gimme.1 directly when the CLI changes).
 man:
     #!/usr/bin/env bash
     set -euo pipefail
-    swift build -c release
     mkdir -p ~/.local/share/man/man1
-    .build/release/gimme man > man/gimme.1
     cp man/gimme.1 ~/.local/share/man/man1/gimme.1
-    echo "man page generated at man/gimme.1 and installed."
+    echo "man page installed. View with: man gimme"
 
 # Install the tldr page locally (tldr-pages format).
 tldr:
@@ -59,14 +58,15 @@ docs-build:
     #!/usr/bin/env bash
     set -euo pipefail
     if [ ! -d "{{site-venv}}" ]; then just docs-setup; fi
-    cd docs-site && {{site-venv}}/bin/mkdocs build
+    # The venv path is repo-root-relative; after cd it needs the ../ prefix.
+    cd docs-site && ../{{site-venv}}/bin/mkdocs build
 
 # Serve the docs site locally with live reload.
 docs-serve:
     #!/usr/bin/env bash
     set -euo pipefail
     if [ ! -d "{{site-venv}}" ]; then just docs-setup; fi
-    cd docs-site && {{site-venv}}/bin/mkdocs serve
+    cd docs-site && ../{{site-venv}}/bin/mkdocs serve
 
 # Deploy the docs site to GitHub Pages (requires `gh-auth` + mike).
 docs-deploy:
@@ -74,7 +74,9 @@ docs-deploy:
     set -euo pipefail
     if [ ! -d "{{site-venv}}" ]; then just docs-setup; fi
     {{site-venv}}/bin/pip install -q mike
-    cd docs-site && {{site-venv}}/bin/mike deploy --push latest
+    # mike shells out to `mkdocs` via PATH — put the venv's binaries first
+    # so it doesn't pick up a different mkdocs from the user's PATH.
+    cd docs-site && PATH="$PWD/../{{site-venv}}/bin:$PATH" ../{{site-venv}}/bin/mike deploy --push latest
 
 # --- Install ---
 
