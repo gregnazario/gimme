@@ -15,8 +15,13 @@ struct GimmeApp: App {
                 .environmentObject(store)
                 .tint(Self.accent)
                 .frame(minWidth: 760, minHeight: 500)
+                // Sheet content does not inherit GimmeStore from this chain
+                // position (outside ContentView's .environmentObject) — inject
+                // it explicitly or any store access crashes the app (seen in
+                // the wild: Report an Issue crashed in onAppear on macOS 26).
                 .sheet(isPresented: $store.showReportIssue) {
                     ReportIssueView()
+                        .environmentObject(store)
                 }
                 .sheet(isPresented: $store.showAbout) {
                     AboutGimme(reportIssue: {
