@@ -1,5 +1,5 @@
 site_name: gimme
-site_description: A Swift-based package manager for macOS — source or download installs, formulae, mise interop.
+site_description: A unified package manager for macOS — one CLI and GUI over Homebrew, Go, uv, Cargo, npm, and more.
 site_url: https://gregnazario.github.io/gimme/
 repo_url: https://github.com/gregnazario/gimme
 repo_name: gregnazario/gimme
