@@ -362,10 +362,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#one-line-recommended" class="md-nav__link">
+  <a href="#macos-app-dmg" class="md-nav__link">
     <span class="md-ellipsis">
       
-        One line (recommended)
+        macOS app (DMG)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#one-line-cli-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One line (CLI + app)
       
     </span>
   </a>
@@ -384,32 +395,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#add-gimmebin-to-path-one-time" class="md-nav__link">
+  <a href="#add-localbin-to-path-one-time" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Add ~/.gimme/bin to PATH (one time)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#man-page-optional" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Man page (optional)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#verify" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Verify
+        Add ~/.local/bin to PATH (one time)
       
     </span>
   </a>
@@ -1015,10 +1004,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#one-line-recommended" class="md-nav__link">
+  <a href="#macos-app-dmg" class="md-nav__link">
     <span class="md-ellipsis">
       
-        One line (recommended)
+        macOS app (DMG)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#one-line-cli-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One line (CLI + app)
       
     </span>
   </a>
@@ -1037,32 +1037,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#add-gimmebin-to-path-one-time" class="md-nav__link">
+  <a href="#add-localbin-to-path-one-time" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Add ~/.gimme/bin to PATH (one time)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#man-page-optional" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Man page (optional)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#verify" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Verify
+        Add ~/.local/bin to PATH (one time)
       
     </span>
   </a>
@@ -1104,18 +1082,27 @@
 <h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h2>
 <ul>
 <li>macOS 13 (Ventura) or newer</li>
-<li>Swift 6.0+ (Xcode 16+) — only needed if building from source</li>
+<li>Swift 5.9+ — only needed when building from source</li>
 </ul>
-<h2 id="one-line-recommended">One line (recommended)<a class="headerlink" href="#one-line-recommended" title="Permanent link">&para;</a></h2>
+<h2 id="macos-app-dmg">macOS app (DMG)<a class="headerlink" href="#macos-app-dmg" title="Permanent link">&para;</a></h2>
+<p>Download <code>GimmeUI-&lt;version&gt;-arm64.dmg</code> from the
+<a href="https://github.com/gregnazario/gimme/releases">releases page</a>, open it, and
+drag Gimme to <code>Applications</code>.</p>
+<p>The app is self-contained: it can install the command-line tool for you
+(<strong>gimme → Install Command-Line Tool…</strong>, installs to <code>~/.local/bin</code>) and
+keeps itself updated (<strong>gimme → Check for Updates</strong>).</p>
+<h2 id="one-line-cli-app">One line (CLI + app)<a class="headerlink" href="#one-line-cli-app" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://raw.githubusercontent.com/gregnazario/gimme/main/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
 </code></pre></div>
 <p>The installer:</p>
 <ol>
-<li>Checks for macOS + Swift 6+.</li>
-<li>Clones the repo to a temp dir (or builds in-place if run from a checkout).</li>
-<li>Builds a release binary.</li>
-<li>Installs the binary + man page + tldr page to <code>~/.local/bin</code> (configurable).</li>
-<li>Prints PATH setup instructions if needed.</li>
+<li>Checks for macOS and the CPU architecture.</li>
+<li>Downloads the prebuilt CLI binary from the latest GitHub release
+   (verified against the release's <code>SHA256SUMS</code>), falling back to a source
+   build on Intel Macs or if no binary is available.</li>
+<li>Installs the binary to <code>~/.local/bin</code> (configurable).</li>
+<li>Installs Gimme.app to <code>/Applications</code> (uses <code>sudo</code> if needed; skip with
+   <code>GIMME_SKIP_APP=1</code>).</li>
 </ol>
 <p><strong>Options</strong> (via environment variables):</p>
 <table>
@@ -1133,29 +1120,24 @@
 <td>Where the binary goes</td>
 </tr>
 <tr>
-<td><code>GIMME_MAN_DIR</code></td>
-<td><code>~/.local/share/man/man1</code></td>
-<td>Where the man page goes</td>
+<td><code>GIMME_APP_DIR</code></td>
+<td><code>/Applications</code></td>
+<td>Where Gimme.app goes</td>
+</tr>
+<tr>
+<td><code>GIMME_SKIP_APP</code></td>
+<td>—</td>
+<td>Set to <code>1</code> to skip the app</td>
 </tr>
 <tr>
 <td><code>GIMME_REPO</code></td>
 <td><code>https://github.com/gregnazario/gimme</code></td>
-<td>Git URL to clone</td>
+<td>Git URL for source builds</td>
 </tr>
 <tr>
 <td><code>GIMME_BRANCH</code></td>
 <td><code>main</code></td>
-<td>Branch/tag to build</td>
-</tr>
-<tr>
-<td><code>GIMME_SKIP_MAN=1</code></td>
-<td>—</td>
-<td>Skip man page</td>
-</tr>
-<tr>
-<td><code>GIMME_SKIP_TLDR=1</code></td>
-<td>—</td>
-<td>Skip tldr page</td>
+<td>Branch/tag for source builds</td>
 </tr>
 </tbody>
 </table>
@@ -1169,53 +1151,37 @@
 </code></pre></div>
 <p>Then make the binary reachable on your <code>PATH</code>. A symlink keeps it updated when
 you <code>git pull &amp;&amp; swift build -c release</code>:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">zsh</label><label for="__tabbed_1_2">bash</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>ln<span class="w"> </span>-sf<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/.build/release/gimme&quot;</span><span class="w"> </span>~/.local/bin/gimme
 </code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>ln<span class="w"> </span>-sf<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/.build/release/gimme&quot;</span><span class="w"> </span>~/.local/bin/gimme
-</code></pre></div>
-</div>
-</div>
-</div>
-<h2 id="add-gimmebin-to-path-one-time">Add <code>~/.gimme/bin</code> to PATH (one time)<a class="headerlink" href="#add-gimmebin-to-path-one-time" title="Permanent link">&para;</a></h2>
-<p>Installed tools are shimmed into <code>~/.gimme/bin</code>. Add it to your shell config so
-the shims are reachable:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:3"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><input id="__tabbed_2_3" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">zsh (~/.zshrc)</label><label for="__tabbed_2_2">bash (~/.bashrc)</label><label for="__tabbed_2_3">fish (~/.config/fish/config.fish)</label></div>
+<h2 id="add-localbin-to-path-one-time">Add <code>~/.local/bin</code> to PATH (one time)<a class="headerlink" href="#add-localbin-to-path-one-time" title="Permanent link">&para;</a></h2>
+<p>The CLI installs to <code>~/.local/bin</code>. Add it to your shell config if it isn't
+already there:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">zsh (~/.zshrc)</label><label for="__tabbed_1_2">bash (~/.bashrc)</label><label for="__tabbed_1_3">fish (~/.config/fish/config.fish)</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;export PATH=&quot;$HOME/.gimme/bin:$PATH&quot;&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>~/.zshrc
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;export PATH=&quot;$HOME/.local/bin:$PATH&quot;&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>~/.zshrc
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;export PATH=&quot;$HOME/.gimme/bin:$PATH&quot;&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>~/.bashrc
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;export PATH=&quot;$HOME/.local/bin:$PATH&quot;&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>~/.bashrc
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>fish_add_path<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/.gimme/bin&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>fish_add_path<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/.local/bin&quot;</span>
 </code></pre></div>
 </div>
 </div>
 </div>
 <p>Restart your shell (or <code>source</code> the file), then verify:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>gimme<span class="w"> </span>--version<span class="w">     </span><span class="c1"># -&gt; gimme 0.1.0</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>gimme<span class="w"> </span>doctor<span class="w">        </span><span class="c1"># health check (PATH, permissions, receipts)</span>
-</code></pre></div>
-<h2 id="man-page-optional">Man page (optional)<a class="headerlink" href="#man-page-optional" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>gimme<span class="w"> </span>man<span class="w"> </span>&gt;<span class="w"> </span>~/.local/share/man/man1/gimme.1
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>man<span class="w"> </span>gimme
-</code></pre></div>
-<h2 id="verify">Verify<a class="headerlink" href="#verify" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>gimme<span class="w"> </span>--help
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>gimme<span class="w"> </span>introspect<span class="w"> </span>--json<span class="w"> </span><span class="p">|</span><span class="w"> </span>head
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>gimme<span class="w"> </span>--version<span class="w">     </span><span class="c1"># -&gt; gimme &lt;version&gt;</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>gimme<span class="w"> </span>doctor<span class="w">        </span><span class="c1"># which package managers are installed and available</span>
 </code></pre></div>
 <h2 id="uninstall">Uninstall<a class="headerlink" href="#uninstall" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>rm<span class="w"> </span>~/.local/bin/gimme
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>rm<span class="w"> </span>-rf<span class="w"> </span>~/.gimme<span class="w">   </span><span class="c1"># removes the cellar, cache, taps, state</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>rm<span class="w"> </span>~/.local/bin/gimme
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>rm<span class="w"> </span>-rf<span class="w"> </span>~/.config/gimme<span class="w"> </span>~/.cache/gimme<span class="w">   </span><span class="c1"># settings + TTL cache</span>
 </code></pre></div>
+<p>Drag Gimme.app from <code>Applications</code> to the Trash (or
+<code>rm -rf /Applications/Gimme.app</code>).</p>
 
 
 
