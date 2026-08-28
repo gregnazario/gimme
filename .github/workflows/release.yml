@@ -213,8 +213,11 @@ jobs:
         run: |
           # --notes-from-tag: the annotated tag message IS the release body —
           # it surfaces as "What's New" in `gimme update --self` and the GUI.
-          # (Annotated tags are the process convention anyway; a lightweight
-          # tag would fall back to the commit message.)
+          # checkout@v4 fetches only the commit a tag points at, not the tag
+          # object, which makes gh see a lightweight tag and fall back to the
+          # commit message (bit us on v2.5.0) — fetch the tag object first.
+          git fetch origin "+refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}" --no-tags
+
           gh release create "$GITHUB_REF_NAME" \
             --title "gimme ${{ steps.version.outputs.version }}" \
             --notes-from-tag \
