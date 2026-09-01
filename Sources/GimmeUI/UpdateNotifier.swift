@@ -12,6 +12,15 @@ final class UpdateNotifier {
     /// True when notifications are possible at all in this process.
     private var isBundled: Bool { Bundle.main.bundleIdentifier != nil }
 
+    /// True while any window is actually on screen (occlusion state) — i.e.
+    /// the in-app update banner is visible. Unlike `NSApp.isActive` this is
+    /// already true at first draw, before the app finishes activating, so a
+    /// launch-time check that raises the banner can rely on it to skip a
+    /// redundant post.
+    var isAnyWindowOnScreen: Bool {
+        NSApp.windows.contains { $0.occlusionState.contains(.visible) }
+    }
+
     /// Ask once, at the moment the user first triggers an update.
     func requestAuthorizationIfNeeded() async {
         guard isBundled else { return }
@@ -28,9 +37,9 @@ final class UpdateNotifier {
 
     /// Informational post (e.g. a newer gimme release is available). Like
     /// run-finished summaries this is background-only: the in-app update
-    /// banner announces it while Gimme is frontmost, so a notification there
-    /// would be redundant. Settings/permission checks still apply; silent
-    /// when denied.
+    /// banner announces it while a Gimme window is on screen, so a caller
+    /// raising the banner also checks `isAnyWindowOnScreen` before posting.
+    /// Settings/permission checks still apply; silent when denied.
     func post(title: String, body: String) {
         guard isBundled, NSApp.isActive == false else { return }
         Task {
