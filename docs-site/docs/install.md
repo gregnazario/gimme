@@ -101,3 +101,6 @@ rm -rf ~/.config/gimme ~/.cache/gimme   # settings + TTL cache
 
 Drag Gimme.app from `Applications` to the Trash (or
 `rm -rf /Applications/Gimme.app`).
+
+Installed a v1 release? The old cellar layout lived in `~/.gimme` — remove
+it too: `rm -rf ~/.gimme`.
