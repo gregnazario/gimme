@@ -141,6 +141,12 @@ struct GimmeCLI {
             let hits = try await gimme.search(query: q, all: p.all, refresh: p.refresh)
             if p.json { print((try? JSONEncoder().encode(hits)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]") }
             else { hits.forEach { print("[\($0.manager.rawValue)] \($0.name) \($0.latestVersion) — \($0.summary)") } }
+        case "find":
+            guard let q = p.positional.first else { throw GimmeError.usage("usage: gimme find <query>") }
+            let hits = try await gimme.search(query: q, all: true, refresh: p.refresh)
+            let ranked = SearchRanking.rank(hits, query: q, managerPriority: gimme.config.priority)
+            if p.json { print((try? JSONEncoder().encode(ranked)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]") }
+            else { ranked.forEach { print("[\($0.manager.rawValue)] \($0.name) \($0.latestVersion) — \($0.summary)") } }
         case "info":
             guard let name = p.positional.first else { throw GimmeError.usage("usage: gimme info <name>") }
             let info = try await gimme.info(name: name, from: p.from)
@@ -303,6 +309,7 @@ struct GimmeCLI {
           gimme list [--from <manager>]
           gimme outdated [--from <manager>]
           gimme search <query> [--all]
+          gimme find <query>                 (every manager, best match first)
           gimme info <name>
           gimme forget <name> | --all
           gimme consolidate                    (find duplicates across managers)

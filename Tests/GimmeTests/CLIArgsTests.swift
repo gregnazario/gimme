@@ -67,4 +67,16 @@ final class CLIArgsTests: XCTestCase {
         XCTAssertTrue(p.force)
         XCTAssertTrue(p.refresh)
     }
+
+    func testParseFindVerb() throws {
+        let p = try CLIArgs.parse(["find", "jq", "--json"])
+        XCTAssertEqual(p.verb, "find")
+        XCTAssertEqual(p.positional, ["jq"])
+        XCTAssertTrue(p.json)
+        XCTAssertFalse(p.all)  // find is all-managers by definition, not via --all
+    }
+
+    func testFindRejectsUnknownFlag() {
+        XCTAssertThrowsError(try CLIArgs.parse(["find", "jq", "--bogus"]))
+    }
 }
