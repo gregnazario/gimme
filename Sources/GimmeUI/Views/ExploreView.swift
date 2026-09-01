@@ -6,8 +6,6 @@ import GimmeCore
 /// tapping a tool opens the shared DetailSheet (§1). Curated order stands —
 /// no ranking.
 struct ExploreView: View {
-    @State private var selected: SearchHit?
-
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -27,7 +25,6 @@ struct ExploreView: View {
                 CollectionView(collection: collection)
             }
         }
-        .sheet(item: $selected) { hit in DetailSheet(package: .searchable(hit)) }
     }
 }
 
