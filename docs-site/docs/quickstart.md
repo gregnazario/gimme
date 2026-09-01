@@ -34,6 +34,7 @@ gimme update --all           # update everything not pinned
 ```sh
 gimme list [--all]           # installed tools (or all known formulae)
 gimme search <term>
+gimme find <term>            # every manager at once, best match first
 gimme info <tool>
 gimme outdated               # tools with updates available
 ```

@@ -56,6 +56,14 @@ gimme search <query> [--all]
 Search the highest-priority manager that has the package; `--all` queries
 every manager.
 
+### `find`
+```
+gimme find <query>
+```
+Searches every capable manager at once (no `--all` needed) and ranks exact
+name matches first — the fastest answer to "which managers provide `jq`?".
+Accepts `--json` and `--force`.
+
 ### `info`
 ```
 gimme info <name> [--from <manager>]

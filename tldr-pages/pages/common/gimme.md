@@ -11,6 +11,10 @@
 
 `gimme search {{query}}`
 
+- Search every manager with the best match first:
+
+`gimme find {{query}}`
+
 - List packages installed across all managers:
 
 `gimme list`

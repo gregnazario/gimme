@@ -55,6 +55,12 @@ re-asks every registry.
 Search the highest-priority manager that has the package; with
 .BR --all ,
 search every manager.
+.SS \fBfind\fR \fIquery\fR
+Search every capable manager at once, exact name matches ranked first
+("which managers provide jq?"). Respects
+.B --json
+and
+.BR --force .
 .SS \fBinfo\fR \fIname\fR [\fI--from\fR \fImanager\fR]
 Show a package's latest version and description.
 .SS \fBforget\fR \fIname\fR | \fB--all\fR
