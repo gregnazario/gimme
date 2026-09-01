@@ -29,7 +29,10 @@ struct GimmeApp: App {
                         store.showReportIssue = true
                     })
                 }
-                .sheet(isPresented: $store.showUpdateSheet) {
+                .sheet(isPresented: $store.showUpdateSheet, onDismiss: {
+                    // Don't greet the next open with a stale failure.
+                    store.selfUpdateError = nil
+                }) {
                     UpdateSheet()
                         .environmentObject(store)
                 }
@@ -159,6 +162,10 @@ final class GimmeStore: ObservableObject {
     @Published var pendingUpdate: SelfUpdate.Release?
     /// Presents the What's New / Update Now sheet (manual check or banner).
     @Published var showUpdateSheet = false
+    /// Failure of the last self-update attempt, shown inline in UpdateSheet —
+    /// the window-level error alert can't present over an open sheet. Nil on
+    /// the banner path (no sheet to suppress the alert there).
+    @Published var selfUpdateError: String?
     /// One-shot informational alert (up-to-date, check failed).
     @Published var updateInfo: InfoAlert?
     @Published var isSelfUpdating = false
@@ -166,8 +173,9 @@ final class GimmeStore: ObservableObject {
 
     /// Latest-release check. `manual` (menu item) bypasses the 12 h cache,
     /// reports the result, and opens the What's New sheet when an update
-    /// exists; the background launch check raises the in-app banner (and
-    /// posts a notification) only while `notifyUpdates` is on.
+    /// exists; the background launch check raises the in-app banner only
+    /// while `notifyUpdates` is on, and posts a notification only when no
+    /// window is on screen to show that banner.
     func checkForUpdates(manual: Bool) async {
         let key = "meta:selfupdate:latest"
         var release: SelfUpdate.Release?
@@ -190,8 +198,14 @@ final class GimmeStore: ObservableObject {
             showUpdateSheet = true
         } else if config.notifyUpdates {
             pendingUpdate = release
-            notifier.post(title: "gimme",
-                body: "gimme \(release.version) available — update from the gimme app")
+            // The banner is the in-app surface; post only when no window is
+            // on screen to show it. isActive alone is the wrong gate — at
+            // launch the check (warm-cache hit) finishes before the app
+            // activates, so banner + notification double-announced.
+            if !notifier.isAnyWindowOnScreen {
+                notifier.post(title: "gimme",
+                    body: "gimme \(release.version) available — update from the gimme app")
+            }
         }
     }
 
@@ -202,6 +216,7 @@ final class GimmeStore: ObservableObject {
         guard !isSelfUpdating else { return }
         isSelfUpdating = true
         defer { isSelfUpdating = false }
+        selfUpdateError = nil
         log("updating gimme to \(release.version)…")
         do {
             guard let assetURL = release.assets[selfUpdater.appAssetName] else {
@@ -226,7 +241,14 @@ final class GimmeStore: ObservableObject {
             try? await Task.sleep(nanoseconds: 500_000_000)
             NSApp.terminate(nil)
         } catch {
-            showError(error)
+            // The sheet stays open across a failed update, and the
+            // window-level alert can't present over it — surface the failure
+            // inline there; the banner path (no sheet) uses the alert.
+            if showUpdateSheet {
+                selfUpdateError = Self.errorText(error)
+            } else {
+                showError(error)
+            }
         }
     }
     @Published var errorMessage = ""
@@ -564,9 +586,13 @@ final class GimmeStore: ObservableObject {
         activity.insert(ActivityEntry(text: text), at: 0)
     }
 
+    static func errorText(_ error: Error) -> String {
+        if let e = error as? GimmeError { return e.message }
+        return "\(error)"
+    }
+
     private func showError(_ error: Error) {
-        if let e = error as? GimmeError { errorMessage = e.message }
-        else { errorMessage = "\(error)" }
+        errorMessage = Self.errorText(error)
         showError = true
     }
 }

@@ -44,6 +44,12 @@ struct UpdateSheet: View {
             Text("What's New").font(.headline)
             notesBody(release)
             Spacer()
+            if let error = store.selfUpdateError {
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             HStack {
                 Spacer()
                 Button("Later") { dismiss() }
