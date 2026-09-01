@@ -398,7 +398,7 @@ final class GimmeStore: ObservableObject {
             // Re-run only when a real query exists — empty would flood with
             // irrelevant hits (the Search button guards this; ⌘R must too).
             if !lastQuery.isEmpty { Task { await runSearch(lastQuery) } }
-        case .preferences, .activity: break
+        case .explore, .preferences, .activity: break
         }
     }
 

@@ -4,6 +4,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     case installed = "Installed"
     case updates = "Updates"
     case browse = "Browse"
+    case explore = "Explore"
     case managers = "Package Managers"
     case consolidate = "Consolidate"
     case preferences = "Preferences"
@@ -14,6 +15,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .installed: return "square.grid.2x2"
         case .updates: return "arrow.up.circle"
         case .browse: return "magnifyingglass"
+        case .explore: return "sparkles"
         case .managers: return "shippingbox"
         case .consolidate: return "arrow.triangle.merge"
         case .preferences: return "gear"
@@ -43,6 +45,7 @@ struct ContentView: View {
                 case .installed:     InstalledView()
                 case .updates:       UpdatesView()
                 case .browse:        BrowseView()
+                case .explore:       ExploreView()
                 case .managers:      PackageManagersView()
                 case .consolidate:   ConsolidateView()
                 case .preferences:   PreferencesView()
