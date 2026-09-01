@@ -126,7 +126,9 @@ final class GimmeStore: ObservableObject {
     @Published var installed: [InstalledPackage] = []
     @Published var outdated: [OutdatedPackage] = []
     @Published var searchResults: [SearchHit] = []
-    @Published var searchAll = false
+    /// Browse manager filter (nil = all). Narrows displayed results only —
+    /// filtering never refetches.
+    @Published var browseManagerFilter: ManagerID?
     @Published var activity: [ActivityEntry] = []
     @Published var loading = false
     @Published var isUpdating = false              // true while updateAll is running
@@ -452,9 +454,29 @@ final class GimmeStore: ObservableObject {
         isSearching = true
         defer { isSearching = false }
         lastQuery = query
-        do { searchResults = try await gimme.search(query: query, all: searchAll, refresh: false) }
-        catch { showError(error) }
+        do {
+            let hits = try await gimme.search(query: query, all: true, refresh: false)
+            searchResults = SearchRanking.rank(hits, query: query, managerPriority: config.priority)
+        } catch { showError(error) }
     }
+
+    /// Managers that can answer a Browse search right now (search-capable,
+    /// enabled, installed) — the filter picker's options.
+    var searchableManagers: [Gimme.ManagerStatus] {
+        managerStatuses.filter { s in
+            s.available && s.enabled
+                && (gimme.registryLookup(s.id)?.capabilities.contains(.search) ?? false)
+        }
+    }
+
+    /// Browse results narrowed by the manager filter (client-side only).
+    var filteredSearchResults: [SearchHit] {
+        guard let filter = browseManagerFilter else { return searchResults }
+        return searchResults.filter { $0.manager == filter }
+    }
+
+    /// "manager:name" ids of installed packages, for the ✓ on result rows.
+    var installedPackageIDs: Set<String> { Set(installed.map { $0.id }) }
 
     func install(_ hit: SearchHit) async {
         isInstalling = true
