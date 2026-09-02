@@ -16,7 +16,7 @@ macOS app (`GimmeUI`), sharing one Swift engine (`GimmeCore`).
 - **Architecture:** thin engine, fat adapters. The engine never knows *how* a
   manager installs things; each adapter owns its I/O (brew JSON API, Go proxy,
   PyPI, crates.io, npm registry; CLI where no machine API exists).
-- **Build:** SwiftPM, `swift-tools-version: 5.9`, macOS 13 floor, no external
+- **Build:** SwiftPM, `swift-tools-version: 6.2` (Swift 6 language mode), macOS 26 floor, no external
   dependencies. Three targets: `GimmeCore`, `gimme` (CLI), `GimmeUI` (SwiftUI).
 - **Spec & plan of record:** `docs/superpowers/specs/2026-08-07-gimme-v2-orchestrator-design.md`
   and `docs/superpowers/plans/2026-08-07-gimme-v2-orchestrator.md`. Read these

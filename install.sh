@@ -45,6 +45,11 @@ fail() { printf 'error: %s\n' "$*" >&2; exit 1; }
 # --- preflight ---
 [ "$(uname -s)" = "Darwin" ] || fail "gimme is macOS-only. Your OS: $(uname -s)"
 
+# Requires macOS 26 (Tahoe) or newer — the binaries are built against the
+# macOS 26 SDK and won't load on older systems.
+OS_MAJOR=$(sw_vers -productVersion | cut -d. -f1)
+[ "$OS_MAJOR" -ge 26 ] 2>/dev/null || fail "gimme requires macOS 26 (Tahoe) or newer. You have $(sw_vers -productVersion)."
+
 ARCH="$(uname -m)"
 case "$ARCH" in
     arm64)   ARCH_TAG="arm64" ;;
@@ -104,7 +109,7 @@ fi
 
 # --- fallback: build from source ---
 if [ -z "$DOWNLOAD_URL" ]; then
-    echo "==> Building from source (requires Swift 5.9+)…"
+    echo "==> Building from source (requires Swift 6.2+)…"
 
     command -v swift >/dev/null 2>&1 || fail "Swift not found. Install from https://swift.org or run 'brew install swift'"
 

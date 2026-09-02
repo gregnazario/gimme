@@ -2,8 +2,8 @@
 
 ## Requirements
 
-- macOS 13 (Ventura) or newer
-- Swift 5.9+ — only needed when building from source
+- macOS 26 (Tahoe) or newer
+- Swift 6.2+ — only needed when building from source
 
 ## macOS app (DMG)
 

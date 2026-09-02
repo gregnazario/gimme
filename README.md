@@ -18,7 +18,7 @@ curl -fsSL https://raw.githubusercontent.com/gregnazario/gimme/main/install.sh |
 
 This downloads a prebuilt binary (Apple Silicon) and installs it to `~/.local/bin`.
 On Intel Macs or if no binary is available, it falls back to building from source
-(requires Swift 5.9+). The SwiftUI app is installed to `/Applications` if available.
+(requires Swift 6.2+, macOS 26+). The SwiftUI app is installed to `/Applications` if available.
 
 **Custom install directory:**
 ```bash
