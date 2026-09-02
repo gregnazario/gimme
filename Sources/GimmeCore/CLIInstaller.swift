@@ -8,7 +8,7 @@ import Foundation
 ///
 /// A fresh install goes to `~/.local/bin/gimme` — the same location
 /// install.sh documents — so no root is needed and both entry points agree.
-public final class CLIToolInstaller {
+public final class CLIToolInstaller: Sendable {
     public enum Outcome: Equatable {
         case installed(version: String)
         case updated(from: String, to: String)
@@ -29,12 +29,12 @@ public final class CLIToolInstaller {
     /// Where a fresh install goes (~/.local/bin/gimme by default).
     public let defaultTarget: URL
     /// Finds an existing gimme binary on this machine (PATH first), or nil.
-    private let locate: () -> String?
+    private let locate: @Sendable () -> String?
 
     public init(http: HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
                 installDir: URL? = nil,
-                locate: (() -> String?)? = nil) {
+                locate: (@Sendable () -> String?)? = nil) {
         self.updater = SelfUpdate(http: http, process: process)
         self.process = process
         let home = FileManager.default.homeDirectoryForCurrentUser

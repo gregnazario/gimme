@@ -1,7 +1,7 @@
 import Foundation
 
 /// bun (npm) adapter (spec §6.5). npm registry JSON for search/info; bun CLI.
-public final class BunManager: PackageManager {
+public final class BunManager: PackageManager, Sendable {
     public let id: ManagerID = .bun
     public let displayName = "npm (via bun)"
     public let icon = "bag"

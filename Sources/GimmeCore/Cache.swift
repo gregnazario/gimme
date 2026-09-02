@@ -3,7 +3,7 @@ import Foundation
 /// A TTL disk cache (spec §5.3). JSON files keyed by `manager:operation` under
 /// ~/.cache/gimme. Source of truth is always live; the cache only avoids
 /// re-querying within its TTL window. Writes invalidate on install/uninstall.
-public final class Cache {
+public final class Cache: Sendable {
     public let directory: URL
 
     public init(directory: URL) {

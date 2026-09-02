@@ -8,7 +8,9 @@ import Foundation
 ///
 /// Adapters clear it in their mutating operations (install/uninstall/upgrade)
 /// so the post-action read reflects the new state.
-final class InProcessMemo<T> {
+/// `@unchecked Sendable`: all state is guarded by `lock`; T itself is
+/// only ever read/written inside that lock.
+final class InProcessMemo<T>: @unchecked Sendable {
     private let lock = NSLock()
     private var entry: (at: Date, value: T)?
     private let ttl: TimeInterval

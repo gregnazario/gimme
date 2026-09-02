@@ -2,7 +2,7 @@ import Foundation
 
 /// Composer (PHP) adapter. Uses packagist.org for search/info and the
 /// `composer global` CLI for actions + list.
-public final class ComposerManager: PackageManager {
+public final class ComposerManager: PackageManager, Sendable {
     public let id: ManagerID = .composer
     public let displayName = "Composer (PHP)"
     public let icon = "music.note"

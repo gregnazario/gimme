@@ -3,7 +3,7 @@ import XCTest
 
 final class BootstrapTests: XCTestCase {
     /// A manager that is initially unavailable and succeeds on bootstrap.
-    final class FakeManager: PackageManager {
+    final class FakeManager: PackageManager, @unchecked Sendable {
         let id: ManagerID = .cargo
         let displayName = "Fake"
         let icon = "circle"
@@ -63,10 +63,10 @@ final class BootstrapScriptHardeningTests: XCTestCase {
     struct StubNoHTTP: HTTPClient {
         func data(for url: URL) async throws -> Data { Data() }
     }
-    final class RecordingProcess: ProcessRunning {
+    final class RecordingProcess: ProcessRunning, @unchecked Sendable {
         var scripts: [String] = []
         var envs: [[String: String]?] = []
-        func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+        func run(_ e: String, args: [String], env: [String: String]?, stream: (@Sendable (String) -> Void)?) async throws -> ProcessResult {
             if args.first == "-c" { scripts.append(args[1]) }
             envs.append(env)
             return ProcessResult(exitCode: 0, stdout: "", stderr: "")

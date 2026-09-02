@@ -2,7 +2,7 @@ import XCTest
 @testable import GimmeCore
 
 final class AppStoreManagerTests: XCTestCase {
-    final class StubHTTP: HTTPClient {
+    final class StubHTTP: HTTPClient, @unchecked Sendable {
         var byURL: [String: Data] = [:]
         var requests: [String] = []
         func data(for url: URL) async throws -> Data {
@@ -10,10 +10,10 @@ final class AppStoreManagerTests: XCTestCase {
             return byURL[url.absoluteString] ?? Data()
         }
     }
-    class StubProcess: ProcessRunning {
+    class StubProcess: ProcessRunning, @unchecked Sendable {
         var calls: [(String, [String])] = []
         var envs: [[String: String]?] = []
-        func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+        func run(_ e: String, args: [String], env: [String: String]?, stream: (@Sendable (String) -> Void)?) async throws -> ProcessResult {
             calls.append((e, args))
             envs.append(env)
             return ProcessResult(exitCode: 0, stdout: "", stderr: "")
@@ -299,7 +299,7 @@ final class AppStoreManagerTests: XCTestCase {
         let http = StubHTTP()
         stubLookup(http, "com.tinyspeck.slackmacgap", version: "4.51.191", trackId: 803453959)
         final class FailingMasProcess: StubProcess {
-            override func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+            override func run(_ e: String, args: [String], env: [String: String]?, stream: (@Sendable (String) -> Void)?) async throws -> ProcessResult {
                 let r = try await super.run(e, args: args, env: env, stream: stream)
                 if e == "/tmp/mas-stub" {
                     return ProcessResult(exitCode: 1, stdout: "",
@@ -325,7 +325,7 @@ final class AppStoreManagerTests: XCTestCase {
         let http = StubHTTP()
         stubLookup(http, "com.tinyspeck.slackmacgap", version: "4.51.191", trackId: 803453959)
         final class AskpassAwareMas: StubProcess {
-            override func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+            override func run(_ e: String, args: [String], env: [String: String]?, stream: (@Sendable (String) -> Void)?) async throws -> ProcessResult {
                 let r = try await super.run(e, args: args, env: env, stream: stream)
                 if e == "/tmp/mas-stub" {
                     if env?["SUDO_ASKPASS"] != nil { return ProcessResult(exitCode: 0, stdout: "", stderr: "") }
@@ -360,7 +360,7 @@ final class AppStoreManagerTests: XCTestCase {
         let http = StubHTTP()
         stubLookup(http, "com.tinyspeck.slackmacgap", version: "4.51.191", trackId: 803453959)
         final class NotSignedInMas: StubProcess {
-            override func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+            override func run(_ e: String, args: [String], env: [String: String]?, stream: (@Sendable (String) -> Void)?) async throws -> ProcessResult {
                 let r = try await super.run(e, args: args, env: env, stream: stream)
                 if e == "/tmp/mas-stub" {
                     return ProcessResult(exitCode: 1, stdout: "", stderr: "Error: Not signed in")
@@ -409,7 +409,7 @@ final class AppStoreManagerTests: XCTestCase {
         stubLookup(http, "com.one.app", version: "2.0.0", trackId: 111)
         stubLookup(http, "com.two.app", version: "2.0.0", trackId: 222)
         final class AskpassAwareMas: StubProcess {
-            override func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+            override func run(_ e: String, args: [String], env: [String: String]?, stream: (@Sendable (String) -> Void)?) async throws -> ProcessResult {
                 let r = try await super.run(e, args: args, env: env, stream: stream)
                 if e == "/tmp/mas-stub" {
                     if env?["SUDO_ASKPASS"] != nil { return ProcessResult(exitCode: 0, stdout: "", stderr: "") }

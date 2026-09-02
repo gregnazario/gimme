@@ -6,7 +6,9 @@ import UserNotifications
 /// Authorization is requested contextually at the first Update action; after
 /// a denial the system never re-prompts and every post checks settings and
 /// skips silently. Safe in non-bundle contexts (raw SwiftPM binary).
-final class UpdateNotifier {
+/// `@unchecked Sendable`: `UNUserNotificationCenter` is a thread-safe
+/// system singleton; the class itself holds no mutable state.
+final class UpdateNotifier: @unchecked Sendable {
     private let center = UNUserNotificationCenter.current()
 
     /// True when notifications are possible at all in this process.

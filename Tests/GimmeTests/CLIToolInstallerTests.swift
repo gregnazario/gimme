@@ -8,10 +8,10 @@ final class CLIToolInstallerTests: XCTestCase {
     /// Delegates tar invocations and real executables to a ProcessRunner so
     /// fixture scripts genuinely run; declines anything not executable (like
     /// a broken/non-executable installed binary would).
-    class TarAndVersionStub: ProcessRunning {
+    class TarAndVersionStub: ProcessRunning, @unchecked Sendable {
         var calls: [(String, [String])] = []
         private let real = ProcessRunner()
-        func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+        func run(_ e: String, args: [String], env: [String: String]?, stream: (@Sendable (String) -> Void)?) async throws -> ProcessResult {
             calls.append((e, args))
             if e.hasSuffix("/tar") { return try await real.run(e, args: args, env: env, stream: stream) }
             if args.first == "--version" {
@@ -24,7 +24,7 @@ final class CLIToolInstallerTests: XCTestCase {
         }
     }
 
-    final class StubHTTP: HTTPClient {
+    final class StubHTTP: HTTPClient, @unchecked Sendable {
         var byURL: [String: Data] = [:]
         /// Set when the installer must not reach the network at all.
         private(set) var requestCount = 0
@@ -74,7 +74,7 @@ final class CLIToolInstallerTests: XCTestCase {
         http.byURL["https://example.com/gimme-darwin-arm64.tar.gz"] = fixture
     }
 
-    private func sut(installDir: URL? = nil, locate: (() -> String?)? = nil) -> CLIToolInstaller {
+    private func sut(installDir: URL? = nil, locate: (@Sendable () -> String?)? = nil) -> CLIToolInstaller {
         CLIToolInstaller(http: http, process: process,
                          installDir: installDir ?? tmp.appendingPathComponent("bin"),
                          locate: locate ?? { nil })

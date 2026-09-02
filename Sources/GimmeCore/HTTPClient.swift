@@ -1,7 +1,7 @@
 import Foundation
 
 /// Minimal HTTP client protocol so adapters can be tested with stubs (spec §6.6).
-public protocol HTTPClient {
+public protocol HTTPClient: Sendable {
     func data(for url: URL) async throws -> Data
 }
 
@@ -24,7 +24,9 @@ public extension HTTPClient {
 }
 
 /// Production client backed by URLSession.
-public final class URLSessionHTTPClient: NSObject, HTTPClient {
+/// `@unchecked`: NSObject subclasses cannot synthesize Sendable; the
+/// session reference is an immutable let (URLSession is Sendable).
+public final class URLSessionHTTPClient: NSObject, HTTPClient, @unchecked Sendable {
     private let session: URLSession
 
     /// Outdated checks fan out one registry request per installed package

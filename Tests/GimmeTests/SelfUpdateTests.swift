@@ -18,11 +18,11 @@ final class DottedVersionTests: XCTestCase {
 final class SelfUpdateTests: XCTestCase {
     /// Delegates tar invocations to a real ProcessRunner so extraction is
     /// genuinely exercised; fabricates `--version` output for binaries.
-    class TarAndVersionStub: ProcessRunning {
+    class TarAndVersionStub: ProcessRunning, @unchecked Sendable {
         var calls: [(String, [String])] = []
         var defaultVersionOutput: String? = nil  // returned for any --version call
         private let real = ProcessRunner()
-        func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+        func run(_ e: String, args: [String], env: [String: String]?, stream: (@Sendable (String) -> Void)?) async throws -> ProcessResult {
             calls.append((e, args))
             if e.hasSuffix("/tar") { return try await real.run(e, args: args, env: env, stream: stream) }
             if args.first == "--version" {
@@ -32,7 +32,7 @@ final class SelfUpdateTests: XCTestCase {
         }
     }
 
-    final class StubHTTP: HTTPClient {
+    final class StubHTTP: HTTPClient, @unchecked Sendable {
         var byURL: [String: Data] = [:]
         func data(for url: URL) async throws -> Data { byURL[url.absoluteString] ?? Data() }
     }

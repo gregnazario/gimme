@@ -3,7 +3,7 @@ import Foundation
 /// pipx adapter (spec §7). Per-tool isolated venvs (the original; uv tool is the
 /// modern equivalent). Python ecosystem — consolidation nudges toward one of
 /// pipx/uv. Uses PyPI JSON for search/info.
-public final class PipxManager: PackageManager {
+public final class PipxManager: PackageManager, Sendable {
     public let id: ManagerID = .pipx
     public let displayName = "pipx"
     public let icon = "tray.full.fill"

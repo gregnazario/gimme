@@ -4,7 +4,7 @@ import Foundation
 /// releases by owner/repo. No registry, so no search. No version metadata
 /// stored, so list is a best-effort scan of the install dir and outdated is
 /// unsupported. System ecosystem.
-public final class UbiManager: PackageManager {
+public final class UbiManager: PackageManager, Sendable {
     public let id: ManagerID = .ubi
     public let displayName = "ubi"
     public let icon = "wrench.and.screwdriver"

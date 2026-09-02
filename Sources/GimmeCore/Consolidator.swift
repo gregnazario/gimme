@@ -2,7 +2,7 @@ import Foundation
 
 /// Per-ecosystem recommended provider, separate from the install priority list
 /// (spec §4/§5). Persisted in config.toml under [ecosystems].
-public struct EcosystemPreferences: Codable, Equatable {
+public struct EcosystemPreferences: Codable, Equatable, Sendable {
     public var preferences: [Ecosystem: ManagerID]
     public init(_ preferences: [Ecosystem: ManagerID] = [:]) { self.preferences = preferences }
 

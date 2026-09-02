@@ -108,12 +108,12 @@ public func safeBinaryName(_ name: String) -> String? {
 
 /// Indirection so adapters can be tested with a stub instead of a real Process.
 /// Production code injects a `ProcessRunner` value; tests inject a custom conformer.
-public protocol ProcessRunning {
+public protocol ProcessRunning: Sendable {
     func run(
         _ executable: String,
         args: [String],
         env: [String: String]?,
-        stream: ((String) -> Void)?
+        stream: (@Sendable (String) -> Void)?
     ) async throws -> ProcessResult
 }
 
@@ -153,7 +153,7 @@ public struct ProcessRunner: ProcessRunning {
         _ executable: String,
         args: [String],
         env: [String: String]? = nil,
-        stream: ((String) -> Void)? = nil
+        stream: (@Sendable (String) -> Void)? = nil
     ) async throws -> ProcessResult {
         let proc = Foundation.Process()
         proc.executableURL = URL(fileURLWithPath: executable)
@@ -220,7 +220,11 @@ public struct ProcessRunner: ProcessRunning {
 /// Accumulates byte chunks, splits them on newlines, delivers complete lines,
 /// and holds the trailing partial line until more data arrives. Isolated
 /// per-pipe via instance state (no globals).
-final class LineCarry {
+///
+/// `@unchecked Sendable`: one instance is confined to a single pipe's
+/// readability handler, which is cleared before the sequential drain in
+/// `run` — no two threads ever touch one instance simultaneously.
+final class LineCarry: @unchecked Sendable {
     /// Already-delivered (line-streamed) text, concatenated for the final result.
     fileprivate(set) var flushed: String = ""
     /// A partial line not yet terminated by a newline.

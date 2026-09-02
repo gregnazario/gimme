@@ -1,7 +1,7 @@
 import Foundation
 
 /// uv (Python) adapter (spec §6.3). Per-tool isolated venvs via `uv tool`.
-public final class UvManager: PackageManager {
+public final class UvManager: PackageManager, Sendable {
     public let id: ManagerID = .uv
     public let displayName = "Python (uv)"
     public let icon = "snake"

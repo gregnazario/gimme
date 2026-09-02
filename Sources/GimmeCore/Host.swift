@@ -1,7 +1,7 @@
 import Foundation
 
 /// The host machine gimme is running on. Formulae gate assets on os/arch.
-public struct Host: Equatable, Codable {
+public struct Host: Equatable, Codable, Sendable {
     public let os: String
     public let arch: String
     public let macosVersion: String

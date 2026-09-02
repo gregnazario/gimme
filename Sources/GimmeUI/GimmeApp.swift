@@ -486,7 +486,7 @@ final class GimmeStore: ObservableObject {
             _ = try await gimme.install(name: hit.name, from: hit.manager, options: InstallOptions(),
                                         confirmBootstrap: { id in
                                             // GUI auto-bootstraps; a future revision could prompt.
-                                            self.log("bootstrapping \(id.rawValue)…")
+                                            Task { @MainActor in self.log("bootstrapping \(id.rawValue)…") }
                                             return true
                                         },
                                         onProgress: { line in

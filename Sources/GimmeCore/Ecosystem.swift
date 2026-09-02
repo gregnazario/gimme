@@ -3,7 +3,7 @@ import Foundation
 /// A fixed bucket classifying package managers by language/tool ecosystem
 /// (spec §3). Used for consolidation: two installed packages are "duplicates"
 /// only if they share a name *within the same ecosystem*.
-public enum Ecosystem: String, Hashable, Codable, CaseIterable {
+public enum Ecosystem: String, Hashable, Codable, CaseIterable, Sendable {
     case js, python, rust, go, ruby, php, system, other
 
     public var displayName: String {

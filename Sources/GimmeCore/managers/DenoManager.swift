@@ -6,7 +6,7 @@ import Foundation
 ///
 /// `outdated` is unsupported (Deno's global installs don't track installed
 /// version metadata; like the Go adapter, we list binaries without versions).
-public final class DenoManager: PackageManager {
+public final class DenoManager: PackageManager, Sendable {
     public let id: ManagerID = .deno
     public let displayName = "Deno"
     public let icon = "globe"

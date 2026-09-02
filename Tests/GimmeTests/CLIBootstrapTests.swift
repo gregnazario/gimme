@@ -5,7 +5,7 @@ final class CLIBootstrapTests: XCTestCase {
     func testInstallPromptsBootstrapWhenUnavailable() async throws {
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         // A manager that is unavailable, but bootstrap() makes it available.
-        final class Lazy: PackageManager {
+        final class Lazy: PackageManager, @unchecked Sendable {
             let id: ManagerID = .cargo
             private var avail = false
             let displayName = ""; let icon = "circle"; let capabilities: Set<Capability> = [.install, .bootstrap, .search]
@@ -36,7 +36,7 @@ final class CLIBootstrapTests: XCTestCase {
 
     func testInstallAbortsWhenBootstrapDeclined() async throws {
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        final class Unavailable: PackageManager {
+        final class Unavailable: PackageManager, @unchecked Sendable {
             let id: ManagerID = .cargo; let displayName = ""; let icon = "circle"
             let capabilities: Set<Capability> = [.install, .search]
             func isAvailable() -> Bool { false }

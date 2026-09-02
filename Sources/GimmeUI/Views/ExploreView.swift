@@ -47,7 +47,7 @@ private struct ExploreCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
     }
 }
 

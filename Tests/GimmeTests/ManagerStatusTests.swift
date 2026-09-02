@@ -3,7 +3,7 @@ import XCTest
 
 final class ManagerStatusTests: XCTestCase {
     /// A manager that reports a fixed version when available.
-    final class VersionedStub: PackageManager {
+    final class VersionedStub: PackageManager, @unchecked Sendable {
         let id: ManagerID; let available: Bool; let reportedVersion: String?
         init(id: ManagerID, available: Bool, version: String? = nil) {
             self.id = id; self.available = available; self.reportedVersion = version

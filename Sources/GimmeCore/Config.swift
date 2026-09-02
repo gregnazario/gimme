@@ -2,7 +2,7 @@ import Foundation
 
 /// v2 gimme configuration. Holds the manager priority list and which managers
 /// are enabled. Persisted to ~/.config/gimme/config.toml.
-public struct Config: Codable, Equatable {
+public struct Config: Codable, Equatable, Sendable {
     /// Ordered list of manager IDs consulted by the Resolver when no
     /// remembered preference applies. Default order per the design spec.
     public var priority: [String]

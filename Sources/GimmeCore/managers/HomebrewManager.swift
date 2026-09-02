@@ -2,7 +2,7 @@ import Foundation
 
 /// Homebrew adapter (spec §6.1). Uses the formulae.brew.sh JSON API for
 /// search/info and the `brew` CLI for actions + list/outdated.
-public final class HomebrewManager: PackageManager {
+public final class HomebrewManager: PackageManager, Sendable {
     public let id: ManagerID = .homebrew
     public let displayName = "Homebrew"
     public let icon = "cup.and.saucer.fill"

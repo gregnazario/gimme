@@ -1,7 +1,7 @@
 import Foundation
 
 /// Stable identifier for a package manager backend.
-public enum ManagerID: String, Hashable, Codable, CaseIterable {
+public enum ManagerID: String, Hashable, Codable, CaseIterable, Sendable {
     case homebrew, go, uv, cargo, bun, npm, pnpm, yarn, gem, composer, deno, pipx, aqua, ubi, appstore
 
     /// Display name shown in the GUI (e.g. "Homebrew", "npm (via bun)").
@@ -48,12 +48,12 @@ public enum ManagerID: String, Hashable, Codable, CaseIterable {
 }
 
 /// Operations a package manager can support. Not every backend supports every op.
-public enum Capability: String, Hashable, Codable {
+public enum Capability: String, Hashable, Codable, Sendable {
     case install, uninstall, upgrade, list, outdated, search, info, bootstrap
 }
 
 /// How we address a package across the system.
-public struct PackageRef: Hashable, Codable {
+public struct PackageRef: Hashable, Codable, Sendable {
     /// Package name or import path. For Go this is e.g. "github.com/spf13/cobra".
     /// For scoped npm packages, "babel/core" or "@babel/core".
     public let name: String
@@ -69,7 +69,7 @@ public struct PackageRef: Hashable, Codable {
 
 /// A package installed on the system. ID is manager-namespaced so the same
 /// name on two managers never collides in a unified list.
-public struct InstalledPackage: Identifiable, Hashable, Codable {
+public struct InstalledPackage: Identifiable, Hashable, Codable, Sendable {
     public let name: String
     public let version: String
     public let manager: ManagerID
@@ -86,7 +86,7 @@ public struct InstalledPackage: Identifiable, Hashable, Codable {
 }
 
 /// A package with a newer version available.
-public struct OutdatedPackage: Identifiable, Hashable, Codable {
+public struct OutdatedPackage: Identifiable, Hashable, Codable, Sendable {
     public let name: String
     public let installedVersion: String
     public let latestVersion: String
@@ -103,7 +103,7 @@ public struct OutdatedPackage: Identifiable, Hashable, Codable {
 }
 
 /// A single search result.
-public struct SearchHit: Identifiable, Hashable, Codable {
+public struct SearchHit: Identifiable, Hashable, Codable, Sendable {
     public let name: String
     public let manager: ManagerID
     public let summary: String
@@ -120,7 +120,7 @@ public struct SearchHit: Identifiable, Hashable, Codable {
 }
 
 /// Full info about a package (installed or not).
-public struct PackageInfo: Hashable, Codable {
+public struct PackageInfo: Hashable, Codable, Sendable {
     public let name: String
     public let manager: ManagerID
     public let latestVersion: String
@@ -144,7 +144,7 @@ public struct PackageInfo: Hashable, Codable {
 }
 
 /// Options passed to install().
-public struct InstallOptions: Hashable, Codable {
+public struct InstallOptions: Hashable, Codable, Sendable {
     public let version: String?   // pin to a version if the manager supports it
     public let yes: Bool          // non-interactive: skip prompts
     public init(version: String? = nil, yes: Bool = false) {
@@ -154,7 +154,7 @@ public struct InstallOptions: Hashable, Codable {
 }
 
 /// Result of an install.
-public struct InstallResult: Hashable, Codable {
+public struct InstallResult: Hashable, Codable, Sendable {
     public let package: InstalledPackage
     public let warnings: [String]  // e.g. "library package — no CLI entry"
     public init(package: InstalledPackage, warnings: [String] = []) {
@@ -165,7 +165,7 @@ public struct InstallResult: Hashable, Codable {
 
 /// The single seam every backend conforms to. The engine and UI talk only
 /// through this interface (spec §4).
-public protocol PackageManager {
+public protocol PackageManager: Sendable {
     var id: ManagerID { get }
     var displayName: String { get }
     var icon: String { get }
@@ -181,7 +181,7 @@ public protocol PackageManager {
     /// requirement itself must be on the protocol so overrides dispatch
     /// dynamically through `any PackageManager`.
     func upgradeAll(_ packages: [PackageRef],
-                    onPackageStart: ((PackageRef) -> Void)?) async -> [(PackageRef, Error?)]
+                    onPackageStart: (@Sendable (PackageRef) -> Void)?) async -> [(PackageRef, Error?)]
     func listInstalled() async throws -> [InstalledPackage]
     /// `outdated()` with explicit cache control: forceRefresh=true bypasses the
     /// adapter's response caches (registry latest-version docs, iTunes lookups)
@@ -204,7 +204,7 @@ public extension PackageManager {
     /// (e.g. mas → sudo askpass, one password dialog) override this to batch.
     /// Returns per-package outcome in order.
     func upgradeAll(_ packages: [PackageRef],
-                    onPackageStart: ((PackageRef) -> Void)? = nil) async -> [(PackageRef, Error?)] {
+                    onPackageStart: (@Sendable (PackageRef) -> Void)? = nil) async -> [(PackageRef, Error?)] {
         var results: [(PackageRef, Error?)] = []
         for package in packages {
             onPackageStart?(package)

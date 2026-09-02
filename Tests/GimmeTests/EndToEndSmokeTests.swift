@@ -5,7 +5,7 @@ final class EndToEndSmokeTests: XCTestCase {
     /// Exercises Resolver → HomebrewManager(stubbed) → Cache invalidation,
     /// proving the orchestration loop compiles and runs together.
     func testResolveAndInstallAndInvalidate() async throws {
-        final class FakeHTTP: HTTPClient {
+        final class FakeHTTP: HTTPClient, @unchecked Sendable {
             func data(for url: URL) async throws -> Data {
                 if url.absoluteString.contains("formula.json") {
                     return Data(#"[{"name":"ripgrep","desc":"rg","versions":{"stable":"14.1.0"}}]"#.utf8)
@@ -13,9 +13,9 @@ final class EndToEndSmokeTests: XCTestCase {
                 return Data()
             }
         }
-        final class FakeProcess: ProcessRunning {
+        final class FakeProcess: ProcessRunning, @unchecked Sendable {
             var installed: [String: String] = [:]
-            func run(_ executable: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+            func run(_ executable: String, args: [String], env: [String: String]?, stream: (@Sendable (String) -> Void)?) async throws -> ProcessResult {
                 if executable.contains("brew") {
                     if args.first == "install" {
                         installed[args[1]] = "14.1.0"

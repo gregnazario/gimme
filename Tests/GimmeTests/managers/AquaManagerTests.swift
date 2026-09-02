@@ -2,10 +2,10 @@ import XCTest
 @testable import GimmeCore
 
 final class AquaManagerTests: XCTestCase {
-    final class StubProcess: ProcessRunning {
+    final class StubProcess: ProcessRunning, @unchecked Sendable {
         var calls: [(String, [String])] = []
         var stubs: [String: ProcessResult] = [:]
-        func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+        func run(_ e: String, args: [String], env: [String: String]?, stream: (@Sendable (String) -> Void)?) async throws -> ProcessResult {
             calls.append((e, args))
             if args.first == "list" { return stubs["list"] ?? ProcessResult(exitCode: 0, stdout: "", stderr: "") }
             if args == ["--version"] { return stubs["--version"] ?? ProcessResult(exitCode: 0, stdout: "aqua version 2.0.0\n", stderr: "") }

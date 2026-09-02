@@ -1,7 +1,10 @@
 import Foundation
 
 /// The gimme command runner. The CLI is a thin wrapper; tests call in-process.
-public final class Gimme {
+/// `@unchecked Sendable`: `preferences`/`config` are plain value snapshots
+/// swapped by the GUI; task groups read them concurrently. Caches and the
+/// registry are internally thread-safe.
+public final class Gimme: @unchecked Sendable {
     public let registry: Registry
     public var preferences: Preferences
     public var config: Config
@@ -72,8 +75,8 @@ public final class Gimme {
 
     @discardableResult
     public func install(name: String, from hint: ManagerID?, options: InstallOptions,
-                        confirmBootstrap: (ManagerID) -> Bool = { _ in false },
-                        onProgress: ((String) -> Void)? = nil) async throws -> InstallResult {
+                        confirmBootstrap: @Sendable (ManagerID) -> Bool = { _ in false },
+                        onProgress: (@Sendable (String) -> Void)? = nil) async throws -> InstallResult {
         let manager = try await resolve(name, hint: hint)
         if !manager.isAvailable() {
             try await Bootstrap.run(manager, confirm: confirmBootstrap)
@@ -127,7 +130,7 @@ extension Gimme {
     /// `onPackageStart` is invoked (on the calling task) before each upgrade
     /// so callers (e.g. the GUI) can show per-package progress.
     public func updateAll(
-        onPackageStart: ((String) -> Void)? = nil
+        onPackageStart: (@Sendable (String) -> Void)? = nil
     ) async throws -> UpdateSummary {
         var summary = UpdateSummary()
         let managers = registry.enabled(config: config).filter { $0.capabilities.contains(.outdated) && $0.capabilities.contains(.upgrade) }
@@ -186,7 +189,7 @@ extension Gimme {
     }
 
     /// Status of one backend manager: availability + version (if installed).
-    public struct ManagerStatus: Identifiable, Equatable, Codable {
+    public struct ManagerStatus: Identifiable, Equatable, Codable, Sendable {
         public let id: ManagerID
         public let displayName: String
         public let available: Bool

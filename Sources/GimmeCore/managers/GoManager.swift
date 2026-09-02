@@ -2,7 +2,7 @@ import Foundation
 
 /// Go adapter (spec §6.2). Uses the module proxy for existence/info and
 /// `go install` for actions. No outdated, no fuzzy search.
-public final class GoManager: PackageManager {
+public final class GoManager: PackageManager, Sendable {
     public let id: ManagerID = .go
     public let displayName = "Go"
     public let icon = "building.columns"

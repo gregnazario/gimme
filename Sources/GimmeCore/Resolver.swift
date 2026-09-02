@@ -9,7 +9,7 @@ public enum ResolveResult {
 }
 
 /// Picks which manager handles a given package name (spec §5.1).
-public final class Resolver {
+public final class Resolver: Sendable {
     public let registry: Registry
     public let preferences: Preferences
     public let config: Config

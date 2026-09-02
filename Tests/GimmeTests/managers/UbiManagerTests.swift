@@ -2,9 +2,9 @@ import XCTest
 @testable import GimmeCore
 
 final class UbiManagerTests: XCTestCase {
-    final class StubProcess: ProcessRunning {
+    final class StubProcess: ProcessRunning, @unchecked Sendable {
         var calls: [(String, [String])] = []
-        func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+        func run(_ e: String, args: [String], env: [String: String]?, stream: (@Sendable (String) -> Void)?) async throws -> ProcessResult {
             calls.append((e, args))
             if args.contains("--version") { return ProcessResult(exitCode: 0, stdout: "ubi 0.0.1\n", stderr: "") }
             return ProcessResult(exitCode: 0, stdout: "", stderr: "")

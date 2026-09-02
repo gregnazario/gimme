@@ -4,7 +4,7 @@ import Foundation
 /// adapter models the standard imperative `aqua install/list/rm` flow — the
 /// declarative yaml is aqua's internal concern. System ecosystem. Packages are
 /// `owner/repo`. No outdated (versions pinned in config). No fuzzy search.
-public final class AquaManager: PackageManager {
+public final class AquaManager: PackageManager, Sendable {
     public let id: ManagerID = .aqua
     public let displayName = "aqua"
     public let icon = "drop.fill"

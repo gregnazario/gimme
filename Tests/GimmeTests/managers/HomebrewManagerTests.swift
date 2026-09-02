@@ -2,16 +2,16 @@ import XCTest
 @testable import GimmeCore
 
 final class HomebrewManagerTests: XCTestCase {
-    final class StubProcess: ProcessRunning {
+    final class StubProcess: ProcessRunning, @unchecked Sendable {
         var calls: [(String, [String])] = []
         var stubs: [String: ProcessResult] = [:]
-        func run(_ executable: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+        func run(_ executable: String, args: [String], env: [String: String]?, stream: (@Sendable (String) -> Void)?) async throws -> ProcessResult {
             calls.append((executable, args))
             let key = args.first ?? ""
             return stubs[key] ?? ProcessResult(exitCode: 0, stdout: "", stderr: "")
         }
     }
-    final class StubHTTP: HTTPClient {
+    final class StubHTTP: HTTPClient, @unchecked Sendable {
         var dataByURL: [String: Data] = [:]
         func data(for url: URL) async throws -> Data {
             dataByURL[url.absoluteString] ?? Data()

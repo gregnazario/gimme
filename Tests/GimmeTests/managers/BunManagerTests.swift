@@ -2,14 +2,14 @@ import XCTest
 @testable import GimmeCore
 
 final class BunManagerTests: XCTestCase {
-    final class StubHTTP: HTTPClient {
+    final class StubHTTP: HTTPClient, @unchecked Sendable {
         var byURL: [String: Data] = [:]
         func data(for url: URL) async throws -> Data { byURL[url.absoluteString] ?? Data() }
     }
-    final class StubProcess: ProcessRunning {
+    final class StubProcess: ProcessRunning, @unchecked Sendable {
         var calls: [(String, [String])] = []
         var lsOutput = ""
-        func run(_ e: String, args: [String], env: [String: String]?, stream: ((String) -> Void)?) async throws -> ProcessResult {
+        func run(_ e: String, args: [String], env: [String: String]?, stream: (@Sendable (String) -> Void)?) async throws -> ProcessResult {
             calls.append((e, args))
             if args.contains("ls") { return ProcessResult(exitCode: 0, stdout: lsOutput, stderr: "") }
             return ProcessResult(exitCode: 0, stdout: "", stderr: "")

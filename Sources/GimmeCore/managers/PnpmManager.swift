@@ -2,7 +2,7 @@ import Foundation
 
 /// pnpm adapter. Uses the npm registry JSON for search/info and the `pnpm` CLI
 /// for actions + list. Global packages via `-g`.
-public final class PnpmManager: PackageManager {
+public final class PnpmManager: PackageManager, Sendable {
     public let id: ManagerID = .pnpm
     public let displayName = "pnpm"
     public let icon = "square.stack.3d.up"

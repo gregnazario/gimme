@@ -60,7 +60,7 @@ final class CLIUpdateDoctorTests: XCTestCase {
               preferencesFile: tmp.appendingPathComponent("preferences.toml"))
     }
 
-    final class UpdatableCls: PackageManager {
+    final class UpdatableCls: PackageManager, @unchecked Sendable {
         let id: ManagerID; let outdatedList: [OutdatedPackage]; var upgraded: [String] = []
         let displayName = ""; let icon = "circle"; let capabilities: Set<Capability> = [.upgrade, .outdated]
         init(id: ManagerID, outdatedList: [OutdatedPackage]) { self.id = id; self.outdatedList = outdatedList }
@@ -86,7 +86,7 @@ final class CLIUpdateDoctorTests: XCTestCase {
 
     func testUpdatePartialFailureRecorded() async throws {
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        final class FailingUpgradable: PackageManager {
+        final class FailingUpgradable: PackageManager, @unchecked Sendable {
             let id: ManagerID; let outdatedList: [OutdatedPackage]
             let displayName = ""; let icon = "circle"; let capabilities: Set<Capability> = [.upgrade, .outdated]
             init(id: ManagerID, outdatedList: [OutdatedPackage]) { self.id = id; self.outdatedList = outdatedList }

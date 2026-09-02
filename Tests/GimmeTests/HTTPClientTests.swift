@@ -3,7 +3,7 @@ import XCTest
 
 final class HTTPClientTests: XCTestCase {
     /// A test double that returns canned bytes for a given URL.
-    final class StubHTTPClient: HTTPClient {
+    final class StubHTTPClient: HTTPClient, @unchecked Sendable {
         var responses: [String: Data] = [:]
         func data(for url: URL) async throws -> Data {
             responses[url.absoluteString] ?? Data()

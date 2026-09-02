@@ -8,7 +8,7 @@ public enum Bootstrap {
     /// manager still unavailable.
     public static func run(
         _ manager: any PackageManager,
-        confirm: (ManagerID) -> Bool
+        confirm: @Sendable (ManagerID) -> Bool
     ) async throws {
         if manager.isAvailable() { return }
         guard confirm(manager.id) else {

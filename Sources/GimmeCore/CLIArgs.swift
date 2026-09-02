@@ -5,7 +5,7 @@ import Foundation
 /// being silently ignored — a mistyped or unsupported flag once degraded
 /// `gimme update --self` into a real `update all` on a build that predates
 /// --self (2026-08-23 incident).
-public struct CLIArgs: Equatable {
+public struct CLIArgs: Equatable, Sendable {
     public var verb: String
     public var positional: [String] = []
     public var from: ManagerID?

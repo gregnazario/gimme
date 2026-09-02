@@ -1,7 +1,7 @@
 import Foundation
 
 /// Cargo (Rust) adapter (spec §6.4). crates.io JSON for search/info; cargo CLI.
-public final class CargoManager: PackageManager {
+public final class CargoManager: PackageManager, Sendable {
     public let id: ManagerID = .cargo
     public let displayName = "Cargo"
     public let icon = "shippingbox"

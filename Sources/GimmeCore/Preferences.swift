@@ -2,7 +2,7 @@ import Foundation
 
 /// Per-package remembered manager overrides (spec §5.2). Persisted to
 /// ~/.config/gimme/preferences.toml, separate from config.toml.
-public struct Preferences: Equatable {
+public struct Preferences: Equatable, Sendable {
     /// Map of package name -> chosen manager.
     public private(set) var overrides: [String: ManagerID]
 

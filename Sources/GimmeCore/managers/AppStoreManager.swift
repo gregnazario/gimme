@@ -6,7 +6,7 @@ import Foundation
 /// _MASReceipt marker, and versions are compared against the public iTunes
 /// Lookup API (no auth, `country=us`). `mas` is used opportunistically for the
 /// write path; without it, upgrade opens the app's page in the App Store.
-public final class AppStoreManager: PackageManager {
+public final class AppStoreManager: PackageManager, @unchecked Sendable {
     public let id: ManagerID = .appstore
     public let displayName = "App Store"
     public let icon = "app.badge.fill"
@@ -237,9 +237,9 @@ public final class AppStoreManager: PackageManager {
         // Fallback: land the App Store on the app's page; the user clicks
         // Update. Coalesced so Update-All opens the store at most once.
         let now = Date()
-        stateLock.lock(); let last = lastOpenedAppStoreAt; stateLock.unlock()
+        let last = stateLock.withLock { lastOpenedAppStoreAt }
         if let last, now.timeIntervalSince(last) < Self.openCoalesceInterval { return }
-        stateLock.lock(); lastOpenedAppStoreAt = now; stateLock.unlock()
+        stateLock.withLock { lastOpenedAppStoreAt = now }
         let res = try await process.run("/usr/bin/open",
             args: ["macappstore://apps.apple.com/app/id\(trackId)"], env: nil, stream: nil)
         guard res.exitCode == 0 else {

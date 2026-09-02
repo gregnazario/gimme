@@ -3,7 +3,7 @@ import Foundation
 /// Holds all package-manager adapters and answers availability/enabled
 /// queries (spec §3.2). Production wires the five real adapters; tests inject
 /// stubs.
-public final class Registry {
+public final class Registry: Sendable {
     public let managers: [any PackageManager]
 
     public init(managers: [any PackageManager]) {

@@ -2,7 +2,7 @@ import Foundation
 
 /// RubyGems adapter. Uses the rubygems.org API for search/info and the `gem`
 /// CLI for actions + list. Globals are the default install scope for gems.
-public final class GemManager: PackageManager {
+public final class GemManager: PackageManager, Sendable {
     public let id: ManagerID = .gem
     public let displayName = "RubyGems"
     public let icon = "diamond.fill"

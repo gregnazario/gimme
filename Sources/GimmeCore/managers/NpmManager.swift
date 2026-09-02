@@ -2,7 +2,7 @@ import Foundation
 
 /// npm adapter. Uses the npm registry JSON for search/info and the `npm` CLI
 /// for actions + list. Global packages via `-g`.
-public final class NpmManager: PackageManager {
+public final class NpmManager: PackageManager, Sendable {
     public let id: ManagerID = .npm
     public let displayName = "npm"
     public let icon = "shippingbox.fill"

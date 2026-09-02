@@ -5,7 +5,7 @@ import CryptoKit
 /// 2026-08-22-self-update-design.md). Shared by `gimme update --self` and the
 /// GUI's Check for Updates — all network/process seams are injected so the
 /// whole flow is unit-testable.
-public final class SelfUpdate {
+public final class SelfUpdate: Sendable {
     public struct Release: Equatable, Codable {
         public let tag: String               // "v2.3.0"
         public let version: String           // "2.3.0"

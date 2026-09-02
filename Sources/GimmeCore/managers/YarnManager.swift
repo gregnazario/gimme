@@ -3,7 +3,7 @@ import Foundation
 /// Yarn (classic v1) adapter. Uses the npm registry for search/info and the
 /// `yarn global` CLI for actions. Note: Yarn Berry (v2+) removed global installs;
 /// this adapter targets the classic model, which is what global yarn users run.
-public final class YarnManager: PackageManager {
+public final class YarnManager: PackageManager, Sendable {
     public let id: ManagerID = .yarn
     public let displayName = "Yarn"
     public let icon = "circle.hexagongrid.fill"
