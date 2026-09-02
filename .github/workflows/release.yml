@@ -213,6 +213,9 @@ jobs:
         run: |
           # --notes-from-tag: the annotated tag message IS the release body —
           # it surfaces as "What's New" in `gimme update --self` and the GUI.
+          # When a release raises the minimum macOS, keep a
+          # "Requires: macOS N+" line in the tag message — clients parse it
+          # and refuse the update on older machines (SelfUpdate.swift).
           # checkout@v4 fetches only the commit a tag points at, not the tag
           # object, which makes gh see a lightweight tag and fall back to the
           # commit message (bit us on v2.5.0) — fetch the tag object first.

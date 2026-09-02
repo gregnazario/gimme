@@ -80,6 +80,38 @@ public final class SelfUpdate: Sendable {
         DottedVersion.isOlder(current, than: candidate)
     }
 
+    // MARK: - Release floor (Requires: macOS N+)
+
+    /// The machine-readable floor marker convention for release bodies (the
+    /// annotated tag message): a line like `Requires: macOS 26+` means the
+    /// release will not run on older systems. Binaries parse it so machines
+    /// below the floor are never offered the update — they stay on their
+    /// current version instead of installing something that can't launch.
+    /// No marker → no constraint, so pre-convention releases never block.
+    public static func requiredMacOS(fromNotes notes: String?) -> Int? {
+        guard let notes else { return nil }
+        for line in notes.split(separator: "\n") {
+            guard let match = line.range(
+                of: #"requires:?\s*macOS\s*(\d+)"#,
+                options: [.regularExpression, .caseInsensitive]) else { continue }
+            let digits = line[match].split(whereSeparator: { !$0.isNumber }).last ?? ""
+            if let required = Int(digits) { return required }
+        }
+        return nil
+    }
+
+    /// True when `release` can run on a machine with macOS `machineMajor`.
+    /// Releases without a floor marker are assumed compatible.
+    public static func isCompatible(_ release: Release, machineMajor: Int) -> Bool {
+        guard let required = requiredMacOS(fromNotes: release.notes) else { return true }
+        return machineMajor >= required
+    }
+
+    /// This machine's macOS major version.
+    public static var machineMacOSMajor: Int {
+        ProcessInfo.processInfo.operatingSystemVersion.majorVersion
+    }
+
     // MARK: - Checksums
 
     /// When the release publishes a SHA256SUMS asset (CI does since v2.3.2),

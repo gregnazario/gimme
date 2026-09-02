@@ -281,6 +281,12 @@ struct GimmeCLI {
         guard let release = await updater.latestRelease() else {
             throw GimmeError.network("could not check https://github.com/gregnazario/gimme/releases/latest")
         }
+        guard SelfUpdate.isCompatible(release, machineMajor: SelfUpdate.machineMacOSMajor) else {
+            let required = SelfUpdate.requiredMacOS(fromNotes: release.notes) ?? 26
+            print("gimme \(release.version) requires macOS \(required)+; this machine has macOS \(SelfUpdate.machineMacOSMajor), so gimme \(current) stays.")
+            print("Your install keeps working — upgrade macOS first if you want newer gimme releases.")
+            return
+        }
         guard SelfUpdate.isNewer(release.version, than: current) else {
             print("up to date (latest release: \(release.version))")
             return

@@ -195,6 +195,16 @@ final class GimmeStore: ObservableObject {
             if manual { updateInfo = InfoAlert(text: "gimme \(GimmeVersion.current) is up to date.") }
             return
         }
+        // Floor guard: a release whose body carries `Requires: macOS N+` is
+        // never offered to machines below N — no banner, no notification, no
+        // download. Manual checks get the explanation instead.
+        guard SelfUpdate.isCompatible(release, machineMajor: SelfUpdate.machineMacOSMajor) else {
+            if manual {
+                let required = SelfUpdate.requiredMacOS(fromNotes: release.notes) ?? 26
+                updateInfo = InfoAlert(text: "gimme \(release.version) requires macOS \(required)+ and this Mac has macOS \(SelfUpdate.machineMacOSMajor), so gimme \(GimmeVersion.current) stays. It keeps working normally.")
+            }
+            return
+        }
         if manual {
             pendingUpdate = release
             showUpdateSheet = true

@@ -64,6 +64,12 @@ public final class CLIToolInstaller: Sendable {
             throw GimmeError.network("could not check https://github.com/gregnazario/gimme/releases/latest")
         }
 
+        // Floor guard: never install a binary this machine can't run.
+        guard SelfUpdate.isCompatible(release, machineMajor: SelfUpdate.machineMacOSMajor) else {
+            let required = SelfUpdate.requiredMacOS(fromNotes: release.notes) ?? 26
+            throw GimmeError.install("gimme \(release.version) requires macOS \(required)+; this machine has macOS \(SelfUpdate.machineMacOSMajor) — keeping the installed version")
+        }
+
         let existingPath = locate()
         let target = existingPath.map { URL(fileURLWithPath: $0) } ?? defaultTarget
         let oldVersion = existingPath == nil ? nil : await installedVersion(at: target.path)
