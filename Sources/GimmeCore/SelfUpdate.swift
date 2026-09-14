@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 import CryptoKit
 
 /// Self-update against gimme's tag-driven GitHub releases (spec:
@@ -22,11 +22,11 @@ public final class SelfUpdate: Sendable {
         }
     }
 
-    private let http: HTTPClient
+    private let http: any HTTPClient
     private let process: any ProcessRunning
     private let arch: String
 
-    public init(http: HTTPClient = URLSessionHTTPClient(),
+    public init(http: any HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
                 arch: String? = nil) {
         self.http = http

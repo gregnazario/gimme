@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 /// The gimme command runner. The CLI is a thin wrapper; tests call in-process.
 /// `@unchecked Sendable`: `preferences`/`config` are plain value snapshots

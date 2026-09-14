@@ -12,12 +12,12 @@ public final class DenoManager: PackageManager, Sendable {
     public let icon = "globe"
     public let capabilities: Set<Capability> = [.install, .uninstall, .list, .search, .info, .bootstrap]
 
-    private let http: HTTPClient
+    private let http: any HTTPClient
     private let process: any ProcessRunning
     private let binaryOverride: String?
     private let denoBinDir: String   // where global binaries live (~/.deno/bin)
 
-    public init(http: HTTPClient = URLSessionHTTPClient(),
+    public init(http: any HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
                 binary: String? = nil,
                 denoBinDir: String? = nil) {

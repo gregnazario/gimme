@@ -26,6 +26,6 @@ final class HTTPClientTests: XCTestCase {
     }
 
     func testRealClientIsHTTPClient() {
-        let _: HTTPClient = URLSessionHTTPClient()
+        let _: any HTTPClient = URLSessionHTTPClient()
     }
 }

@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 /// Minimal HTTP client protocol so adapters can be tested with stubs (spec §6.6).
 public protocol HTTPClient: Sendable {

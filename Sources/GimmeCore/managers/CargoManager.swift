@@ -7,7 +7,7 @@ public final class CargoManager: PackageManager, Sendable {
     public let icon = "shippingbox"
     public let capabilities: Set<Capability> = [.install, .uninstall, .upgrade, .list, .outdated, .search, .info, .bootstrap]
 
-    private let http: HTTPClient
+    private let http: any HTTPClient
     private let process: any ProcessRunning
     private let cargoBinaryOverride: String?   // nil = resolve via `which cargo`
     /// Shared disk cache for per-package latest-version lookups (App Store
@@ -16,7 +16,7 @@ public final class CargoManager: PackageManager, Sendable {
     private let indexCache: Cache?
     private static let latestTTLSeconds = 3600
 
-    public init(http: HTTPClient = URLSessionHTTPClient(),
+    public init(http: any HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
                 cargoBinary: String? = nil,
                 indexCache: Cache? = nil) {

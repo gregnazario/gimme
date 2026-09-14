@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 /// Go adapter (spec §6.2). Uses the module proxy for existence/info and
 /// `go install` for actions. No outdated, no fuzzy search.
@@ -8,12 +8,12 @@ public final class GoManager: PackageManager, Sendable {
     public let icon = "building.columns"
     public let capabilities: Set<Capability> = [.install, .uninstall, .list, .search, .info, .bootstrap]
 
-    private let http: HTTPClient
+    private let http: any HTTPClient
     private let process: any ProcessRunning
     private let goBinaryOverride: String?   // nil = resolve via `which go`
     private let askpassURL: URL?
 
-    public init(http: HTTPClient = URLSessionHTTPClient(),
+    public init(http: any HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
                 goBinary: String? = nil,
                 askpassURL: URL? = nil) {

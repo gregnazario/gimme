@@ -40,7 +40,7 @@ enum NpmRegistry {
     /// `indexCache` (nil disables caching — tests — but still fetches).
     /// forceRefresh bypasses the cache read (and overwrites the entry).
     /// Returns nil on any failure; callers skip the package rather than flag it.
-    static func latestVersion(of name: String, http: HTTPClient, indexCache: Cache?,
+    static func latestVersion(of name: String, http: any HTTPClient, indexCache: Cache?,
                               forceRefresh: Bool = false) async -> String? {
         let key = "npm-registry:latest:\(name)"
         if !forceRefresh,

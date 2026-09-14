@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 /// Mac App Store adapter (spec: docs/superpowers/specs/2026-08-21-appstore-updates-design.md).
 /// Updates-only: list, outdated, upgrade. The read path never depends on the
@@ -12,7 +12,7 @@ public final class AppStoreManager: PackageManager, @unchecked Sendable {
     public let icon = "app.badge.fill"
     public let capabilities: Set<Capability> = [.list, .outdated, .upgrade]
 
-    private let http: HTTPClient
+    private let http: any HTTPClient
     private let process: any ProcessRunning
     private let applicationDirs: [URL]
     private let indexCache: Cache?
@@ -22,7 +22,7 @@ public final class AppStoreManager: PackageManager, @unchecked Sendable {
     /// the gimme cache dir).
     private let askpassURL: URL?
 
-    public init(http: HTTPClient = URLSessionHTTPClient(),
+    public init(http: any HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
                 applicationDirs: [URL]? = nil,
                 indexCache: Cache? = nil,
@@ -254,10 +254,10 @@ public final class AppStoreManager: PackageManager, @unchecked Sendable {
     /// retry) the batch falls back to opening the App Store updates pane once
     /// and reports the packages as handed off.
     public func upgradeAll(_ packages: [PackageRef],
-                           onPackageStart: ((PackageRef) -> Void)? = nil) async -> [(PackageRef, Error?)] {
+                           onPackageStart: ((PackageRef) -> Void)? = nil) async -> [(PackageRef, (any Error)?)] {
         for package in packages { onPackageStart?(package) }
         var resolved: [(PackageRef, Int)] = []
-        var results: [(PackageRef, Error?)] = []
+        var results: [(PackageRef, (any Error)?)] = []
         for package in packages {
             if let r = await resolveApp(package.name) {
                 resolved.append((package, r.trackId))

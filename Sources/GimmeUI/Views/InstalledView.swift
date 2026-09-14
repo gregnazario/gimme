@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import GimmeCore
 
 struct InstalledView: View {
@@ -36,7 +37,7 @@ struct InstalledView: View {
                 TextField("Filter installed packages…", text: $searchText)
                     .textFieldStyle(.roundedBorder)
                     .focused($filterFocused)
-                    .onChange(of: searchText) { _ in }  // live filter via @State
+                    .onChange(of: searchText) { _, _ in }  // live filter via @State
                 if !searchText.isEmpty {
                     Button { searchText = "" } label: {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
@@ -109,7 +110,7 @@ struct InstalledView: View {
                 store.pendingManagerFilter = nil
             }
         }
-        .onChange(of: store.installedFilterFocusTrigger) { _ in
+        .onChange(of: store.installedFilterFocusTrigger) { _, _ in
             filterFocused = true
         }
     }

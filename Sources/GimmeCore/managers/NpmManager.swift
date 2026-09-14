@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 /// npm adapter. Uses the npm registry JSON for search/info and the `npm` CLI
 /// for actions + list. Global packages via `-g`.
@@ -8,7 +8,7 @@ public final class NpmManager: PackageManager, Sendable {
     public let icon = "shippingbox.fill"
     public let capabilities: Set<Capability> = [.install, .uninstall, .upgrade, .list, .outdated, .search, .info, .bootstrap]
 
-    private let http: HTTPClient
+    private let http: any HTTPClient
     private let process: any ProcessRunning
     private let binaryOverride: String?   // nil = resolve via `which npm`
     private let askpassURL: URL?
@@ -16,7 +16,7 @@ public final class NpmManager: PackageManager, Sendable {
     /// one lookup per package per TTL window instead of per run). nil = off.
     private let indexCache: Cache?
 
-    public init(http: HTTPClient = URLSessionHTTPClient(),
+    public init(http: any HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
                 binary: String? = nil,
                 askpassURL: URL? = nil,

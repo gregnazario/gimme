@@ -8,11 +8,11 @@ public final class ComposerManager: PackageManager, Sendable {
     public let icon = "music.note"
     public let capabilities: Set<Capability> = [.install, .uninstall, .upgrade, .list, .outdated, .search, .info, .bootstrap]
 
-    private let http: HTTPClient
+    private let http: any HTTPClient
     private let process: any ProcessRunning
     private let binaryOverride: String?   // nil = resolve via `which composer`
 
-    public init(http: HTTPClient = URLSessionHTTPClient(),
+    public init(http: any HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
                 binary: String? = nil) {
         self.http = http

@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 /// Resolves all gimme on-disk locations. v2 uses XDG-ish paths under the home
 /// directory: config in ~/.config/gimme, cache in ~/.cache/gimme.

@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 /// Builds a prefilled GitHub new-issue URL for the "Report an Issue" flow
 /// (GUI Help menu → sheet → browser). The query-param prefill means the app

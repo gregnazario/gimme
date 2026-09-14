@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 /// Stable identifier for a package manager backend.
 public enum ManagerID: String, Hashable, Codable, CaseIterable, Sendable {
@@ -181,7 +181,7 @@ public protocol PackageManager: Sendable {
     /// requirement itself must be on the protocol so overrides dispatch
     /// dynamically through `any PackageManager`.
     func upgradeAll(_ packages: [PackageRef],
-                    onPackageStart: (@Sendable (PackageRef) -> Void)?) async -> [(PackageRef, Error?)]
+                    onPackageStart: (@Sendable (PackageRef) -> Void)?) async -> [(PackageRef, (any Error)?)]
     func listInstalled() async throws -> [InstalledPackage]
     /// `outdated()` with explicit cache control: forceRefresh=true bypasses the
     /// adapter's response caches (registry latest-version docs, iTunes lookups)
@@ -204,8 +204,8 @@ public extension PackageManager {
     /// (e.g. mas → sudo askpass, one password dialog) override this to batch.
     /// Returns per-package outcome in order.
     func upgradeAll(_ packages: [PackageRef],
-                    onPackageStart: (@Sendable (PackageRef) -> Void)? = nil) async -> [(PackageRef, Error?)] {
-        var results: [(PackageRef, Error?)] = []
+                    onPackageStart: (@Sendable (PackageRef) -> Void)? = nil) async -> [(PackageRef, (any Error)?)] {
+        var results: [(PackageRef, (any Error)?)] = []
         for package in packages {
             onPackageStart?(package)
             do {

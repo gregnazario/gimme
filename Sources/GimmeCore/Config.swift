@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 /// v2 gimme configuration. Holds the manager priority list and which managers
 /// are enabled. Persisted to ~/.config/gimme/config.toml.

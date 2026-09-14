@@ -1,5 +1,6 @@
 import SwiftUI
 import GimmeCore
+import Combine
 
 @main
 struct GimmeApp: App {
@@ -618,12 +619,12 @@ final class GimmeStore: ObservableObject {
         activity.insert(ActivityEntry(text: text), at: 0)
     }
 
-    static func errorText(_ error: Error) -> String {
+    static func errorText(_ error: any Error) -> String {
         if let e = error as? GimmeError { return e.message }
         return "\(error)"
     }
 
-    private func showError(_ error: Error) {
+    private func showError(_ error: any Error) {
         errorMessage = Self.errorText(error)
         showError = true
     }

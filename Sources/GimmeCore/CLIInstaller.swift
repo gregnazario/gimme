@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 /// Installs or updates the `gimme` command-line tool on this machine, shared
 /// by the GUI's "Install Command-Line Tool…" menu command. The download,
@@ -31,7 +31,7 @@ public final class CLIToolInstaller: Sendable {
     /// Finds an existing gimme binary on this machine (PATH first), or nil.
     private let locate: @Sendable () -> String?
 
-    public init(http: HTTPClient = URLSessionHTTPClient(),
+    public init(http: any HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
                 installDir: URL? = nil,
                 locate: (@Sendable () -> String?)? = nil) {

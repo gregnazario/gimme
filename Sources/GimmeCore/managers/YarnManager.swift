@@ -9,14 +9,14 @@ public final class YarnManager: PackageManager, Sendable {
     public let icon = "circle.hexagongrid.fill"
     public let capabilities: Set<Capability> = [.install, .uninstall, .upgrade, .list, .outdated, .search, .info, .bootstrap]
 
-    private let http: HTTPClient
+    private let http: any HTTPClient
     private let process: any ProcessRunning
     private let binaryOverride: String?   // nil = resolve via `which yarn`
     /// Shared disk cache for per-package dist-tags lookups (App Store pattern:
     /// one lookup per package per TTL window instead of per run). nil = off.
     private let indexCache: Cache?
 
-    public init(http: HTTPClient = URLSessionHTTPClient(),
+    public init(http: any HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
                 binary: String? = nil,
                 indexCache: Cache? = nil) {

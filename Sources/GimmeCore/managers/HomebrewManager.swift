@@ -8,7 +8,7 @@ public final class HomebrewManager: PackageManager, Sendable {
     public let icon = "cup.and.saucer.fill"
     public let capabilities: Set<Capability> = [.install, .uninstall, .upgrade, .list, .outdated, .search, .info, .bootstrap]
 
-    private let http: HTTPClient
+    private let http: any HTTPClient
     private let process: any ProcessRunning
     private let brewBinaryOverride: String?   // nil = resolve via `which brew`
 
@@ -67,7 +67,7 @@ public final class HomebrewManager: PackageManager, Sendable {
     /// Optional: injected so tests stay hermetic (nil = no index caching).
     private let indexCache: Cache?
 
-    public init(http: HTTPClient = URLSessionHTTPClient(),
+    public init(http: any HTTPClient = URLSessionHTTPClient(),
                 process: any ProcessRunning = ProcessRunner(),
                 brewBinary: String? = nil,
                 indexCache: Cache? = nil) {

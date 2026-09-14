@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 /// A minimal TOML value tree for the subset gimme formulae and config use:
 /// tables, array-of-tables, key/value pairs of string/int/double/bool, and
