@@ -8,7 +8,9 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest
+    # macos-27 image not GA yet; xcode-27 preview (macOS 26 + Xcode 27 =
+    # macOS 27 SDK) is the interim pin — revisit when macos-27 ships.
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v4
 

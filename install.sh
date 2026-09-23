@@ -45,10 +45,10 @@ fail() { printf 'error: %s\n' "$*" >&2; exit 1; }
 # --- preflight ---
 [ "$(uname -s)" = "Darwin" ] || fail "gimme is macOS-only. Your OS: $(uname -s)"
 
-# Requires macOS 26 (Tahoe) or newer — the binaries are built against the
-# macOS 26 SDK and won't load on older systems.
+# Requires macOS 27 or newer — the binaries are built against the
+# macOS 27 SDK and won't load on older systems.
 OS_MAJOR=$(sw_vers -productVersion | cut -d. -f1)
-[ "$OS_MAJOR" -ge 26 ] 2>/dev/null || fail "gimme requires macOS 26 (Tahoe) or newer. You have $(sw_vers -productVersion)."
+[ "$OS_MAJOR" -ge 27 ] 2>/dev/null || fail "gimme requires macOS 27 or newer. You have $(sw_vers -productVersion)."
 
 ARCH="$(uname -m)"
 case "$ARCH" in

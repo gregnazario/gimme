@@ -2,8 +2,8 @@
 
 ## Requirements
 
-- macOS 26 (Tahoe) or newer
-- Swift 6.2+ — only needed when building from source
+- macOS 27 or newer
+- Swift 6.4+ — only needed when building from source
 
 ## macOS app (DMG)
 

@@ -1,4 +1,4 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.4
 import PackageDescription
 
 // Strictness layer on top of Swift 6 language mode (which already enforces
@@ -15,7 +15,7 @@ let swiftSettings: [SwiftSetting] = [
 
 let package = Package(
     name: "gimme",
-    platforms: [.macOS(.v26)],
+    platforms: [.macOS(.v27)],
     targets: [
         .target(
             name: "GimmeCore",

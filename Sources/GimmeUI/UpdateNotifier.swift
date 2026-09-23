@@ -8,6 +8,7 @@ import UserNotifications
 /// skips silently. Safe in non-bundle contexts (raw SwiftPM binary).
 /// `@unchecked Sendable`: `UNUserNotificationCenter` is a thread-safe
 /// system singleton; the class itself holds no mutable state.
+@MainActor
 final class UpdateNotifier: @unchecked Sendable {
     private let center = UNUserNotificationCenter.current()
 
